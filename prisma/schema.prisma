@@ -1,0 +1,220 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Category {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  imageUrl        String?
+  bgClass         String?   
+  descriptionHtml String?   // Added for rich text description
+  products        Product[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique
+  sku               String?  @unique
+  basePrice         Float?
+  discountPrice     Float?
+  discountBadge     String?  // e.g., "Up to 45% discount."
+  stockStatus       String   @default("In stock")
+  videoUrl          String?
+  
+  // Text content
+  description       String?  // Short description
+  descriptionHtml   String?  // HTML description for Description Tab
+  importantNoteHtml String?  // HTML description for Important Note Tab
+
+  categoryId        String
+  category          Category @relation(fields: [categoryId], references: [id])
+  isPodium          Boolean  @default(false)
+
+  // Advanced Relations
+  images            ProductImage[]
+  features          ProductFeature[]
+  specifications    ProductSpecification[]
+  variants          ProductVariant[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  url       String
+  isMain    Boolean @default(false)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ProductFeature {
+  id        String  @id @default(cuid())
+  text      String
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ProductSpecification {
+  id        String  @id @default(cuid())
+  name      String  // Particulars (e.g., "Height")
+  value     String  // Specs (e.g., "40\" to 42\"")
+  type      String  @default("specification") // "specification" or "dimension"
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  name      String  // e.g., "BLACK"
+  imageUrl  String? // thumbnail for variant
+  price     Float?  // optional price override
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OnlinePlatform {
+  id          String   @id @default(cuid())
+  name        String
+  storeUrl    String
+  storeRegion String
+  iconName    String
+  colorClass  String?  // Optional tailwind class for the text color like text-[#0071ce]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SiteSetting {
+  id        String   @id @default("default") // Singleton
+  address   String
+  phone1    String
+  phone2    String?
+  email     String
+  upiId     String?
+  upiName   String?
+
+  // Dynamic About Page Media
+  aboutIntroImage String?
+  aboutCertIso    String?
+  aboutCertHym    String?
+  aboutCertGa     String?
+  aboutCertAscb   String?
+  
+  infraVideoUrl   String?
+  pressVideoUrl   String?
+  homeVideoUrl    String?
+  pressClipping1  String?
+  pressClipping2  String?
+
+  smtpHost        String?
+  smtpPort        Int?
+  smtpUser        String?
+  smtpPass        String?
+  adminEmail      String?
+  
+  mapEmbedUrl     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model InfrastructureLocation {
+  id        String   @id @default(cuid())
+  name      String
+  imageUrl  String
+  mapUrl    String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UsefulLink {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Enquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  message   String
+  status    String   @default("New") // New, Replied, Closed
+  source    String   @default("Contact Form") // Contact Form, Product Page etc
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartOrder {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  message   String?
+  total     Float?
+  status    String   @default("Pending") // Pending, Processing, Completed, Cancelled
+  items     CartOrderItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartOrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        CartOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  productName  String
+  productSlug  String
+  productImage String?
+  price        Float?
+  quantity     Int
+  createdAt    DateTime @default(now())
+}
