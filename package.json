@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "npx prisma generate",
+    "update": "git stash && git pull && npm i --legacy-peer-deps && npm run build && pm2 restart classicconcepts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1086.0",
