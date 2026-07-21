@@ -48,7 +48,7 @@ export default function CartPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fafbfc] flex flex-col">
+    <main className="min-h-screen bg-gradient-to-br from-[#fff0f0] via-[#fffbf0] to-[#f0f4ff] flex flex-col">
       <PageHeader
         breadcrumbs={[
           { label: "Home", href: "/" },

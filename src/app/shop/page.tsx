@@ -35,7 +35,9 @@ export default async function ShopPage({
   const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
 
   return (
-    <main className="min-h-screen bg-[#fafbfc] flex flex-col">
+    <main className="min-h-screen bg-[#fafbfc] flex flex-col relative">
+      {/* Subtle Radial Gradient Pattern */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_right,rgba(227,24,55,0.03)_0%,rgba(255,223,0,0.02)_40%,rgba(59,130,246,0.02)_80%,transparent_100%)] pointer-events-none"></div>
       <PageHeader
         breadcrumbs={[
           { label: "Home", href: "/" },

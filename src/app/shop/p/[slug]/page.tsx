@@ -49,8 +49,11 @@ export default async function ProductDetailPage({
   const standardSpecs = product.specifications.filter(s => s.type !== "dimension");
 
   return (
-    <main className="min-h-screen bg-[#fafbfc] flex flex-col pb-24">
-      <div className="bg-slate-900 py-4 border-b border-white/10">
+    <main className="min-h-screen bg-gradient-to-b from-[#fafbfc] to-[#f0f4ff] flex flex-col pb-24 relative">
+      {/* Soft Radial Blush Behind Product */}
+      <div className="absolute top-[10%] left-[50%] -translate-x-1/2 w-[80%] max-w-[800px] h-[600px] bg-[radial-gradient(circle_at_center,rgba(227,24,55,0.04)_0%,rgba(255,223,0,0.03)_40%,rgba(59,130,246,0.03)_70%,transparent_100%)] pointer-events-none z-0"></div>
+
+      <div className="bg-slate-900 py-4 border-b border-white/10 relative z-10">
         <div className="container mx-auto px-6">
           <div className="flex items-center text-sm font-medium text-slate-300">
             <Link href="/shop" className="hover:text-white transition-colors flex items-center gap-2">

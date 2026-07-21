@@ -12,13 +12,20 @@ export default async function ContactPage() {
   const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
 
   return (
-    <div className="bg-slate-50 min-h-screen py-16 md:py-24">
-      <div className="container mx-auto px-4 md:px-8">
+    <div className="relative bg-[#f8fafc] min-h-screen py-16 md:py-24 overflow-hidden">
+      {/* Animated Glowing Orbs Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[10%] left-[20%] w-[300px] h-[300px] bg-red-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 animate-blob"></div>
+        <div className="absolute top-[30%] right-[20%] w-[350px] h-[350px] bg-yellow-400 rounded-full mix-blend-multiply filter blur-[120px] opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-[20%] left-[40%] w-[400px] h-[400px] bg-blue-400 rounded-full mix-blend-multiply filter blur-[150px] opacity-20 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="container mx-auto px-4 md:px-8 relative z-10">
         
         {/* Header section */}
         <div className="max-w-3xl mx-auto text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-[#0056b3] tracking-tight mb-6">Contact Us</h1>
-          <p className="text-lg text-slate-600 leading-relaxed">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight mb-6 drop-shadow-sm">Contact Us</h1>
+          <p className="text-lg text-slate-600 leading-relaxed font-medium">
             Have a question about our products, or looking for a custom acrylic solution? Our team of experts is ready to help you with your next project.
           </p>
         </div>
@@ -107,7 +114,7 @@ export default async function ContactPage() {
           </div>
 
           {/* Form Side */}
-          <div>
+          <div className="bg-white/40 backdrop-blur-xl border border-white/60 p-8 md:p-10 rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative z-10">
             <ContactForm />
           </div>
 

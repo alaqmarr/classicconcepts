@@ -15,10 +15,13 @@ type PageHeaderProps = {
 
 export function PageHeader({ breadcrumbs, title, description }: PageHeaderProps) {
   return (
-    <section className="relative bg-slate-900 text-white pt-32 pb-24 overflow-hidden">
-      {/* Abstract Background Elements */}
-      <div className="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-      <div className="absolute -top-[20%] -right-[10%] w-[70%] h-[140%] bg-gradient-to-l from-[#0056b3]/40 to-transparent blur-3xl transform rotate-12 pointer-events-none rounded-full"></div>
+    <section className="relative bg-[#05060A] text-white pt-32 pb-24 overflow-hidden border-b border-white/10 shadow-2xl">
+      {/* Dark Mesh Gradient Background (Global Hero Theme) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[30%] -left-[10%] w-[50%] h-[120%] bg-[#3b82f6] rounded-full mix-blend-screen filter blur-[120px] opacity-20"></div>
+        <div className="absolute top-[20%] right-[10%] w-[40%] h-[80%] bg-[#e31837] rounded-full mix-blend-screen filter blur-[130px] opacity-20"></div>
+        <div className="absolute -bottom-[20%] left-[30%] w-[60%] h-[60%] bg-[#ffdf00] rounded-full mix-blend-screen filter blur-[150px] opacity-[0.15]"></div>
+      </div>
       
       <div className="container mx-auto px-6 relative z-10">
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto space-y-6">

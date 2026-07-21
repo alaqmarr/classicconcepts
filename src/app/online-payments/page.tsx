@@ -13,7 +13,9 @@ export default async function OnlinePaymentsPage() {
   // UPI Deep Link Format: upi://pay?pa=UPI_ID&pn=PAYEE_NAME&cu=INR
   const upiLink = settings?.upiId ? `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.upiName || 'Classic Concepts')}&cu=INR` : null;
   return (
-    <div className="bg-slate-50 min-h-screen py-16">
+    <div className="bg-gradient-to-br from-[#f0f4ff] via-[#fffbf0] to-[#fff0f0] min-h-screen py-16 relative overflow-hidden">
+      {/* Decorative background shape */}
+      <div className="absolute top-[10%] right-[10%] w-[300px] h-[300px] bg-blue-100/50 rounded-full blur-[100px] pointer-events-none z-0"></div>
       <div className="container mx-auto px-4 max-w-7xl">
         <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-10 text-center md:text-left">
           Available Payment Methods

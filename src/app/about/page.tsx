@@ -27,8 +27,15 @@ export default async function AboutPage() {
       />
 
       {/* Intro Section: Exceptional Services */}
-      <section className="py-24 bg-[#fafbfc] relative z-20 -mt-8">
-        <div className="container mx-auto px-6">
+      <section className="py-24 bg-white relative z-20 overflow-hidden">
+        {/* Intersecting Diagonal Blocks Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
+          <div className="absolute -top-[20%] left-[0%] w-[150%] h-[50%] bg-gradient-to-r from-red-100/30 to-transparent -rotate-12 transform origin-top-left"></div>
+          <div className="absolute top-[20%] left-[0%] w-[150%] h-[40%] bg-gradient-to-r from-yellow-100/30 to-transparent -rotate-12 transform origin-top-left"></div>
+          <div className="absolute top-[60%] left-[0%] w-[150%] h-[60%] bg-gradient-to-r from-blue-100/30 to-transparent -rotate-12 transform origin-top-left"></div>
+        </div>
+        
+        <div className="container mx-auto px-6 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
             {/* Image Side with Premium Styling */}
             <div className="relative group">
