@@ -49,12 +49,18 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
   const defaultImage = product.images.find(i => i.isMain)?.url || product.images[0]?.url || "/placeholder-image.jpg";
   const currentImage = selectedVariant?.imageUrl || defaultImage;
 
+  // Gather all unique images (product images + variant images)
+  const allImageUrls = Array.from(new Set([
+    ...product.images.map(img => img.url),
+    ...product.variants.map(v => v.imageUrl).filter((url): url is string => Boolean(url))
+  ]));
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
       {/* Left Column: Image Gallery */}
       <div className="p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50">
         <ProductGallery 
-          images={product.images.map(img => img.url)} 
+          images={allImageUrls} 
           productName={product.name} 
           discountBadge={product.discountBadge} 
           selectedImageUrl={selectedVariant?.imageUrl}

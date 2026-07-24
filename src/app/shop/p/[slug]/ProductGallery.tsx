@@ -21,6 +21,18 @@ export function ProductGallery({ images, productName, discountBadge, selectedIma
   }, [images, selectedImageUrl]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  // Auto-play gallery
+  useEffect(() => {
+    if (!isAutoPlaying || safeImages.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % safeImages.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, safeImages.length]);
 
   // If a variant provides a specific image, try to switch to it
   useEffect(() => {
@@ -28,6 +40,7 @@ export function ProductGallery({ images, productName, discountBadge, selectedIma
       const index = safeImages.findIndex(img => img === selectedImageUrl);
       if (index !== -1) {
         setCurrentIndex(index);
+        setIsAutoPlaying(false);
       }
     }
   }, [selectedImageUrl, safeImages]);
@@ -68,7 +81,10 @@ export function ProductGallery({ images, productName, discountBadge, selectedIma
           {safeImages.map((img, index) => (
             <button
               key={index}
-              onClick={() => setCurrentIndex(index)}
+              onClick={() => {
+                setCurrentIndex(index);
+                setIsAutoPlaying(false);
+              }}
               className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 ${
                 currentIndex === index 
                   ? "border-[#0056b3] shadow-md transform scale-105" 
