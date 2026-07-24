@@ -55,6 +55,20 @@ export default async function EditProductPage({ params }: Props) {
     const variantNames = formData.getAll("variantName[]") as string[];
     const variantPrices = formData.getAll("variantPrice[]") as string[];
 
+    const imageCreates = [];
+    if (mainImage) {
+      imageCreates.push({ url: mainImage, isMain: true });
+    }
+    
+    Array.from(formData.keys()).forEach(key => {
+      if (key.startsWith("galleryImage_")) {
+        const gImg = formData.get(key) as string;
+        if (gImg && gImg.trim() !== "") {
+          imageCreates.push({ url: gImg, isMain: false });
+        }
+      }
+    });
+
     // To cleanly update relations, we'll wipe the old arrays and recreate them.
     // In production, you might do smart upserts, but this is safest for admin edits.
     await prisma.$transaction([
@@ -95,8 +109,8 @@ export default async function EditProductPage({ params }: Props) {
           }).filter(Boolean) as any
         },
 
-        images: mainImage ? {
-          create: [{ url: mainImage, isMain: true }]
+        images: imageCreates.length > 0 ? {
+          create: imageCreates
         } : undefined
       }
     });

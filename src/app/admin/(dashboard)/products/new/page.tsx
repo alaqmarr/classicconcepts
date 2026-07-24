@@ -38,29 +38,44 @@ export default async function NewProductPage() {
     const variantNames = formData.getAll("variantName[]") as string[];
     const variantPrices = formData.getAll("variantPrice[]") as string[];
 
+    const imageCreates = [];
+    if (mainImage) {
+      imageCreates.push({ url: mainImage, isMain: true });
+    }
+    
+    Array.from(formData.keys()).forEach(key => {
+      if (key.startsWith("galleryImage_")) {
+        const gImg = formData.get(key) as string;
+        if (gImg && gImg.trim() !== "") {
+          imageCreates.push({ url: gImg, isMain: false });
+        }
+      }
+    });
+
     const product = await prisma.product.create({
       data: {
         id: generatedSlug,
-        name,
-        slug: generatedSlug,
+        name, 
+        slug: generatedSlug, 
+        sku: sku || null,
+        description: description || null,
+        descriptionHtml: descriptionHtml || null,
+        importantNoteHtml: importantNoteHtml || null,
         categoryId,
-        sku,
-        basePrice,
-        discountPrice,
+        basePrice: basePrice,
+        discountPrice: discountPrice,
+        discountBadge: discountBadge || null,
         stockStatus,
-        discountBadge,
-        videoUrl,
-        description,
-        descriptionHtml,
-        importantNoteHtml,
-        
+        videoUrl: videoUrl || null,
+        isPodium: false,
+
         features: {
-          create: featureTexts.filter(t => t.trim() !== "").map(text => ({ text }))
+          create: featureTexts.map((text) => ({ text }))
         },
         
         specifications: {
           create: specNames.map((name, i) => {
-            if (name.trim() === "" || specValues[i].trim() === "") return null;
+            if (!name) return null;
             return {
               name,
               value: specValues[i],
@@ -69,8 +84,8 @@ export default async function NewProductPage() {
           }).filter(Boolean) as any
         },
 
-        images: mainImage ? {
-          create: [{ url: mainImage, isMain: true }]
+        images: imageCreates.length > 0 ? {
+          create: imageCreates
         } : undefined
       }
     });

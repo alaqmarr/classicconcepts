@@ -77,14 +77,14 @@ export default async function ProductDetailPage({
         
         {/* Description & Features */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8 min-w-0">
             {product.descriptionHtml && (
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                 <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-3">
                   <Tag className="text-[#0056b3]" /> Description
                 </h2>
                 <div 
-                  className="prose prose-slate max-w-none text-slate-600"
+                  className="prose prose-slate max-w-none text-slate-600 break-words"
                   dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
                 />
               </div>
@@ -107,7 +107,7 @@ export default async function ProductDetailPage({
             )}
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-8 min-w-0">
             {/* Specifications */}
             {(standardSpecs.length > 0 || dimensions.length > 0) && (
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
@@ -148,7 +148,7 @@ export default async function ProductDetailPage({
               <div className="bg-amber-50 rounded-3xl p-8 shadow-sm border border-amber-200">
                 <h2 className="text-xl font-bold text-amber-900 mb-4">Important Note</h2>
                 <div 
-                  className="prose prose-sm prose-amber max-w-none text-amber-800"
+                  className="prose prose-sm prose-amber max-w-none text-amber-800 break-words"
                   dangerouslySetInnerHTML={{ __html: product.importantNoteHtml }}
                 />
               </div>
