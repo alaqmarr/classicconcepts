@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { Plus, Trash2 } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { MultiImageUploader } from "@/components/admin/MultiImageUploader";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 
 interface Category {
@@ -30,11 +30,8 @@ export function ProductForm({ categories, action, product }: ProductFormProps) {
     product?.variants?.length ? product.variants : [{ id: 1, name: "", price: "", imageUrl: "" }]
   );
 
-  const [galleryImages, setGalleryImages] = useState(
-    product?.images?.filter((i: any) => !i.isMain).map((i: any, idx: number) => ({ id: Date.now() + idx, url: i.url })) || []
-  );
-
   const mainImage = product?.images?.find((i: any) => i.isMain)?.url || "";
+  const initialGalleryImages = product?.images?.filter((i: any) => !i.isMain).map((i: any) => i.url) || [];
 
   return (
     <form action={action} className="space-y-8">
@@ -91,22 +88,8 @@ export function ProductForm({ categories, action, product }: ProductFormProps) {
         </div>
         
         <div className="pt-4 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Additional Gallery Images</label>
-            <button type="button" onClick={() => setGalleryImages([...galleryImages, { id: Date.now(), url: "" }])} className="text-xs font-bold text-[#0056b3] flex items-center gap-1 hover:underline">
-              <Plus size={14} /> Add Image
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {galleryImages.map((img: any, index: number) => (
-              <div key={img.id} className="relative bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <ImageUploader name={`galleryImage_${img.id}`} defaultValue={img.url} />
-                <button type="button" onClick={() => setGalleryImages(galleryImages.filter((_: any, i: number) => i !== index))} className="absolute -top-2 -right-2 p-1.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg z-10 border border-red-200 shadow-sm">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">Additional Gallery Images</label>
+          <MultiImageUploader name="galleryImages[]" defaultValues={initialGalleryImages} />
         </div>
         <div>
            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">YouTube Video URL</label>

@@ -61,12 +61,10 @@ export default async function EditPodiumPage({ params }: Props) {
       imageCreates.push({ url: mainImage, isMain: true });
     }
     
-    Array.from(formData.keys()).forEach(key => {
-      if (key.startsWith("galleryImage_")) {
-        const gImg = formData.get(key) as string;
-        if (gImg && gImg.trim() !== "") {
-          imageCreates.push({ url: gImg, isMain: false });
-        }
+    const galleryImages = formData.getAll("galleryImages[]") as string[];
+    galleryImages.forEach(gImg => {
+      if (gImg && gImg.trim() !== "") {
+        imageCreates.push({ url: gImg, isMain: false });
       }
     });
 
