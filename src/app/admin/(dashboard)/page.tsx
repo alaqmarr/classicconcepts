@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { Package, Users, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
@@ -69,3 +70,4 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
+

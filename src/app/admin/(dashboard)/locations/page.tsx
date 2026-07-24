@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
@@ -86,3 +87,4 @@ export default async function AdminLocationsPage() {
     </div>
   );
 }
+

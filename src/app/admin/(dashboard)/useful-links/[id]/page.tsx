@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { prisma } from "@/lib/db";
 import { notFound, redirect } from "next/navigation";

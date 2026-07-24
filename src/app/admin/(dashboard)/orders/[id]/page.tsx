@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { ShoppingCart, ArrowLeft, Image as ImageIcon } from "lucide-react";

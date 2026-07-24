@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -114,3 +115,4 @@ export default async function NewPodiumPage() {
     </div>
   );
 }
+

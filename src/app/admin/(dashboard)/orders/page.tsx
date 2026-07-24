@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
@@ -97,3 +98,4 @@ export default async function AdminOrdersPage() {
     </div>
   );
 }
+

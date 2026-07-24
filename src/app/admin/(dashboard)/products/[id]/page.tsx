@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect, notFound } from "next/navigation";
