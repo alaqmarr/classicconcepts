@@ -11,14 +11,42 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: { category: true }
+    include: { 
+      category: true,
+      images: true 
+    }
   });
 
   if (!product) return { title: "Product Not Found - Classic Concepts" };
 
+  const title = `${product.name} | ${product.category.name} - Classic Concepts`;
+  const description = product.description || `Buy ${product.name} from Classic Concepts.`;
+  const mainImage = product.images?.find((img: any) => img.isMain)?.url || product.images?.[0]?.url || "/short-logo.png";
+
   return {
-    title: `${product.name} | ${product.category.name} - Classic Concepts`,
-    description: product.description || `Buy ${product.name} from Classic Concepts.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `https://classicconcepts.in/shop/p/${product.slug}`,
+      siteName: "Classic Concepts",
+      images: [
+        {
+          url: mainImage,
+          width: 800,
+          height: 800,
+          alt: product.name,
+        }
+      ],
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [mainImage],
+    }
   };
 }
 

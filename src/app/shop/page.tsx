@@ -7,6 +7,27 @@ import { Filter, Search } from "lucide-react";
 export const metadata = {
   title: "Shop All Products - Classic Concepts",
   description: "Browse our entire catalog of premium acrylic furniture and products.",
+  openGraph: {
+    title: "Shop All Products - Classic Concepts",
+    description: "Browse our entire catalog of premium acrylic furniture and products.",
+    url: "https://classicconcepts.in/shop",
+    siteName: "Classic Concepts",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+        alt: "Classic Concepts Shop",
+      }
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Shop All Products - Classic Concepts",
+    description: "Browse our entire catalog of premium acrylic furniture and products.",
+    images: ["/logo.png"],
+  }
 };
 
 export default async function ShopPage({

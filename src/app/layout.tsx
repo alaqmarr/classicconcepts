@@ -15,6 +15,32 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Classic Concepts | Superior Acrylic Craftsmanship",
   description: "Classic Concepts is a leading manufacturer of high-quality acrylic products in India. Discover our wide range of acrylic podiums, displays, interiors, and custom solutions.",
+  icons: {
+    icon: "/short-logo.png",
+    apple: "/short-logo.png",
+  },
+  openGraph: {
+    title: "Classic Concepts | Superior Acrylic Craftsmanship",
+    description: "Classic Concepts is a leading manufacturer of high-quality acrylic products in India.",
+    url: "https://classicconcepts.in",
+    siteName: "Classic Concepts",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+        alt: "Classic Concepts Logo",
+      }
+    ],
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Classic Concepts",
+    description: "Superior Acrylic Craftsmanship in India.",
+    images: ["/logo.png"],
+  },
 };
 
 export default async function RootLayout({

@@ -13,9 +13,34 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   if (!category) return { title: "Category Not Found - Classic Concepts" };
 
+  const title = `${category.name} - Shop at Classic Concepts`;
+  const description = `Browse our collection of premium acrylic ${category.name.toLowerCase()}.`;
+  const mainImage = category.imageUrl || "/short-logo.png";
+
   return {
-    title: `${category.name} - Shop at Classic Concepts`,
-    description: `Browse our collection of premium acrylic ${category.name.toLowerCase()}.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `https://classicconcepts.in/shop/c/${category.slug}`,
+      siteName: "Classic Concepts",
+      images: [
+        {
+          url: mainImage,
+          width: 800,
+          height: 800,
+          alt: category.name,
+        }
+      ],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [mainImage],
+    }
   };
 }
 

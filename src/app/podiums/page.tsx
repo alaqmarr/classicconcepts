@@ -7,6 +7,27 @@ import { Search } from "lucide-react";
 export const metadata = {
   title: "Podiums - Classic Concepts",
   description: "Browse our premium collection of acrylic podiums.",
+  openGraph: {
+    title: "Podiums - Classic Concepts",
+    description: "Browse our premium collection of acrylic podiums.",
+    url: "https://classicconcepts.in/podiums",
+    siteName: "Classic Concepts",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+        alt: "Classic Concepts Podiums",
+      }
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Podiums - Classic Concepts",
+    description: "Browse our premium collection of acrylic podiums.",
+    images: ["/logo.png"],
+  }
 };
 
 export default async function PodiumsPage({
