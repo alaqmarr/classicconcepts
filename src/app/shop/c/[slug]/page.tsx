@@ -5,6 +5,16 @@ import Link from "next/link";
 import { Filter, Search } from "lucide-react";
 import { notFound } from "next/navigation";
 
+export async function generateStaticParams() {
+  const categories = await prisma.category.findMany({
+    select: { slug: true }
+  });
+  
+  return categories.map((category: any) => ({
+    slug: category.slug,
+  }));
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const { slug } = await params;
   const category = await prisma.category.findUnique({

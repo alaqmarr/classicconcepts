@@ -3,6 +3,11 @@ import Image from "next/image";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { getYouTubeEmbedUrl } from "@/lib/youtube";
 
+export const metadata = {
+  title: "Our Infrastructure - Classic Concepts",
+  description: "Take a tour of our state-of-the-art manufacturing facilities and showrooms across India.",
+};
+
 export default async function OurInfrastructurePage() {
   const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
   

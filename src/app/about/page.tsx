@@ -6,6 +6,11 @@ import { PageHeader } from "@/components/layout/PageHeader";
 
 import { prisma } from "@/lib/db";
 
+export const metadata = {
+  title: "About Us - Classic Concepts",
+  description: "Learn about Classic Concepts, our mission, vision, and dedication to acrylic craftsmanship.",
+};
+
 export default async function AboutPage() {
   const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
 

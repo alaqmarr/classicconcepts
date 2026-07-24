@@ -13,6 +13,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://classicconcepts.in"),
   title: "Classic Concepts | Superior Acrylic Craftsmanship",
   description: "Classic Concepts is a leading manufacturer of high-quality acrylic products in India. Discover our wide range of acrylic podiums, displays, interiors, and custom solutions.",
   icons: {

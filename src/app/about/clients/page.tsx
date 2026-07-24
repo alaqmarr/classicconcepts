@@ -4,6 +4,11 @@ import Link from "next/link";
 import { Award } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 
+export const metadata = {
+  title: "Our Clients - Classic Concepts",
+  description: "Explore the esteemed clients who trust Classic Concepts for their premium acrylic product needs.",
+};
+
 export default async function AboutClientsPage() {
   const clients = await prisma.client.findMany({
     orderBy: { createdAt: 'desc' }

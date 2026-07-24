@@ -7,6 +7,16 @@ import { notFound } from "next/navigation";
 import { InteractiveProductView } from "./InteractiveProductView";
 import { getYouTubeEmbedUrl } from "@/lib/youtube";
 
+export async function generateStaticParams() {
+  const products = await prisma.product.findMany({
+    select: { slug: true }
+  });
+  
+  return products.map((product: any) => ({
+    slug: product.slug,
+  }));
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
