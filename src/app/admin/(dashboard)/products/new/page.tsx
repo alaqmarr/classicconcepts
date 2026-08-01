@@ -9,6 +9,8 @@ import slugify from "slugify";
 
 export default async function NewProductPage() {
   const categories = await prisma.category.findMany({ select: { id: true, name: true } });
+  const problemStatements = await prisma.problemStatement.findMany({ select: { id: true, name: true } });
+  const industries = await prisma.industry.findMany({ select: { id: true, name: true } });
 
   async function createProduct(formData: FormData) {
     "use server";
@@ -37,6 +39,9 @@ export default async function NewProductPage() {
     const specTypes = formData.getAll("specType[]") as string[];
     const variantNames = formData.getAll("variantName[]") as string[];
     const variantPrices = formData.getAll("variantPrice[]") as string[];
+    
+    const problemStatementIds = formData.getAll("problemStatements[]") as string[];
+    const industryIds = formData.getAll("industries[]") as string[];
 
     const imageCreates = [];
     if (mainImage) {
@@ -84,47 +89,50 @@ export default async function NewProductPage() {
 
         images: imageCreates.length > 0 ? {
           create: imageCreates
-        } : undefined
+        } : undefined,
+
+        variants: {
+          create: variantNames.map((name, i) => {
+            if (!name.trim()) return null;
+            return {
+              name,
+              price: variantPrices[i] ? parseFloat(variantPrices[i]) : null,
+              imageUrl: formData.get(`variantImage_${i}`) as string || null
+            };
+          }).filter(Boolean) as any
+        },
+
+        problemStatements: { connect: problemStatementIds.map(id => ({ id })) },
+        industries: { connect: industryIds.map(id => ({ id })) },
       }
     });
-
-    // Handle Variants (need loop for dynamic image keys)
-    for (let i = 0; i < variantNames.length; i++) {
-      if (variantNames[i].trim() === "") continue;
-      const vImg = formData.get(`variantImage_${i}`) as string || null;
-      const vPrice = variantPrices[i] ? parseFloat(variantPrices[i]) : null;
-      
-      await prisma.productVariant.create({
-        data: {
-          name: variantNames[i],
-          price: vPrice,
-          imageUrl: vImg,
-          productId: product.id
-        }
-      });
-    }
 
     revalidatePath("/admin/products");
     redirect("/admin/products");
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center gap-4">
-        <Link href="/admin/products" className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 hover:text-[#0056b3] transition-colors">
-          <ArrowLeft size={20} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Package className="text-[#0056b3]" />
-            Add New Product
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Fill out the details for the new product</p>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/products" className="p-2 bg-white rounded-lg shadow-sm border border-slate-100 text-slate-500 hover:text-[#0056b3] transition-colors">
+            <ArrowLeft size={20} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <Package className="text-[#0056b3]" />
+              Add New Product
+            </h1>
+          </div>
         </div>
       </div>
-
-      <ProductForm categories={categories} action={createProduct} />
+      
+      <ProductForm 
+        categories={categories} 
+        problemStatements={problemStatements}
+        industries={industries}
+        action={createProduct} 
+      />
     </div>
   );
 }
-

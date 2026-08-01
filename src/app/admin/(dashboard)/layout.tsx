@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, LayoutDashboard, LogOut, Package, Image as ImageIcon, Users, FolderTree, Menu, X, MapPin, Link2, Mail, ShoppingCart } from "lucide-react";
+import { Settings, LayoutDashboard, LogOut, Package, Image as ImageIcon, Users, FolderTree, Menu, X, MapPin, Link2, Mail, ShoppingCart, BarChart } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 
@@ -12,13 +12,18 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
   const navigation = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { name: "Analytics", href: "/admin/analytics", icon: BarChart },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Enquiries", href: "/admin/enquiries", icon: Mail },
     { name: "Products", href: "/admin/products", icon: Package },
     { name: "Podiums", href: "/admin/podiums", icon: Package },
     { name: "Categories", href: "/admin/categories", icon: FolderTree },
+    { name: "Problem Statements", href: "/admin/problem-statements", icon: FolderTree },
+    { name: "Industries", href: "/admin/industries", icon: FolderTree },
     { name: "Clients & Platforms", href: "/admin/clients", icon: Users },
     { name: "Useful Links", href: "/admin/useful-links", icon: Link2 },
+    { name: "Resources", href: "/admin/resources", icon: FolderTree },
+    { name: "Certificates", href: "/admin/certificates", icon: ImageIcon },
     { name: "Gallery", href: "/admin/gallery", icon: ImageIcon },
     { name: "Locations", href: "/admin/locations", icon: MapPin },
     { name: "Site Settings", href: "/admin/settings", icon: Settings },

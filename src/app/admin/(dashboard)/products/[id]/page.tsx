@@ -13,6 +13,8 @@ interface Props {
 export default async function EditProductPage({ params }: Props) {
   const { id } = await params;
   const categories = await prisma.category.findMany({ select: { id: true, name: true } });
+  const problemStatements = await prisma.problemStatement.findMany({ select: { id: true, name: true } });
+  const industries = await prisma.industry.findMany({ select: { id: true, name: true } });
   
   const product = await prisma.product.findUnique({
     where: { id },
@@ -20,7 +22,9 @@ export default async function EditProductPage({ params }: Props) {
       images: true,
       features: true,
       specifications: true,
-      variants: true
+      variants: true,
+      problemStatements: true,
+      industries: true
     }
   });
 
@@ -32,7 +36,6 @@ export default async function EditProductPage({ params }: Props) {
     "use server";
     
     const name = formData.get("name") as string;
-    const slug = formData.get("slug") as string;
     const categoryId = formData.get("categoryId") as string;
     const sku = formData.get("sku") as string || null;
     
@@ -54,6 +57,9 @@ export default async function EditProductPage({ params }: Props) {
     const specTypes = formData.getAll("specType[]") as string[];
     const variantNames = formData.getAll("variantName[]") as string[];
     const variantPrices = formData.getAll("variantPrice[]") as string[];
+    
+    const problemStatementIds = formData.getAll("problemStatements[]") as string[];
+    const industryIds = formData.getAll("industries[]") as string[];
 
     const imageCreates = [];
     if (mainImage) {
@@ -80,7 +86,6 @@ export default async function EditProductPage({ params }: Props) {
       where: { id },
       data: {
         name,
-        slug,
         categoryId,
         sku,
         basePrice,
@@ -109,25 +114,23 @@ export default async function EditProductPage({ params }: Props) {
 
         images: imageCreates.length > 0 ? {
           create: imageCreates
-        } : undefined
+        } : undefined,
+
+        variants: {
+          create: variantNames.map((name, i) => {
+            if (!name.trim()) return null;
+            return {
+              name,
+              price: variantPrices[i] ? parseFloat(variantPrices[i]) : null,
+              imageUrl: formData.get(`variantImage_${i}`) as string || null
+            };
+          }).filter(Boolean) as any
+        },
+
+        problemStatements: { set: formData.getAll("problemStatements[]").map(id => ({ id: id as string })) },
+        industries: { set: formData.getAll("industries[]").map(id => ({ id: id as string })) },
       }
     });
-
-    // Handle Variants separately to handle dynamic form keys
-    for (let i = 0; i < variantNames.length; i++) {
-      if (variantNames[i].trim() === "") continue;
-      const vImg = formData.get(`variantImage_${i}`) as string || null;
-      const vPrice = variantPrices[i] ? parseFloat(variantPrices[i]) : null;
-      
-      await prisma.productVariant.create({
-        data: {
-          name: variantNames[i],
-          price: vPrice,
-          imageUrl: vImg,
-          productId: id
-        }
-      });
-    }
 
     revalidatePath("/admin/products");
     redirect("/admin/products");
@@ -148,7 +151,13 @@ export default async function EditProductPage({ params }: Props) {
         </div>
       </div>
 
-      <ProductForm categories={categories} action={updateProduct} product={product} />
+      <ProductForm 
+        categories={categories} 
+        problemStatements={problemStatements}
+        industries={industries}
+        action={updateProduct} 
+        product={product} 
+      />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { Hero } from "@/components/home/Hero";
 import { AboutSnippet } from "@/components/home/AboutSnippet";
-import { ProductCategories } from "@/components/home/ProductCategories";
+import { ProblemStatements } from "@/components/home/ProblemStatements";
+import { Industries } from "@/components/home/Industries";
+import { prisma } from "@/lib/db";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 import { HowWeDoIt } from "@/components/home/HowWeDoIt";
 import { Clients } from "@/components/home/Clients";
@@ -12,12 +14,34 @@ export const metadata = {
   description: "Elevate your brand presence with our bespoke acrylic solutions. From high-end retail displays to industrial-grade enclosures.",
 };
 
-export default function Home() {
+export default async function Home() {
+  const problemStatements = await prisma.problemStatement.findMany({
+    include: {
+      products: {
+        select: {
+          name: true
+        },
+        take: 4
+      }
+    }
+  });
+  const industries = await prisma.industry.findMany({
+    include: {
+      products: {
+        select: {
+          name: true
+        },
+        take: 4
+      }
+    }
+  });
+
   return (
     <div className="min-h-screen">
       <Hero />
       <AboutSnippet />
-      <ProductCategories />
+      <ProblemStatements statements={problemStatements} />
+      <Industries industries={industries} />
       <WhyChooseUs />
       <HowWeDoIt />
       <Clients />

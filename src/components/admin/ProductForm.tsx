@@ -13,11 +13,13 @@ interface Category {
 
 interface ProductFormProps {
   categories: Category[];
+  problemStatements?: Category[];
+  industries?: Category[];
   action: (formData: FormData) => Promise<void>;
   product?: any;
 }
 
-export function ProductForm({ categories, action, product }: ProductFormProps) {
+export function ProductForm({ categories, problemStatements = [], industries = [], action, product }: ProductFormProps) {
   const [features, setFeatures] = useState(
     product?.features?.length ? product.features : [{ id: 1, text: "" }]
   );
@@ -54,6 +56,36 @@ export function ProductForm({ categories, action, product }: ProductFormProps) {
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">SKU</label>
             <input type="text" name="sku" defaultValue={product?.sku || ""} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white text-sm" placeholder="e.g. CCP053" />
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Problem Statements (Optional)</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {problemStatements.map(ps => {
+                const isSelected = product?.problemStatements?.some((p: any) => p.id === ps.id);
+                return (
+                  <label key={ps.id} className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" name="problemStatements[]" value={ps.id} defaultChecked={isSelected} className="rounded text-[#0056b3] focus:ring-[#0056b3]" />
+                    <span className="text-sm text-slate-700">{ps.name}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Industries (Optional)</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {industries.map(ind => {
+                const isSelected = product?.industries?.some((i: any) => i.id === ind.id);
+                return (
+                  <label key={ind.id} className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" name="industries[]" value={ind.id} defaultChecked={isSelected} className="rounded text-[#0056b3] focus:ring-[#0056b3]" />
+                    <span className="text-sm text-slate-700">{ind.name}</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>

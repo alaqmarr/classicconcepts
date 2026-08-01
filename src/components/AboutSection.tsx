@@ -23,7 +23,7 @@ export default function AboutSection() {
           viewport={{ once: true }}
           className="flex-1 flex flex-col items-start"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-brand-blue mb-6">About Classic Concepts</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-brand-blue mb-6">About <span className="text-[#e31837]">C</span><span className="text-black">lassic</span> <span className="text-[#e31837]">C</span><span className="text-black">oncepts</span></h2>
           <p className="text-gray-700 text-lg leading-relaxed mb-8">
             Classic Concepts boasts of having an ace team of highly qualified engineers who are dedicated to help our benevolent clients and customers regarding their queries and by providing them the solutions they have been looking for.
           </p>

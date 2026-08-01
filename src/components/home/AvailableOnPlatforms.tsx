@@ -19,7 +19,7 @@ export async function AvailableOnPlatforms() {
   };
 
   return (
-    <section className="relative bg-white py-24 overflow-hidden border-t border-slate-100">
+    <section className="relative bg-gradient-to-b from-white via-slate-50/50 to-white py-24 overflow-hidden border-t border-slate-100">
       {/* Intersecting Diagonal Blocks Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
         <div className="absolute -top-[20%] left-[0%] w-[150%] h-[50%] bg-gradient-to-r from-red-100/30 to-transparent -rotate-12 transform origin-top-left"></div>
@@ -49,7 +49,7 @@ export async function AvailableOnPlatforms() {
               <div className={`w-2/5 flex items-center justify-center p-6 ${platform.colorClass || 'text-slate-800'} bg-slate-50 group-hover:bg-white transition-colors`}>
                 {renderIcon(platform.iconName, 40) || <span className="font-bold text-xl">{platform.name}</span>}
               </div>
-              <div className="w-3/5 bg-white group-hover:bg-slate-50 text-slate-800 flex flex-col justify-center px-5 py-4 relative transition-colors">
+              <div className="w-3/5 bg-gradient-to-b from-white via-slate-50/50 to-white group-hover:bg-gradient-to-b from-slate-50 via-slate-100/50 to-slate-50 text-slate-800 flex flex-col justify-center px-5 py-4 relative transition-colors">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Buy on</span>
                 <span className="text-base font-extrabold leading-tight">{platform.name}</span>
                 <span className="text-[10px] text-slate-500 mt-1">{platform.storeRegion}</span>

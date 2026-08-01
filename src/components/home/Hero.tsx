@@ -7,16 +7,19 @@ export function Hero() {
 
       {/* Immersive Deep Background & Animated Orbs */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        {/* Deep background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#05060A] via-[#02040a] to-[#0a0612]"></div>
+        {/* Background Image */}
+        <div className="absolute inset-0 bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat"></div>
+        
+        {/* Deep background gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#05060A]/90 via-[#02040a]/60 to-[#0a0612]/95 mix-blend-multiply"></div>
 
         {/* Giant glowing orbs for 'stage lighting' effect */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#3b82f6] rounded-full mix-blend-screen filter blur-[150px] opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#e31837] rounded-full mix-blend-screen filter blur-[150px] opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] bg-[#8b5cf6] rounded-full mix-blend-screen filter blur-[120px] opacity-10"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#3b82f6] rounded-full mix-blend-screen filter blur-[150px] opacity-30 animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#e31837] rounded-full mix-blend-screen filter blur-[150px] opacity-30 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] bg-[#8b5cf6] rounded-full mix-blend-screen filter blur-[120px] opacity-20"></div>
 
         {/* Subtle grid pattern overlay for a premium tech feel */}
-        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-5"></div>
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10"></div>
       </div>
 
       <div className="container mx-auto px-4 md:px-8 relative z-20 flex flex-col items-center text-center">

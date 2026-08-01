@@ -64,6 +64,7 @@ export function Header({ settings, usefulLinks = [] }: { settings: any, usefulLi
                   <Link href="/about" className={`px-5 py-2.5 text-sm font-semibold hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${pathname === '/about' ? 'text-white bg-white/5 pl-6' : 'text-white/70'}`}>Company Profile</Link>
                   <Link href="/about/infrastructure" className={`px-5 py-2.5 text-sm font-semibold hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${pathname === '/about/infrastructure' ? 'text-white bg-white/5 pl-6' : 'text-white/70'}`}>Infrastructure</Link>
                   <Link href="/about/press" className={`px-5 py-2.5 text-sm font-semibold hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${pathname === '/about/press' ? 'text-white bg-white/5 pl-6' : 'text-white/70'}`}>Press</Link>
+                  <Link href="/about/certificates" className={`px-5 py-2.5 text-sm font-semibold hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${pathname === '/about/certificates' ? 'text-white bg-white/5 pl-6' : 'text-white/70'}`}>Certificates</Link>
                   <Link href="/about/clients" className={`px-5 py-2.5 text-sm font-semibold hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${pathname === '/about/clients' ? 'text-white bg-white/5 pl-6' : 'text-white/70'}`}>Clients</Link>
                 </div>
               )}
@@ -76,6 +77,14 @@ export function Header({ settings, usefulLinks = [] }: { settings: any, usefulLi
             <Link href="/podiums" className={`${pathname.startsWith('/podiums') ? 'text-white' : 'text-white/70 hover:text-white'} transition-colors relative group`}>
               ACRYLIC PODIUM
               <span className={`absolute -bottom-2 left-0 w-full h-0.5 bg-white transform origin-left ${pathname.startsWith('/podiums') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'} transition-transform duration-300`}></span>
+            </Link>
+            <Link href="/resources" className={`${pathname.startsWith('/resources') ? 'text-white' : 'text-white/70 hover:text-white'} transition-colors relative group`}>
+              RESOURCES
+              <span className={`absolute -bottom-2 left-0 w-full h-0.5 bg-white transform origin-left ${pathname.startsWith('/resources') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'} transition-transform duration-300`}></span>
+            </Link>
+            <Link href="/classicedge53" className={`text-white/70 hover:text-white transition-colors relative group`}>
+              MACHINES
+              <span className={`absolute -bottom-2 left-0 w-full h-0.5 bg-white transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300`}></span>
             </Link>
 
             {usefulLinks && usefulLinks.length > 0 && (
@@ -149,12 +158,14 @@ export function Header({ settings, usefulLinks = [] }: { settings: any, usefulLi
                 <Link href="/about" onClick={() => setIsOpen(false)} className={`${pathname === '/about' ? 'text-white' : 'hover:text-white'}`}>Company Profile</Link>
                 <Link href="/about/infrastructure" onClick={() => setIsOpen(false)} className={`${pathname === '/about/infrastructure' ? 'text-white' : 'hover:text-white'}`}>Infrastructure</Link>
                 <Link href="/about/press" onClick={() => setIsOpen(false)} className={`${pathname === '/about/press' ? 'text-white' : 'hover:text-white'}`}>Press</Link>
+                <Link href="/about/certificates" onClick={() => setIsOpen(false)} className={`${pathname === '/about/certificates' ? 'text-white' : 'hover:text-white'}`}>Certificates</Link>
                 <Link href="/about/clients" onClick={() => setIsOpen(false)} className={`${pathname === '/about/clients' ? 'text-white' : 'hover:text-white'}`}>Clients</Link>
               </div>
             </div>
             <Link href="/shop" onClick={() => setIsOpen(false)} className={`${pathname.startsWith('/shop') ? 'text-white' : 'hover:text-white'}`}>SHOP</Link>
             <Link href="/podiums" onClick={() => setIsOpen(false)} className={`${pathname.startsWith('/podiums') ? 'text-white' : 'hover:text-white'}`}>ACRYLIC PODIUM</Link>
-
+            <Link href="/resources" onClick={() => setIsOpen(false)} className={`${pathname.startsWith('/resources') ? 'text-white' : 'hover:text-white'}`}>RESOURCES</Link>
+            <Link href="/classicedge53" onClick={() => setIsOpen(false)} className={`hover:text-white`}>MACHINES</Link>
             {usefulLinks && usefulLinks.length > 0 && (
               <div className="flex flex-col gap-3">
                 <span className="text-white/50">OTHER USEFUL LINKS</span>

@@ -10,6 +10,15 @@ export const metadata: Metadata = {
 
 export default async function ContactPage() {
   const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
+  
+  // Robustly handle cases where the user pasted the entire <iframe> tag from Google Maps
+  let mapSrc = settings?.mapEmbedUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m3!1d3768.4901928099684!2d72.8443906!3d19.173775!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b65345a331df%3A0xc6c764e5c8e31a0a!2sClassic%20Concepts!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin";
+  if (mapSrc.includes('<iframe') && mapSrc.includes('src="')) {
+    const match = mapSrc.match(/src="([^"]+)"/);
+    if (match && match[1]) {
+      mapSrc = match[1];
+    }
+  }
 
   return (
     <div className="relative bg-[#f8fafc] min-h-screen py-16 md:py-24 overflow-hidden">
@@ -100,7 +109,7 @@ export default async function ContactPage() {
             {(settings?.mapEmbedUrl || true) && (
               <div className="h-64 w-full bg-slate-200 rounded-2xl overflow-hidden shadow-inner">
                 <iframe 
-                  src={settings?.mapEmbedUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m3!1d3768.4901928099684!2d72.8443906!3d19.173775!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b65345a331df%3A0xc6c764e5c8e31a0a!2sClassic%20Concepts!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"} 
+                  src={mapSrc} 
                   width="100%" 
                   height="100%" 
                   style={{ border: 0 }} 

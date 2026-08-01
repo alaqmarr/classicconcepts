@@ -39,7 +39,6 @@ export function RichTextEditor({ name, defaultValue = "", placeholder, required 
     "underline",
     "strike",
     "list",
-    "bullet",
     "link",
   ];
 

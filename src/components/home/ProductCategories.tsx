@@ -11,7 +11,7 @@ export async function ProductCategories() {
   if (!categories || categories.length === 0) return null;
 
   return (
-    <section className="relative py-20 overflow-hidden bg-white">
+    <section className="relative py-20 overflow-hidden bg-gradient-to-b from-white via-slate-50/50 to-white">
       {/* Subtle Radial Gradient Pattern */}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(227,24,55,0.04)_0%,rgba(255,223,0,0.03)_40%,rgba(59,130,246,0.03)_70%,transparent_100%)] pointer-events-none"></div>
       

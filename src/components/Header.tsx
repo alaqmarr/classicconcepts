@@ -40,7 +40,7 @@ export default function Header() {
       </div>
 
       {/* Main Navbar */}
-      <div className="w-full px-4 sm:px-8 py-4 flex justify-between items-center bg-white relative">
+      <div className="w-full px-4 sm:px-8 py-4 flex justify-between items-center bg-gradient-to-b from-white via-slate-50/50 to-white relative">
         <Link href="/" className="flex flex-col items-start">
           <span className="text-2xl font-bold text-brand-dark tracking-tight">
             CLASSIC<span className="text-brand-red">CONCEPTS</span>®

@@ -32,7 +32,7 @@ export default async function AboutPage() {
       />
 
       {/* Intro Section: Exceptional Services */}
-      <section className="py-24 bg-white relative z-20 overflow-hidden">
+      <section className="py-24 bg-gradient-to-b from-white via-slate-50/50 to-white relative z-20 overflow-hidden">
         {/* Intersecting Diagonal Blocks Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
           <div className="absolute -top-[20%] left-[0%] w-[150%] h-[50%] bg-gradient-to-r from-red-100/30 to-transparent -rotate-12 transform origin-top-left"></div>
@@ -110,7 +110,7 @@ export default async function AboutPage() {
       </section>
 
       {/* Ideas That Bring Value Section */}
-      <section className="py-24 bg-white relative overflow-hidden border-t border-slate-100">
+      <section className="py-24 bg-gradient-to-b from-white via-slate-50/50 to-white relative overflow-hidden border-t border-slate-100">
         <div className="absolute right-0 top-0 w-1/3 h-full bg-blue-50/50 rounded-l-[100px] pointer-events-none transform translate-x-1/2"></div>
         
         <div className="container mx-auto px-6 max-w-4xl text-center space-y-10 relative z-10">

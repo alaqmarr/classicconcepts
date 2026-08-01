@@ -66,6 +66,26 @@ export function MultiImageUploader({ name, defaultValues = [] }: MultiImageUploa
         <input key={`${url}-${idx}`} type="hidden" name={name} value={url} />
       ))}
 
+      {uploadedUrls.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 mb-6">
+          {uploadedUrls.map((url, idx) => (
+            <div key={`${url}-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`Uploaded ${idx}`} className="object-cover w-full h-full" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button 
+                  type="button" 
+                  onClick={() => removeImage(idx)}
+                  className="p-2 bg-white rounded-full text-red-500 hover:bg-red-50 hover:scale-110 transition-transform"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div 
         {...getRootProps()} 
         className={`relative flex flex-col items-center justify-center p-6 mb-4 border-2 border-dashed rounded-xl transition-all cursor-pointer ${

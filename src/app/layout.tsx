@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
 import { prisma } from "@/lib/db";
 import { CartProvider } from "@/context/CartContext";
 
@@ -67,6 +68,7 @@ export default async function RootLayout({
             {children}
           </main>
           <Footer settings={settings} />
+          <FloatingWhatsApp phoneNumber={settings?.phone1} />
           <Toaster position="top-right" />
         </CartProvider>
       </body>
