@@ -32,16 +32,6 @@ export function RichTextEditor({ name, defaultValue = "", placeholder, required 
     []
   );
 
-  const formats = [
-    "header",
-    "bold",
-    "italic",
-    "underline",
-    "strike",
-    "list",
-    "link",
-  ];
-
   return (
     <div className="w-full">
       {/* Hidden input ensures Server Actions can read this value seamlessly */}
@@ -53,7 +43,6 @@ export function RichTextEditor({ name, defaultValue = "", placeholder, required 
           value={content}
           onChange={setContent}
           modules={modules}
-          formats={formats}
           placeholder={placeholder || "Start typing here..."}
         />
       </div>

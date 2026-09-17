@@ -21,8 +21,10 @@ export default async function NewProductPage() {
     const categoryId = formData.get("categoryId") as string;
     const sku = formData.get("sku") as string || null;
     
-    const basePrice = formData.get("basePrice") ? parseFloat(formData.get("basePrice") as string) : null;
-    const discountPrice = formData.get("discountPrice") ? parseFloat(formData.get("discountPrice") as string) : null;
+    const bpParsed = parseFloat(formData.get("basePrice") as string);
+    const basePrice = !isNaN(bpParsed) ? bpParsed : null;
+    const dpParsed = parseFloat(formData.get("discountPrice") as string);
+    const discountPrice = !isNaN(dpParsed) ? dpParsed : null;
     const stockStatus = formData.get("stockStatus") as string || "In stock";
     const discountBadge = formData.get("discountBadge") as string || null;
     
@@ -78,11 +80,11 @@ export default async function NewProductPage() {
         
         specifications: {
           create: specNames.map((name, i) => {
-            if (!name) return null;
+            if (!name || name.trim() === "" || !specValues[i] || specValues[i].trim() === "") return null;
             return {
               name,
               value: specValues[i],
-              type: specTypes[i]
+              type: specTypes[i] || "specification"
             };
           }).filter(Boolean) as any
         },
@@ -93,10 +95,11 @@ export default async function NewProductPage() {
 
         variants: {
           create: variantNames.map((name, i) => {
-            if (!name.trim()) return null;
+            if (!name || !name.trim()) return null;
+            const parsedPrice = parseFloat(variantPrices[i]);
             return {
               name,
-              price: variantPrices[i] ? parseFloat(variantPrices[i]) : null,
+              price: !isNaN(parsedPrice) ? parsedPrice : null,
               imageUrl: formData.get(`variantImage_${i}`) as string || null
             };
           }).filter(Boolean) as any

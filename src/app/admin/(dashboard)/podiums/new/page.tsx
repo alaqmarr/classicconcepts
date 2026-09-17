@@ -19,8 +19,10 @@ export default async function NewPodiumPage() {
     const categoryId = formData.get("categoryId") as string;
     const sku = formData.get("sku") as string || null;
     
-    const basePrice = formData.get("basePrice") ? parseFloat(formData.get("basePrice") as string) : null;
-    const discountPrice = formData.get("discountPrice") ? parseFloat(formData.get("discountPrice") as string) : null;
+    const bpParsed = parseFloat(formData.get("basePrice") as string);
+    const basePrice = !isNaN(bpParsed) ? bpParsed : null;
+    const dpParsed = parseFloat(formData.get("discountPrice") as string);
+    const discountPrice = !isNaN(dpParsed) ? dpParsed : null;
     const stockStatus = formData.get("stockStatus") as string || "In stock";
     const discountBadge = formData.get("discountBadge") as string || null;
     
@@ -73,11 +75,11 @@ export default async function NewPodiumPage() {
         
         specifications: {
           create: specNames.map((name, i) => {
-            if (name.trim() === "" || specValues[i].trim() === "") return null;
+            if (!name || name.trim() === "" || !specValues[i] || specValues[i].trim() === "") return null;
             return {
               name,
               value: specValues[i],
-              type: specTypes[i]
+              type: specTypes[i] || "specification"
             };
           }).filter(Boolean) as any
         },
@@ -90,9 +92,10 @@ export default async function NewPodiumPage() {
 
     // Handle Variants (need loop for dynamic image keys)
     for (let i = 0; i < variantNames.length; i++) {
-      if (variantNames[i].trim() === "") continue;
+      if (!variantNames[i] || !variantNames[i].trim()) continue;
       const vImg = formData.get(`variantImage_${i}`) as string || null;
-      const vPrice = variantPrices[i] ? parseFloat(variantPrices[i]) : null;
+      const parsedPrice = parseFloat(variantPrices[i]);
+      const vPrice = !isNaN(parsedPrice) ? parsedPrice : null;
       
       await prisma.productVariant.create({
         data: {
