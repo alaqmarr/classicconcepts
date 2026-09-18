@@ -7,7 +7,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function EditResourcePage({ params }: Props) {

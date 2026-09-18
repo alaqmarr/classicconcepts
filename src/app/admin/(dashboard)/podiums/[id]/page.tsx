@@ -7,33 +7,13 @@ import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function EditPodiumPage({ params }: Props) {
-  const { id } = await params;
-  const categories = await prisma.category.findMany({ select: { id: true, name: true } });
-  
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: {
-      images: true,
-      features: true,
-      specifications: true,
-      variants: true
-    }
-  });
-
-  // Ensure it exists and is actually a podium
-  if (!product || !product.isPodium) {
-    notFound();
-  }
-
-  async function updateProduct(formData: FormData) {
+async function updateProduct(id: string, formData: FormData) {
     "use server";
     
     const name = formData.get("name") as string;
-    const slug = formData.get("slug") as string;
     const categoryId = formData.get("categoryId") as string;
     const sku = formData.get("sku") as string || null;
     
@@ -83,7 +63,6 @@ export default async function EditPodiumPage({ params }: Props) {
       where: { id },
       data: {
         name,
-        slug,
         categoryId,
         sku,
         basePrice,
@@ -138,6 +117,27 @@ export default async function EditPodiumPage({ params }: Props) {
     redirect("/admin/podiums");
   }
 
+export default async function EditPodiumPage({ params }: Props) {
+  const { id } = await params;
+  const categories = await prisma.category.findMany({ select: { id: true, name: true } });
+  
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: {
+      images: true,
+      features: true,
+      specifications: true,
+      variants: true
+    }
+  });
+
+  // Ensure it exists and is actually a podium
+  if (!product || !product.isPodium) {
+    notFound();
+  }
+
+  
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-4">
@@ -153,7 +153,7 @@ export default async function EditPodiumPage({ params }: Props) {
         </div>
       </div>
 
-      <ProductForm categories={categories} action={updateProduct} product={product} />
+      <ProductForm categories={categories} action={updateProduct.bind(null, id)} product={product} />
     </div>
   );
 }

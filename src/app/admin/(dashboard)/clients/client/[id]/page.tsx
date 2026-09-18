@@ -8,7 +8,7 @@ import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function EditClientPage({ params }: Props) {

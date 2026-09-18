@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 
-export default async function EditUsefulLinkPage({ params }: { params: { id: string } }) {
+export default async function EditUsefulLinkPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const link = await prisma.usefulLink.findUnique({
     where: { id }

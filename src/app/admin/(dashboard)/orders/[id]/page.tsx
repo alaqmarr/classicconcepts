@@ -5,9 +5,10 @@ import { ShoppingCart, ArrowLeft, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { StatusUpdater } from "./StatusUpdater";
 
-export default async function AdminOrderDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const order = await prisma.cartOrder.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       items: true
     }

@@ -7,32 +7,10 @@ import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function EditProductPage({ params }: Props) {
-  const { id } = await params;
-  const categories = await prisma.category.findMany({ select: { id: true, name: true } });
-  const problemStatements = await prisma.problemStatement.findMany({ select: { id: true, name: true } });
-  const industries = await prisma.industry.findMany({ select: { id: true, name: true } });
-  
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: {
-      images: true,
-      features: true,
-      specifications: true,
-      variants: true,
-      problemStatements: true,
-      industries: true
-    }
-  });
-
-  if (!product) {
-    notFound();
-  }
-
-  async function updateProduct(formData: FormData) {
+async function updateProduct(id: string, formData: FormData) {
     "use server";
     
     const name = formData.get("name") as string;
@@ -139,6 +117,30 @@ export default async function EditProductPage({ params }: Props) {
     redirect("/admin/products");
   }
 
+export default async function EditProductPage({ params }: Props) {
+  const { id } = await params;
+  const categories = await prisma.category.findMany({ select: { id: true, name: true } });
+  const problemStatements = await prisma.problemStatement.findMany({ select: { id: true, name: true } });
+  const industries = await prisma.industry.findMany({ select: { id: true, name: true } });
+  
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: {
+      images: true,
+      features: true,
+      specifications: true,
+      variants: true,
+      problemStatements: true,
+      industries: true
+    }
+  });
+
+  if (!product) {
+    notFound();
+  }
+
+  
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-4">
@@ -158,7 +160,7 @@ export default async function EditProductPage({ params }: Props) {
         categories={categories} 
         problemStatements={problemStatements}
         industries={industries}
-        action={updateProduct} 
+        action={updateProduct.bind(null, id)} 
         product={product} 
       />
     </div>

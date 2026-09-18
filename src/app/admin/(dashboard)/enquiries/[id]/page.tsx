@@ -5,9 +5,10 @@ import { Mail, ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { ReplyForm } from "./ReplyForm";
 
-export default async function AdminEnquiryDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminEnquiryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const enquiry = await prisma.enquiry.findUnique({
-    where: { id: params.id }
+    where: { id }
   });
 
   if (!enquiry) {
