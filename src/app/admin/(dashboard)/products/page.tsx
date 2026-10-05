@@ -29,13 +29,21 @@ export default async function AdminProductsPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage your inventory</p>
         </div>
-        <Link 
-          href="/admin/products/new" 
-          className="flex items-center gap-2 px-4 py-2 bg-[#0056b3] text-white font-bold rounded-xl hover:bg-blue-800 transition-colors"
-        >
-          <Plus size={18} />
-          Add Product
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/admin/products/bulk-upload" 
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            Bulk Upload
+          </Link>
+          <Link 
+            href="/admin/products/new" 
+            className="flex items-center gap-2 px-4 py-2 bg-[#0056b3] text-white font-bold rounded-xl hover:bg-blue-800 transition-colors"
+          >
+            <Plus size={18} />
+            Add Product
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">
