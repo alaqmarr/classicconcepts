@@ -106,13 +106,22 @@ model ProductSpecification {
 }
 
 model ProductVariant {
-  id        String  @id @default(cuid())
+  id        String                @id @default(cuid())
   name      String  // e.g., "BLACK"
   imageUrl  String? // thumbnail for variant
+  images    ProductVariantImage[]
   price     Float?  // optional price override
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  product   Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime              @default(now())
+}
+
+model ProductVariantImage {
+  id        String         @id @default(cuid())
+  url       String
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
 }
 
 model Client {
@@ -137,11 +146,13 @@ model OnlinePlatform {
 model SiteSetting {
   id        String   @id @default("default") // Singleton
   address   String
-  phone1    String
-  phone2    String?
-  email     String
-  upiId     String?
-  upiName   String?
+  phone1        String
+  phone2        String?
+  email         String
+  email2        String?
+  businessHours String?
+  upiId         String?
+  upiName       String?
 
   // Dynamic About Page Media
   aboutIntroImage String?
@@ -222,6 +233,10 @@ model CartOrder {
   name      String
   email     String
   phone     String
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
   message   String?
   total     Float?
   status    String   @default("Pending") // Pending, Processing, Completed, Cancelled

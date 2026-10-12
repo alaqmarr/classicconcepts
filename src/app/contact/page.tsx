@@ -85,6 +85,12 @@ export default async function ContactPage() {
                     <h3 className="font-bold text-slate-800 mb-1">Email Address</h3>
                     <p className="text-slate-600 leading-relaxed">
                       <a href={`mailto:${settings?.email}`} className="hover:text-[#0056b3] transition-colors">{settings?.email || "sales@classicconcepts.in"}</a>
+                      {settings?.email2 && (
+                        <>
+                          <br />
+                          <a href={`mailto:${settings?.email2}`} className="hover:text-[#0056b3] transition-colors">{settings.email2}</a>
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -95,9 +101,8 @@ export default async function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-800 mb-1">Business Hours</h3>
-                    <p className="text-slate-600 leading-relaxed">
-                      Monday - Saturday: 9:00 AM to 6:00 PM<br />
-                      Sunday: Closed
+                    <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+                      {settings?.businessHours || "Monday - Saturday: 9:00 AM to 6:00 PM\nSunday: Closed"}
                     </p>
                   </div>
                 </div>

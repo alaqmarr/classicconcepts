@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { FileUploader } from "@/components/admin/FileUploader";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -56,20 +57,18 @@ export default function NewResourcePage() {
           <textarea name="description" rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3]" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Resource Type</label>
-            <select name="type" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3]">
-              <option value="PDF">PDF Document</option>
-              <option value="Link">External Link</option>
-              <option value="Video">Video Link</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">File URL / Link</label>
-            <input type="url" name="fileUrl" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3]" placeholder="https://..." />
-            <p className="text-xs text-slate-500 mt-1">Provide the URL for the PDF or webpage.</p>
-          </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Resource Type</label>
+          <select name="type" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3]">
+            <option value="PDF">PDF Document</option>
+            <option value="Link">External Link</option>
+            <option value="Video">Video Link</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Resource File / Link</label>
+          <FileUploader name="fileUrl" required />
         </div>
 
         <div>

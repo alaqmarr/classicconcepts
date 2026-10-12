@@ -29,7 +29,17 @@ export function ProductForm({ categories, problemStatements = [], industries = [
   );
   
   const [variants, setVariants] = useState(
-    product?.variants?.length ? product.variants : [{ id: 1, name: "", price: "", imageUrl: "" }]
+    product?.variants?.length
+      ? product.variants.map((v: any, idx: number) => ({
+          id: v.id || idx,
+          name: v.name || "",
+          price: v.price ?? "",
+          imageUrl: v.imageUrl || "",
+          images: v.images
+            ? v.images.map((img: any) => (typeof img === "string" ? img : img.url))
+            : [],
+        }))
+      : [{ id: 1, name: "", price: "", imageUrl: "", images: [] }]
   );
 
   const mainImage = product?.images?.find((i: any) => i.isMain)?.url || "";
@@ -203,8 +213,12 @@ export function ProductForm({ categories, problemStatements = [], industries = [
                </div>
             </div>
             <div>
-               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Variant Image</label>
+               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Variant Main Image</label>
                <ImageUploader name={`variantImage_${index}`} defaultValue={v.imageUrl || ""} />
+            </div>
+            <div className="pt-2 border-t border-slate-200">
+               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Additional Images for this Variant (Optional)</label>
+               <MultiImageUploader name={`variantGallery_${index}[]`} defaultValues={v.images || []} />
             </div>
           </div>
         ))}

@@ -102,13 +102,17 @@ async function updateProduct(id: string, formData: FormData) {
       const vImg = formData.get(`variantImage_${i}`) as string || null;
       const parsedPrice = parseFloat(variantPrices[i]);
       const vPrice = !isNaN(parsedPrice) ? parsedPrice : null;
+      const galleryUrls = (formData.getAll(`variantGallery_${i}[]`) as string[]).filter(u => u && u.trim() !== "");
       
       await prisma.productVariant.create({
         data: {
           name: variantNames[i],
           price: vPrice,
           imageUrl: vImg,
-          productId: id
+          productId: id,
+          images: galleryUrls.length > 0 ? {
+            create: galleryUrls.map(url => ({ url }))
+          } : undefined
         }
       });
     }
@@ -127,7 +131,11 @@ export default async function EditPodiumPage({ params }: Props) {
       images: true,
       features: true,
       specifications: true,
-      variants: true
+      variants: {
+        include: {
+          images: true
+        }
+      }
     }
   });
 

@@ -96,13 +96,17 @@ export default async function NewPodiumPage() {
       const vImg = formData.get(`variantImage_${i}`) as string || null;
       const parsedPrice = parseFloat(variantPrices[i]);
       const vPrice = !isNaN(parsedPrice) ? parsedPrice : null;
+      const galleryUrls = (formData.getAll(`variantGallery_${i}[]`) as string[]).filter(u => u && u.trim() !== "");
       
       await prisma.productVariant.create({
         data: {
           name: variantNames[i],
           price: vPrice,
           imageUrl: vImg,
-          productId: product.id
+          productId: product.id,
+          images: galleryUrls.length > 0 ? {
+            create: galleryUrls.map(url => ({ url }))
+          } : undefined
         }
       });
     }

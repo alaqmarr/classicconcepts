@@ -3,9 +3,30 @@ import Image from "next/image";
 import { FaYoutube, FaLinkedinIn, FaInstagram, FaFacebookF, FaXTwitter } from "react-icons/fa6";
 import { QRCodeSVG } from "qrcode.react";
 
-export function Footer({ settings }: { settings: any }) {
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface UsefulLink {
+  id: string;
+  title: string;
+  url: string;
+}
+
+interface FooterProps {
+  settings: any;
+  categories?: Category[];
+  usefulLinks?: UsefulLink[];
+}
+
+export function Footer({ settings, categories = [], usefulLinks = [] }: FooterProps) {
   // UPI Deep Link Format: upi://pay?pa=UPI_ID&pn=PAYEE_NAME&cu=INR
   const upiLink = settings?.upiId ? `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.upiName || 'Classic Concepts')}&cu=INR` : null;
+
+  const firstColCategories = categories.slice(0, 5);
+  const secondColCategories = categories.slice(5, 11);
 
   return (
     <footer className="bg-[#0c1a40] pt-20 pb-8 text-white/70 text-[13px] relative overflow-hidden">
@@ -15,27 +36,60 @@ export function Footer({ settings }: { settings: any }) {
           
           {/* Logo & Socials */}
           <div className="col-span-1 lg:col-span-1">
-             <div className="mb-8 bg-white/10 p-4 rounded-xl inline-block">
-               <Image src="/logo.png" alt="Classic Concepts" width={180} height={50} className="object-contain" style={{ height: "auto" }} />
+             <div className="mb-6 bg-white/10 p-4 rounded-xl inline-block">
+               <Image src="/logo.png" alt="Classic Concepts" width={200} height={55} className="object-contain" style={{ height: "auto" }} />
              </div>
+             <p className="text-xs text-white/60 mb-6 leading-relaxed">
+               Pioneers in high precision acrylic podiums, display units, bespoke furniture, and architectural interiors across India.
+             </p>
              <div className="flex flex-wrap gap-2">
-               <a href="#" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors"><FaYoutube size={14} /></a>
-               <a href="#" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors"><FaLinkedinIn size={14} /></a>
-               <a href="#" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors"><FaInstagram size={14} /></a>
-               <a href="#" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors"><FaXTwitter size={14} /></a>
-               <a href="#" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors"><FaFacebookF size={14} /></a>
+               {settings?.phone1 && (
+                 <a href={`https://wa.me/${settings.phone1.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors" title="WhatsApp">
+                   <FaYoutube size={14} />
+                 </a>
+               )}
+               <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#0056b3] transition-colors" title="LinkedIn"><FaLinkedinIn size={14} /></a>
+               <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors" title="Instagram"><FaInstagram size={14} /></a>
+               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#0056b3] transition-colors" title="Facebook"><FaFacebookF size={14} /></a>
              </div>
           </div>
 
-          {/* Shop For */}
+          {/* Shop Categories */}
           <div className="col-span-1 lg:col-span-1">
-            <h4 className="font-extrabold text-white mb-5 uppercase tracking-wider text-xs">Shop For</h4>
+            <h4 className="font-extrabold text-white mb-5 uppercase tracking-wider text-xs">Categories</h4>
             <ul className="space-y-3">
-              <li><Link href="/podiums" className="hover:text-blue-300 transition-colors">Acrylic Podiums</Link></li>
-              <li><Link href="/furniture" className="hover:text-blue-300 transition-colors">Acrylic Furniture</Link></li>
-              <li><Link href="/interiors" className="hover:text-blue-300 transition-colors">Acrylic Interiors</Link></li>
-              <li><Link href="/displays" className="hover:text-blue-300 transition-colors">Acrylic Display Units</Link></li>
-              <li><Link href="/studio" className="hover:text-blue-300 transition-colors">TV Studio Interiors</Link></li>
+              <li><Link href="/podiums" className="hover:text-blue-300 transition-colors font-medium">Acrylic Podiums</Link></li>
+              {firstColCategories.map((cat) => (
+                <li key={cat.id}>
+                  <Link href={`/shop/c/${cat.slug}`} className="hover:text-blue-300 transition-colors">
+                    {cat.name}
+                  </Link>
+                </li>
+              ))}
+              {firstColCategories.length === 0 && (
+                <>
+                  <li><Link href="/shop" className="hover:text-blue-300 transition-colors">Acrylic Display Units</Link></li>
+                  <li><Link href="/shop" className="hover:text-blue-300 transition-colors">Acrylic Furniture</Link></li>
+                  <li><Link href="/shop" className="hover:text-blue-300 transition-colors">Acrylic Interiors</Link></li>
+                </>
+              )}
+            </ul>
+          </div>
+
+          {/* More Categories / Products */}
+          <div className="col-span-1 lg:col-span-1">
+            <h4 className="font-extrabold text-white mb-5 uppercase tracking-wider text-xs">More Products</h4>
+            <ul className="space-y-3">
+              {secondColCategories.map((cat) => (
+                <li key={cat.id}>
+                  <Link href={`/shop/c/${cat.slug}`} className="hover:text-blue-300 transition-colors">
+                    {cat.name}
+                  </Link>
+                </li>
+              ))}
+              <li><Link href="/shop" className="hover:text-blue-300 transition-colors">View All Products</Link></li>
+              <li><Link href="/classicedge53" className="hover:text-blue-300 transition-colors">Classic Edge 53 Machines</Link></li>
+              <li><Link href="/resources" className="hover:text-blue-300 transition-colors">Catalogs & Downloads</Link></li>
             </ul>
           </div>
 
@@ -44,41 +98,68 @@ export function Footer({ settings }: { settings: any }) {
             <h4 className="font-extrabold text-white mb-5 uppercase tracking-wider text-xs">Quick Links</h4>
             <ul className="space-y-3">
               <li><Link href="/" className="hover:text-blue-300 transition-colors">Home</Link></li>
-              <li><Link href="/shipping" className="hover:text-blue-300 transition-colors">Shipping & Delivery</Link></li>
-              <li><Link href="/returns" className="hover:text-blue-300 transition-colors">Returns & Refunds</Link></li>
-              <li><Link href="/payment-policy" className="hover:text-blue-300 transition-colors">Payment Policy</Link></li>
-              <li><Link href="/contact" className="hover:text-blue-300 transition-colors">Contact us</Link></li>
+              <li><Link href="/about" className="hover:text-blue-300 transition-colors">Company Profile</Link></li>
+              <li><Link href="/about/infrastructure" className="hover:text-blue-300 transition-colors">Infrastructure</Link></li>
+              <li><Link href="/about/certificates" className="hover:text-blue-300 transition-colors">Certificates</Link></li>
+              <li><Link href="/about/press" className="hover:text-blue-300 transition-colors">Press & Media</Link></li>
+              <li><Link href="/about/clients" className="hover:text-blue-300 transition-colors">Our Clients</Link></li>
+              <li><Link href="/contact" className="hover:text-blue-300 transition-colors">Contact Us</Link></li>
+              {usefulLinks.slice(0, 3).map((link) => (
+                <li key={link.id}>
+                  <a href={link.url} target={link.url.startsWith('/') ? "_self" : "_blank"} rel="noopener noreferrer" className="hover:text-blue-300 transition-colors">
+                    {link.title}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Other Products */}
-          <div className="col-span-1 lg:col-span-1">
-            <h4 className="font-extrabold text-white mb-5 uppercase tracking-wider text-xs">Other Products</h4>
-            <ul className="space-y-3">
-              <li><Link href="/lighting" className="hover:text-blue-300 transition-colors">Acrylic Lighting</Link></li>
-              <li><Link href="/mementos" className="hover:text-blue-300 transition-colors">Acrylic Mementos</Link></li>
-              <li><Link href="/boxes" className="hover:text-blue-300 transition-colors">Acrylic Boxes</Link></li>
-              <li><Link href="/fb" className="hover:text-blue-300 transition-colors">Acrylic F&B Products</Link></li>
-              <li><Link href="/utility" className="hover:text-blue-300 transition-colors">Acrylic Utility Items</Link></li>
-              <li><Link href="/industrial" className="hover:text-blue-300 transition-colors">Industrial Products</Link></li>
-              <li><Link href="/signage" className="hover:text-blue-300 transition-colors">Acrylic Signage</Link></li>
-              <li><Link href="/brochure" className="hover:text-blue-300 transition-colors">Brochure Holder</Link></li>
-            </ul>
-          </div>
-
-          {/* Contact Us */}
+          {/* Contact Details */}
           <div className="col-span-1 lg:col-span-1">
             <h4 className="font-extrabold text-white mb-5 uppercase tracking-wider text-xs">Contact Us</h4>
             <p className="mb-4 leading-relaxed whitespace-pre-line text-white/60">
               {(settings?.address || 'M/s. Classic Concepts Acrylic Private Limited,\n1-6-44/2, Muthiyam Reddy Estate,\nSecunderabad - 500 015, India.').replace(/\\n/g, '\n')}
             </p>
-            <p className="mb-2 text-white/80">
-              <span className="block hover:text-blue-300 cursor-pointer">{settings?.phone1 || '+91 7901 650 662'}</span>
-              {settings?.phone2 && <span className="block hover:text-blue-300 cursor-pointer">{settings.phone2}</span>}
-            </p>
-            <p>
-              <a href={`mailto:${settings?.email || 'info@classicconcepts.in'}`} className="text-white hover:text-blue-300 transition-colors font-semibold">{settings?.email || 'info@classicconcepts.in'}</a>
-            </p>
+            <div className="mb-3 space-y-1">
+              {settings?.phone1 && (
+                <p>
+                  <a href={`tel:${settings.phone1}`} className="hover:text-blue-300 transition-colors text-white font-medium block">
+                    {settings.phone1}
+                  </a>
+                </p>
+              )}
+              {settings?.phone2 && (
+                <p>
+                  <a href={`tel:${settings.phone2}`} className="hover:text-blue-300 transition-colors text-white/80 block">
+                    {settings.phone2}
+                  </a>
+                </p>
+              )}
+            </div>
+            <div className="mb-4 space-y-1">
+              {settings?.email && (
+                <p>
+                  <a href={`mailto:${settings.email}`} className="text-white hover:text-blue-300 transition-colors font-medium block break-all">
+                    {settings.email}
+                  </a>
+                </p>
+              )}
+              {settings?.email2 && (
+                <p>
+                  <a href={`mailto:${settings.email2}`} className="text-white/80 hover:text-blue-300 transition-colors block break-all">
+                    {settings.email2}
+                  </a>
+                </p>
+              )}
+            </div>
+            {settings?.businessHours && (
+              <div className="pt-2 border-t border-white/10">
+                <span className="text-[11px] font-bold text-white uppercase tracking-wider block mb-1">Business Hours:</span>
+                <p className="text-white/60 text-xs leading-relaxed whitespace-pre-line">
+                  {settings.businessHours}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Pay With Us */}
@@ -100,7 +181,7 @@ export function Footer({ settings }: { settings: any }) {
                 <span className="text-white/80 font-bold block mb-3 text-center text-xs tracking-wide">We Accept</span>
                 <div className="flex flex-wrap justify-center gap-2">
                   <span className="bg-white/10 text-white/80 text-[9px] px-2 py-1 rounded font-semibold border border-white/5">UPI</span>
-                  <span className="bg-white/10 text-white/80 text-[9px] px-2 py-1 rounded font-semibold border border-white/5">PayPal</span>
+                  <span className="bg-white/10 text-white/80 text-[9px] px-2 py-1 rounded font-semibold border border-white/5">NEFT / RTGS</span>
                   <span className="bg-white/10 text-white/80 text-[9px] px-2 py-1 rounded font-semibold border border-white/5">VISA</span>
                   <span className="bg-white/10 text-white/80 text-[9px] px-2 py-1 rounded font-semibold border border-white/5">MasterCard</span>
                 </div>
@@ -119,8 +200,8 @@ export function Footer({ settings }: { settings: any }) {
             Copyright &copy; {new Date().getFullYear()} - All Rights Reserved - Classic Concepts
           </p>
           <div className="flex gap-6 mt-4 md:mt-0 font-medium">
-            <Link href="/privacy" className="hover:text-blue-300 transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-blue-300 transition-colors">Terms of Services</Link>
+            <Link href="/about" className="hover:text-blue-300 transition-colors">About Us</Link>
+            <Link href="/contact" className="hover:text-blue-300 transition-colors">Contact</Link>
           </div>
         </div>
       </div>

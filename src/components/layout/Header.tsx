@@ -30,13 +30,13 @@ export function Header({ settings, usefulLinks = [] }: { settings: any, usefulLi
       <div className={`w-full transition-all duration-300 ${scrolled ? 'fixed top-0 bg-[#05060A]/95 backdrop-blur-md shadow-soft py-6 border-b border-white/5' : 'bg-[#05060A] py-6'}`}>
         <div className="container mx-auto px-4 md:px-8 flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 px-4 py-1.5 rounded-xl shadow-sm hover:shadow-md transition-all">
+          <Link href="/" className="flex-shrink-0 px-2 py-1 rounded-xl transition-all">
             <Image
               src="/logo.png"
               alt="Classic Concepts"
-              width={250}
-              height={65}
-              className="object-contain h-[35px] md:h-[45px] w-auto transition-transform duration-300 hover:scale-[1.02]"
+              width={350}
+              height={95}
+              className="object-contain h-[50px] md:h-[65px] lg:h-[72px] w-auto transition-transform duration-300 hover:scale-[1.02]"
               priority
             />
           </Link>

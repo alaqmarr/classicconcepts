@@ -22,6 +22,10 @@ export default function CartPage() {
       name: formData.get("name"),
       email: formData.get("email"),
       phone: formData.get("phone"),
+      address: formData.get("address"),
+      city: formData.get("city"),
+      state: formData.get("state"),
+      pincode: formData.get("pincode"),
       message: formData.get("message"),
       cartItems
     };
@@ -142,8 +146,26 @@ export default function CartPage() {
                     <input type="tel" name="phone" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all" placeholder="+91 98765 43210" />
                   </div>
                   <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Delivery Address *</label>
+                    <textarea name="address" required rows={2} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all text-sm" placeholder="Flat / House No., Building Name, Street, Area"></textarea>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">City *</label>
+                      <input type="text" name="city" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all text-sm" placeholder="City" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">State *</label>
+                      <input type="text" name="state" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all text-sm" placeholder="State" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Pincode *</label>
+                    <input type="text" name="pincode" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all text-sm" placeholder="e.g. 500015" />
+                  </div>
+                  <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1">Additional Message (Optional)</label>
-                    <textarea name="message" rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all" placeholder="Any specific requirements?"></textarea>
+                    <textarea name="message" rows={2} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] transition-all text-sm" placeholder="Any specific requirements or instructions?"></textarea>
                   </div>
                   
                   <button 

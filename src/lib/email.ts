@@ -338,7 +338,7 @@ export async function sendClientEnquiryThankYou(data: { name: string; email: str
 
 // ─── 3. Admin Cart Order Notification ───────────────────────────────────────
 
-export async function sendAdminOrderNotification(data: { name: string; email: string; phone: string; message?: string; items: any[] }) {
+export async function sendAdminOrderNotification(data: { name: string; email: string; phone: string; address?: string; city?: string; state?: string; pincode?: string; message?: string; items: any[] }) {
   const { transporter, settings } = await getTransporter();
   const adminEmail = settings.adminEmail || settings.email;
 
@@ -351,6 +351,8 @@ export async function sendAdminOrderNotification(data: { name: string; email: st
   })).join('');
 
   const totalItems = data.items.reduce((acc: number, i: any) => acc + i.quantity, 0);
+
+  const fullAddress = [data.address, data.city, data.state, data.pincode].filter(Boolean).join(', ');
 
   const content = `
     <!-- Badge -->
@@ -373,6 +375,7 @@ export async function sendAdminOrderNotification(data: { name: string; email: st
             ${infoRow('Name', data.name)}
             ${infoRow('Email', data.email, true)}
             ${infoRow('Phone', data.phone, true)}
+            ${fullAddress ? infoRow('Delivery Address', fullAddress) : ''}
           </table>
         </td>
       </tr>

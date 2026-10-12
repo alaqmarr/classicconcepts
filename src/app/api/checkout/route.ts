@@ -4,7 +4,7 @@ import { sendAdminOrderNotification, sendClientOrderThankYou } from "@/lib/email
 
 export async function POST(req: Request) {
   try {
-    const { name, email, phone, message, cartItems } = await req.json();
+    const { name, email, phone, address, city, state, pincode, message, cartItems } = await req.json();
 
     if (!name || !email || !phone || !cartItems || cartItems.length === 0) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -18,7 +18,11 @@ export async function POST(req: Request) {
         name,
         email,
         phone,
-        message,
+        address: address || null,
+        city: city || null,
+        state: state || null,
+        pincode: pincode || null,
+        message: message || null,
         total: cartTotal,
         items: {
           create: cartItems.map((item: any) => ({
@@ -43,7 +47,7 @@ export async function POST(req: Request) {
 
     // Send Emails asynchronously
     Promise.all([
-      sendAdminOrderNotification({ name, email, phone, message, items: emailItems }),
+      sendAdminOrderNotification({ name, email, phone, address, city, state, pincode, message, items: emailItems }),
       sendClientOrderThankYou({ name, email, items: emailItems })
     ]).catch(err => {
       console.error('Email sending failed for order:', err);

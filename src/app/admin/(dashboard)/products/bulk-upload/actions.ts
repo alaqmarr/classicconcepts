@@ -93,10 +93,14 @@ export async function saveDraftProduct(formData: FormData) {
         create: variantNames.map((name, i) => {
           if (!name || !name.trim()) return null;
           const parsedPrice = parseFloat(variantPrices[i]);
+          const galleryUrls = (formData.getAll(`variantGallery_${i}[]`) as string[]).filter(u => u && u.trim() !== "");
           return {
             name,
             price: !isNaN(parsedPrice) ? parsedPrice : null,
-            imageUrl: formData.get(`variantImage_${i}`) as string || null
+            imageUrl: formData.get(`variantImage_${i}`) as string || null,
+            images: galleryUrls.length > 0 ? {
+              create: galleryUrls.map(url => ({ url }))
+            } : undefined
           };
         }).filter(Boolean) as any
       },

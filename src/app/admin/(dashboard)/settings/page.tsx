@@ -17,6 +17,8 @@ export default async function AdminSettingsPage() {
         phone1: formData.get("phone1") as string,
         phone2: formData.get("phone2") as string,
         email: formData.get("email") as string,
+        email2: (formData.get("email2") as string) || null,
+        businessHours: (formData.get("businessHours") as string) || null,
         upiId: formData.get("upiId") as string,
         upiName: formData.get("upiName") as string,
         smtpHost: formData.get("smtpHost") as string,
@@ -33,6 +35,8 @@ export default async function AdminSettingsPage() {
         phone1: formData.get("phone1") as string,
         phone2: formData.get("phone2") as string,
         email: formData.get("email") as string,
+        email2: (formData.get("email2") as string) || null,
+        businessHours: (formData.get("businessHours") as string) || null,
         upiId: formData.get("upiId") as string,
         upiName: formData.get("upiName") as string,
         smtpHost: formData.get("smtpHost") as string,
@@ -97,12 +101,34 @@ export default async function AdminSettingsPage() {
             />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">Email Address</label>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">Primary Email Address</label>
             <input 
               type="email" 
               name="email" 
               defaultValue={settings?.email} 
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">Secondary Email Address (Optional)</label>
+            <input 
+              type="email" 
+              name="email2" 
+              defaultValue={settings?.email2 || ""} 
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm font-semibold text-gray-700">Business Hours</label>
+            <p className="text-xs text-gray-500 mb-1">e.g. Monday - Saturday: 9:00 AM to 6:00 PM (Sunday: Closed)</p>
+            <textarea 
+              name="businessHours" 
+              defaultValue={settings?.businessHours || ""} 
+              rows={2}
+              placeholder={"Monday - Saturday: 9:00 AM to 6:00 PM\nSunday: Closed"}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

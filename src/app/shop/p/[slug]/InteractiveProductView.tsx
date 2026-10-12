@@ -12,6 +12,7 @@ interface Variant {
   name: string;
   price?: number | null;
   imageUrl?: string | null;
+  images?: { url: string }[];
 }
 
 interface Product {
@@ -47,12 +48,15 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
   
   // Use the variant image if available, otherwise use the main product image
   const defaultImage = product.images.find(i => i.isMain)?.url || product.images[0]?.url || "/placeholder-image.jpg";
-  const currentImage = selectedVariant?.imageUrl || defaultImage;
+  const currentImage = selectedVariant?.imageUrl || selectedVariant?.images?.[0]?.url || defaultImage;
 
-  // Gather all unique images (product images + variant images)
+  // Gather all unique images (product images + variant images + variant gallery images)
   const allImageUrls = Array.from(new Set([
     ...product.images.map(img => img.url),
-    ...product.variants.map(v => v.imageUrl).filter((url): url is string => Boolean(url))
+    ...product.variants.flatMap(v => [
+      v.imageUrl,
+      ...(v.images?.map(img => img.url) || [])
+    ]).filter((url): url is string => Boolean(url))
   ]));
 
   return (

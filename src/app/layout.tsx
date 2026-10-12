@@ -55,6 +55,10 @@ export default async function RootLayout({
     where: { isActive: true },
     orderBy: { sortOrder: 'asc' }
   });
+  const categories = await prisma.category.findMany({
+    orderBy: { name: 'asc' },
+    take: 8
+  });
 
   return (
     <html
@@ -67,7 +71,7 @@ export default async function RootLayout({
           <main className="flex-1">
             {children}
           </main>
-          <Footer settings={settings} />
+          <Footer settings={settings} categories={categories} usefulLinks={usefulLinks} />
           <FloatingWhatsApp phoneNumber={settings?.phone1} />
           <Toaster position="top-right" />
         </CartProvider>

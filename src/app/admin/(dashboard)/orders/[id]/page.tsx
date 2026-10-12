@@ -59,6 +59,20 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               <span>₹{((order.total || 0)).toLocaleString("en-IN")}</span>
             </div>
           </div>
+          <div className="md:col-span-2 pt-4 border-t border-slate-200">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Delivery Address</h3>
+            {order.address ? (
+              <div className="text-base text-slate-800 font-medium">
+                <p>{order.address}</p>
+                <p className="text-slate-600 mt-1">
+                  {[order.city, order.state].filter(Boolean).join(", ")}
+                  {order.pincode ? ` - ${order.pincode}` : ""}
+                </p>
+              </div>
+            ) : (
+              <p className="text-slate-400 italic">No delivery address provided</p>
+            )}
+          </div>
         </div>
 
         {order.message && (

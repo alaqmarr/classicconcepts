@@ -73,7 +73,10 @@ export default async function ProductDetailPage({
       images: { orderBy: { createdAt: 'asc' } },
       features: { orderBy: { createdAt: 'asc' } },
       specifications: { orderBy: { createdAt: 'asc' } },
-      variants: { orderBy: { createdAt: 'asc' } },
+      variants: {
+        include: { images: true },
+        orderBy: { createdAt: 'asc' }
+      },
     }
   });
 
