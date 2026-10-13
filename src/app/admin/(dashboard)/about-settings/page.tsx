@@ -5,6 +5,55 @@ import { revalidatePath } from "next/cache";
 import { Settings, Save } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 
+async function updateSettings(formData: FormData) {
+  "use server";
+  
+  const aboutIntroImage = formData.get("aboutIntroImage") as string;
+  const aboutCertIso = formData.get("aboutCertIso") as string;
+  const aboutCertHym = formData.get("aboutCertHym") as string;
+  const aboutCertGa = formData.get("aboutCertGa") as string;
+  const aboutCertAscb = formData.get("aboutCertAscb") as string;
+  const infraVideoUrl = formData.get("infraVideoUrl") as string;
+  const pressVideoUrl = formData.get("pressVideoUrl") as string;
+  const pressClipping1 = formData.get("pressClipping1") as string;
+  const pressClipping2 = formData.get("pressClipping2") as string;
+
+  await prisma.siteSetting.upsert({
+    where: { id: "default" },
+    update: {
+      aboutIntroImage,
+      aboutCertIso,
+      aboutCertHym,
+      aboutCertGa,
+      aboutCertAscb,
+      infraVideoUrl,
+      pressVideoUrl,
+      pressClipping1,
+      pressClipping2
+    },
+    create: {
+      id: "default",
+      address: "Update Address in General Settings",
+      phone1: "",
+      email: "",
+      aboutIntroImage,
+      aboutCertIso,
+      aboutCertHym,
+      aboutCertGa,
+      aboutCertAscb,
+      infraVideoUrl,
+      pressVideoUrl,
+      pressClipping1,
+      pressClipping2
+    }
+  });
+
+  revalidatePath("/about");
+  revalidatePath("/about/infrastructure");
+  revalidatePath("/about/press");
+  revalidatePath("/admin/about-settings");
+}
+
 export default async function AboutSettingsPage() {
   const settings = await prisma.siteSetting.findUnique({
     where: { id: "default" }
@@ -19,55 +68,6 @@ export default async function AboutSettingsPage() {
     pressClipping1: "",
     pressClipping2: ""
   };
-
-  async function updateSettings(formData: FormData) {
-    "use server";
-    
-    const aboutIntroImage = formData.get("aboutIntroImage") as string;
-    const aboutCertIso = formData.get("aboutCertIso") as string;
-    const aboutCertHym = formData.get("aboutCertHym") as string;
-    const aboutCertGa = formData.get("aboutCertGa") as string;
-    const aboutCertAscb = formData.get("aboutCertAscb") as string;
-    const infraVideoUrl = formData.get("infraVideoUrl") as string;
-    const pressVideoUrl = formData.get("pressVideoUrl") as string;
-    const pressClipping1 = formData.get("pressClipping1") as string;
-    const pressClipping2 = formData.get("pressClipping2") as string;
-
-    await prisma.siteSetting.upsert({
-      where: { id: "default" },
-      update: {
-        aboutIntroImage,
-        aboutCertIso,
-        aboutCertHym,
-        aboutCertGa,
-        aboutCertAscb,
-        infraVideoUrl,
-        pressVideoUrl,
-        pressClipping1,
-        pressClipping2
-      },
-      create: {
-        id: "default",
-        address: "Update Address in General Settings",
-        phone1: "",
-        email: "",
-        aboutIntroImage,
-        aboutCertIso,
-        aboutCertHym,
-        aboutCertGa,
-        aboutCertAscb,
-        infraVideoUrl,
-        pressVideoUrl,
-        pressClipping1,
-        pressClipping2
-      }
-    });
-
-    revalidatePath("/about");
-    revalidatePath("/about/infrastructure");
-    revalidatePath("/about/press");
-    revalidatePath("/admin/about-settings");
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
