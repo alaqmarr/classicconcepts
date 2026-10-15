@@ -35,7 +35,7 @@ export default function NewCategoryPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <div className="flex items-center gap-4">
         <Link href="/admin/categories" className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 hover:text-[#0056b3] transition-colors">
           <ArrowLeft size={20} />

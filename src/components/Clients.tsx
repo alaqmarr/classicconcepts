@@ -10,7 +10,7 @@ type PlatformType = { id: string; name: string; storeUrl: string; storeRegion: s
 export default function Clients({ clients, platforms }: { clients: ClientType[], platforms: PlatformType[] }) {
   return (
     <section className="w-full bg-white py-20 px-4 sm:px-8 overflow-hidden">
-      <div className="max-w-7xl mx-auto flex flex-col gap-16">
+      <div className="w-full mx-auto flex flex-col gap-16">
         
         {/* Clients Section */}
         <div>
@@ -44,7 +44,7 @@ export default function Clients({ clients, platforms }: { clients: ClientType[],
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="w-full max-w-4xl mx-auto border border-slate-200 rounded-3xl p-8 md:p-12 relative mt-8 shadow-soft bg-slate-50/50"
+          className="w-full w-full mx-auto border border-slate-200 rounded-3xl p-8 md:p-12 relative mt-8 shadow-soft bg-slate-50/50"
         >
           {/* Tag */}
           <div className="absolute -top-4 left-8 bg-white px-4 py-1 flex items-center gap-2 border border-slate-200 rounded-full text-[#0056b3] font-bold text-sm shadow-sm">

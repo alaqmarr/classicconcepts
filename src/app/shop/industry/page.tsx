@@ -45,7 +45,7 @@ export default async function ShopIndustriesPage() {
         </div>
 
         {industries.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
             {industries.map(industry => (
               <div key={industry.id} className="relative group">
                 <IndustryCard industry={industry} />

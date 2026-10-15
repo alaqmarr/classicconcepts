@@ -31,7 +31,7 @@ export function Hero() {
         </div>
 
         {/* Massive Center Headline */}
-        <h1 className="text-4xl md:text-6xl lg:text-[5rem] font-extrabold text-white leading-[1.1] mb-8 tracking-tight max-w-5xl">
+        <h1 className="text-4xl md:text-6xl lg:text-[5rem] font-extrabold text-white leading-[1.1] mb-8 tracking-tight w-full">
           Elevate Your Space with <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3b82f6] via-[#8b5cf6] to-[#e31837]">
             Premium Acrylic
@@ -39,12 +39,12 @@ export function Hero() {
           Craftsmanship
         </h1>
 
-        <p className="text-base md:text-xl text-gray-300 mb-14 max-w-2xl leading-relaxed font-medium">
+        <p className="text-base md:text-xl text-gray-300 mb-14 max-w-3xl leading-relaxed font-medium">
           We manufacture high-quality acrylic products that bring elegance, flawless durability, and functional brilliance to your spaces.
         </p>
 
         {/* Advanced Glassmorphism Badges Row */}
-        <div className="flex flex-wrap justify-center gap-4 md:gap-6 mb-16 w-full max-w-5xl">
+        <div className="flex flex-wrap justify-center gap-4 md:gap-6 mb-16 w-full">
           <div className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_32px_rgba(0,0,0,0.3)] hover:bg-white/10 hover:-translate-y-1 transition-all duration-300 group">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#e31837]/20 to-[#e31837]/5 flex items-center justify-center text-[#e31837] border border-[#e31837]/30 group-hover:scale-110 transition-transform">
               <ShieldCheck size={20} />

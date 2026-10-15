@@ -313,7 +313,7 @@ export default async function ProductDetailPage({
         {product.videoUrl && (
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
             <h2 className="text-2xl font-bold text-slate-900 mb-6">Product Video</h2>
-            <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-lg border border-slate-100 bg-slate-900 mx-auto max-w-4xl">
+            <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-lg border border-slate-100 bg-slate-900 mx-auto w-full">
                <iframe 
                  width="100%" 
                  height="100%" 

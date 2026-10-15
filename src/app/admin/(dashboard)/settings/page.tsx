@@ -56,7 +56,7 @@ export default async function AdminSettingsPage() {
   const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-8 w-full mx-auto">
       <h1 className="text-3xl font-bold mb-8">Site Settings</h1>
       
       <SubmitForm action={updateSettings} className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-6">

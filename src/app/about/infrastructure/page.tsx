@@ -87,7 +87,7 @@ export default async function OurInfrastructurePage() {
         </div>
 
         {/* YouTube Video Embed */}
-        <div className="w-full max-w-4xl mx-auto flex justify-center py-8">
+        <div className="w-full mx-auto flex justify-center py-8">
           <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-900 aspect-video relative group">
              <iframe 
                width="100%" 

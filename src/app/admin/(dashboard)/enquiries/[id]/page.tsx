@@ -16,7 +16,7 @@ export default async function AdminEnquiryDetailPage({ params }: { params: Promi
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <Link href="/admin/enquiries" className="inline-flex items-center gap-2 text-slate-500 hover:text-[#0056b3] transition-colors font-medium">
         <ArrowLeft size={18} /> Back to Enquiries
       </Link>

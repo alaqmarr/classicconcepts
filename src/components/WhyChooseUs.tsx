@@ -24,7 +24,7 @@ export default function WhyChooseUs() {
 
   return (
     <section className="w-full bg-brand-gray py-20 px-4 sm:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col gap-20">
+      <div className="w-full mx-auto flex flex-col gap-20">
         
         {/* Top Feature Grid */}
         <div className="text-center">

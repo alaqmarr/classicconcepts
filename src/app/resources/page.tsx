@@ -31,10 +31,10 @@ export default async function ResourcesPage() {
       />
 
       <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4 md:px-8 max-w-7xl">
+        <div className="container mx-auto px-4 md:px-8 w-full">
           
           {/* Resources Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 md:gap-8">
             {resources.map((res) => {
               const previewImage =
                 res.thumbnailUrl && isImageUrl(res.thumbnailUrl)

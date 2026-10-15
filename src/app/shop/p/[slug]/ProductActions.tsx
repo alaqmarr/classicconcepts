@@ -52,7 +52,7 @@ export function ProductActions({ product, phone = "+917337222876" }: ProductActi
 
       {/* Fixed bottom bar for ALL screen sizes (Mobile + Desktop) */}
       <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-white border-t border-slate-200 z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] pb-safe">
-        <div className="max-w-7xl mx-auto flex gap-3 sm:gap-6 justify-center sm:justify-end items-center">
+        <div className="container mx-auto flex gap-3 sm:gap-6 justify-center sm:justify-end items-center">
           
           {/* Desktop Product Summary on left side of the fixed bar */}
           <div className="hidden sm:flex flex-1 items-center gap-4">

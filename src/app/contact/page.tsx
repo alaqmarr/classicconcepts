@@ -47,7 +47,7 @@ export default async function ContactPage() {
           </p>
         </div>
 
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+        <div className="w-full mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
           
           {/* Contact Details side */}
           <div className="space-y-10">

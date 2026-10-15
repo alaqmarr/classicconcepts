@@ -16,12 +16,12 @@ export default async function OnlinePaymentsPage() {
     <div className="bg-gradient-to-br from-[#f0f4ff] via-[#fffbf0] to-[#fff0f0] min-h-screen py-16 relative overflow-hidden">
       {/* Decorative background shape */}
       <div className="absolute top-[10%] right-[10%] w-[300px] h-[300px] bg-blue-100/50 rounded-full blur-[100px] pointer-events-none z-0"></div>
-      <div className="container mx-auto px-4 max-w-7xl">
+      <div className="container mx-auto px-4 w-full">
         <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-10 text-center md:text-left">
           Available Payment Methods
         </h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
           
           {/* Card 1: Pay Online */}
           <div className="bg-white border-2 border-[#0056b3] p-8 relative rounded-sm shadow-sm group hover:shadow-md transition-shadow">

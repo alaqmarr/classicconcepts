@@ -55,7 +55,7 @@ export default async function AdminPodiumSubCategoriesPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 w-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link

@@ -14,7 +14,7 @@ export default function AboutSection() {
 
   return (
     <section className="w-full bg-white py-20 px-4 sm:px-8 border-b border-gray-100">
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
+      <div className="w-full mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
         
         {/* Left side: Text Content */}
         <motion.div 

@@ -18,7 +18,7 @@ export default function ProductCategories() {
 
   return (
     <section className="w-full bg-brand-gray py-20 px-4 sm:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col items-center">
+      <div className="w-full mx-auto flex flex-col items-center">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

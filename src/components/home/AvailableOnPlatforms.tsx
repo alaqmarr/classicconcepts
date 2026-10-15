@@ -37,7 +37,7 @@ export async function AvailableOnPlatforms() {
           <p className="text-slate-500 font-medium text-sm md:text-base">Experience the convenience of shopping for Classic Concepts acrylic products on your favorite e-commerce platforms with trusted delivery.</p>
         </div>
         
-        <div className="flex flex-wrap justify-center gap-6 md:gap-8 max-w-5xl mx-auto">
+        <div className="flex flex-wrap justify-center gap-6 md:gap-8 w-full mx-auto">
           {platforms.map((platform) => (
             <a 
               key={platform.id}

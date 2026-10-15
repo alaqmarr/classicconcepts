@@ -30,7 +30,7 @@ export default async function AboutPressPage() {
 
       {/* Main Press Content */}
       <section className="py-20 relative z-20">
-        <div className="container mx-auto px-6 max-w-5xl space-y-20">
+        <div className="container mx-auto px-6 w-full space-y-20">
           
           {/* YouTube Video Section */}
           <div className="space-y-8 text-center">

@@ -113,7 +113,7 @@ export default async function AboutPage() {
       <section className="py-24 bg-gradient-to-b from-white via-slate-50/50 to-white relative overflow-hidden border-t border-slate-100">
         <div className="absolute right-0 top-0 w-1/3 h-full bg-blue-50/50 rounded-l-[100px] pointer-events-none transform translate-x-1/2"></div>
         
-        <div className="container mx-auto px-6 max-w-4xl text-center space-y-10 relative z-10">
+        <div className="container mx-auto px-6 w-full text-center space-y-10 relative z-10">
           <div className="inline-flex items-center justify-center space-x-2">
             <span className="w-12 h-[2px] bg-red-500"></span>
             <span className="text-red-500 font-bold uppercase tracking-widest text-sm">Core Objective</span>

@@ -6,7 +6,7 @@ import { Mail, Phone, MapPin, ArrowRight } from "lucide-react";
 export default function Footer() {
   return (
     <footer className="w-full bg-brand-dark text-gray-300 py-16 px-4 sm:px-8 border-t-4 border-brand-blue">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+      <div className="w-full mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
         
         {/* Brand & Intro */}
         <div className="flex flex-col gap-6">
@@ -81,7 +81,7 @@ export default function Footer() {
 
       </div>
 
-      <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-sm flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="w-full mx-auto mt-16 pt-8 border-t border-gray-800 text-center text-sm flex flex-col md:flex-row justify-between items-center gap-4">
         <p>&copy; {new Date().getFullYear()} Classic Concepts. All rights reserved.</p>
         <div className="flex gap-4">
           <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>

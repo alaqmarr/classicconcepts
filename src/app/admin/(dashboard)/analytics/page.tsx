@@ -14,7 +14,7 @@ export default async function AnalyticsPage() {
   const totalVisits = visits.reduce((acc, curr) => acc + curr.visits, 0);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-8 w-full mx-auto space-y-8">
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Analytics</h1>

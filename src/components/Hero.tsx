@@ -17,7 +17,7 @@ export default function Hero() {
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-blue-light/50 to-transparent -z-10" />
 
-      <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div className="w-full w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         {/* Left Content */}
         <motion.div 
           initial={{ opacity: 0, x: -30 }}

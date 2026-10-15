@@ -45,7 +45,7 @@ export default async function ShopProblemStatementsPage() {
         </div>
 
         {problemStatements.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
             {problemStatements.map(problemStatement => (
               <div key={problemStatement.id} className="relative group">
                 <ProblemStatementCard problemStatement={problemStatement} />
