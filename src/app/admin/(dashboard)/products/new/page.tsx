@@ -8,9 +8,11 @@ import { ProductForm } from "@/components/admin/ProductForm";
 import slugify from "slugify";
 
 export default async function NewProductPage() {
-  const categories = await prisma.category.findMany({ select: { id: true, name: true } });
-  const problemStatements = await prisma.problemStatement.findMany({ select: { id: true, name: true } });
-  const industries = await prisma.industry.findMany({ select: { id: true, name: true } });
+  const [categories, problemStatements, industries] = await Promise.all([
+    prisma.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.problemStatement.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.industry.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } })
+  ]);
 
   async function createProduct(formData: FormData) {
     "use server";
@@ -75,7 +77,7 @@ export default async function NewProductPage() {
         isPodium: false,
 
         features: {
-          create: featureTexts.map((text) => ({ text }))
+          create: featureTexts.filter(t => t.trim() !== "").map((text) => ({ text }))
         },
         
         specifications: {
@@ -114,6 +116,9 @@ export default async function NewProductPage() {
       }
     });
 
+    revalidatePath("/", "layout");
+    revalidatePath("/shop");
+    revalidatePath(`/shop/p/${product.slug}`);
     revalidatePath("/admin/products");
     redirect("/admin/products");
   }

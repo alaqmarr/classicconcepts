@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { FaYoutube, FaLinkedinIn, FaInstagram, FaFacebookF, FaXTwitter } from "react-icons/fa6";
+import { FaYoutube, FaLinkedinIn, FaInstagram, FaFacebookF, FaWhatsapp } from "react-icons/fa6";
 import { QRCodeSVG } from "qrcode.react";
 
 interface Category {
@@ -24,6 +24,7 @@ interface FooterProps {
 export function Footer({ settings, categories = [], usefulLinks = [] }: FooterProps) {
   // UPI Deep Link Format: upi://pay?pa=UPI_ID&pn=PAYEE_NAME&cu=INR
   const upiLink = settings?.upiId ? `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.upiName || 'Classic Concepts')}&cu=INR` : null;
+  const whatsappNumber = (settings?.whatsappNumber || "+917337222876").replace(/\D/g, "");
 
   const firstColCategories = categories.slice(0, 5);
   const secondColCategories = categories.slice(5, 11);
@@ -43,11 +44,9 @@ export function Footer({ settings, categories = [], usefulLinks = [] }: FooterPr
                Pioneers in high precision acrylic podiums, display units, bespoke furniture, and architectural interiors across India.
              </p>
              <div className="flex flex-wrap gap-2">
-               {settings?.phone1 && (
-                 <a href={`https://wa.me/${settings.phone1.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors" title="WhatsApp">
-                   <FaYoutube size={14} />
-                 </a>
-               )}
+               <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#25D366] transition-colors" title="WhatsApp">
+                 <FaWhatsapp size={14} />
+               </a>
                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#0056b3] transition-colors" title="LinkedIn"><FaLinkedinIn size={14} /></a>
                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#e31837] transition-colors" title="Instagram"><FaInstagram size={14} /></a>
                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#0056b3] transition-colors" title="Facebook"><FaFacebookF size={14} /></a>
@@ -99,9 +98,10 @@ export function Footer({ settings, categories = [], usefulLinks = [] }: FooterPr
             <ul className="space-y-3">
               <li><Link href="/" className="hover:text-blue-300 transition-colors">Home</Link></li>
               <li><Link href="/about" className="hover:text-blue-300 transition-colors">Company Profile</Link></li>
+              <li><Link href="/about/team" className="hover:text-blue-300 transition-colors">Our Team</Link></li>
               <li><Link href="/about/infrastructure" className="hover:text-blue-300 transition-colors">Infrastructure</Link></li>
               <li><Link href="/about/certificates" className="hover:text-blue-300 transition-colors">Certificates</Link></li>
-              <li><Link href="/about/press" className="hover:text-blue-300 transition-colors">Press & Media</Link></li>
+              <li><Link href="/about/press" className="hover:text-blue-300 transition-colors">Press &amp; Media</Link></li>
               <li><Link href="/about/clients" className="hover:text-blue-300 transition-colors">Our Clients</Link></li>
               <li><Link href="/contact" className="hover:text-blue-300 transition-colors">Contact Us</Link></li>
               {usefulLinks.slice(0, 3).map((link) => (

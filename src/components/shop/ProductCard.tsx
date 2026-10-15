@@ -17,11 +17,12 @@ interface ProductCardProps {
     stockStatus: string;
     images: { url: string; isMain: boolean }[];
     category?: { name: string; slug: string };
+    podiumSubCategory?: { name: string; slug: string } | null;
   };
   phone?: string | null;
 }
 
-export function ProductCard({ product, phone = "+919876543210" }: ProductCardProps) {
+export function ProductCard({ product, phone = "+917337222876" }: ProductCardProps) {
   const { addToCart } = useCart();
   const mainImage = product.images.find(img => img.isMain)?.url || product.images[0]?.url || "/placeholder-image.jpg";
   
@@ -29,7 +30,11 @@ export function ProductCard({ product, phone = "+919876543210" }: ProductCardPro
 
   const handleEnquire = (e: React.MouseEvent) => {
     e.preventDefault();
-    const cleanPhone = phone ? phone.replace(/[^\d+]/g, "") : "";
+    const rawPhone = phone || "+917337222876";
+    let cleanPhone = rawPhone.replace(/\D/g, "");
+    if (!cleanPhone.startsWith("91") && cleanPhone.length === 10) {
+      cleanPhone = "91" + cleanPhone;
+    }
     const text = encodeURIComponent(`Hi, I would like to enquire about the product: ${product.name} (SKU/Link: ${window.location.origin}/shop/p/${product.slug})`);
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank");
   };
@@ -75,9 +80,9 @@ export function ProductCard({ product, phone = "+919876543210" }: ProductCardPro
 
         {/* Content Container */}
         <div className="p-5 flex-1 flex flex-col">
-          {product.category && (
+          {(product.podiumSubCategory || product.category) && (
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              {product.category.name}
+              {product.podiumSubCategory ? product.podiumSubCategory.name : product.category?.name}
             </p>
           )}
           <h3 className="font-bold text-slate-800 text-lg leading-tight mb-3 group-hover:text-[#0056b3] transition-colors line-clamp-2">

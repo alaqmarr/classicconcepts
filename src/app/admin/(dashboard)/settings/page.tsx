@@ -4,54 +4,56 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { Save } from "lucide-react";
 
+async function updateSettings(formData: FormData) {
+  "use server";
+  
+  await prisma.siteSetting.upsert({
+    where: { id: "default" },
+    update: {
+      address: formData.get("address") as string,
+      phone1: formData.get("phone1") as string,
+      phone2: formData.get("phone2") as string,
+      whatsappNumber: (formData.get("whatsappNumber") as string) || "+917337222876",
+      email: formData.get("email") as string,
+      email2: (formData.get("email2") as string) || null,
+      businessHours: (formData.get("businessHours") as string) || null,
+      upiId: formData.get("upiId") as string,
+      upiName: formData.get("upiName") as string,
+      smtpHost: formData.get("smtpHost") as string,
+      smtpPort: formData.get("smtpPort") ? parseInt(formData.get("smtpPort") as string) : null,
+      smtpUser: formData.get("smtpUser") as string,
+      smtpPass: formData.get("smtpPass") as string,
+      adminEmail: formData.get("adminEmail") as string,
+      mapEmbedUrl: formData.get("mapEmbedUrl") as string,
+      homeVideoUrl: formData.get("homeVideoUrl") as string,
+    },
+    create: {
+      id: "default",
+      address: formData.get("address") as string,
+      phone1: formData.get("phone1") as string,
+      phone2: formData.get("phone2") as string,
+      whatsappNumber: (formData.get("whatsappNumber") as string) || "+917337222876",
+      email: formData.get("email") as string,
+      email2: (formData.get("email2") as string) || null,
+      businessHours: (formData.get("businessHours") as string) || null,
+      upiId: formData.get("upiId") as string,
+      upiName: formData.get("upiName") as string,
+      smtpHost: formData.get("smtpHost") as string,
+      smtpPort: formData.get("smtpPort") ? parseInt(formData.get("smtpPort") as string) : null,
+      smtpUser: formData.get("smtpUser") as string,
+      smtpPass: formData.get("smtpPass") as string,
+      adminEmail: formData.get("adminEmail") as string,
+      mapEmbedUrl: formData.get("mapEmbedUrl") as string,
+      homeVideoUrl: formData.get("homeVideoUrl") as string,
+    }
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/settings");
+}
+
 export default async function AdminSettingsPage() {
   const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
-
-  async function updateSettings(formData: FormData) {
-    "use server";
-    
-    await prisma.siteSetting.upsert({
-      where: { id: "default" },
-      update: {
-        address: formData.get("address") as string,
-        phone1: formData.get("phone1") as string,
-        phone2: formData.get("phone2") as string,
-        email: formData.get("email") as string,
-        email2: (formData.get("email2") as string) || null,
-        businessHours: (formData.get("businessHours") as string) || null,
-        upiId: formData.get("upiId") as string,
-        upiName: formData.get("upiName") as string,
-        smtpHost: formData.get("smtpHost") as string,
-        smtpPort: formData.get("smtpPort") ? parseInt(formData.get("smtpPort") as string) : null,
-        smtpUser: formData.get("smtpUser") as string,
-        smtpPass: formData.get("smtpPass") as string,
-        adminEmail: formData.get("adminEmail") as string,
-        mapEmbedUrl: formData.get("mapEmbedUrl") as string,
-        homeVideoUrl: formData.get("homeVideoUrl") as string,
-      },
-      create: {
-        id: "default",
-        address: formData.get("address") as string,
-        phone1: formData.get("phone1") as string,
-        phone2: formData.get("phone2") as string,
-        email: formData.get("email") as string,
-        email2: (formData.get("email2") as string) || null,
-        businessHours: (formData.get("businessHours") as string) || null,
-        upiId: formData.get("upiId") as string,
-        upiName: formData.get("upiName") as string,
-        smtpHost: formData.get("smtpHost") as string,
-        smtpPort: formData.get("smtpPort") ? parseInt(formData.get("smtpPort") as string) : null,
-        smtpUser: formData.get("smtpUser") as string,
-        smtpPass: formData.get("smtpPass") as string,
-        adminEmail: formData.get("adminEmail") as string,
-        mapEmbedUrl: formData.get("mapEmbedUrl") as string,
-        homeVideoUrl: formData.get("homeVideoUrl") as string,
-      }
-    });
-
-    revalidatePath("/", "layout");
-    revalidatePath("/admin/settings");
-  }
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -86,7 +88,7 @@ export default async function AdminSettingsPage() {
             <input 
               type="text" 
               name="phone1" 
-              defaultValue={settings?.phone1} 
+              defaultValue={settings?.phone1 || "+917337222876"} 
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -97,6 +99,17 @@ export default async function AdminSettingsPage() {
               type="text" 
               name="phone2" 
               defaultValue={settings?.phone2 || ""} 
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm font-semibold text-gray-700">WhatsApp Number (For Floating Chat &amp; Product Enquiries)</label>
+            <input 
+              type="text" 
+              name="whatsappNumber" 
+              defaultValue={settings?.whatsappNumber || "+917337222876"} 
+              placeholder="+917337222876"
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

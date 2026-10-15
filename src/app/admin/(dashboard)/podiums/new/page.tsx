@@ -8,7 +8,10 @@ import { ProductForm } from "@/components/admin/ProductForm";
 import slugify from "slugify";
 
 export default async function NewPodiumPage() {
-  const categories = await prisma.category.findMany({ select: { id: true, name: true } });
+  const [categories, podiumSubCategories] = await Promise.all([
+    prisma.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.podiumSubCategory.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], select: { id: true, name: true } })
+  ]);
 
   async function createProduct(formData: FormData) {
     "use server";
@@ -19,6 +22,18 @@ export default async function NewPodiumPage() {
     const categoryId = formData.get("categoryId") as string;
     const sku = formData.get("sku") as string || null;
     
+    let podiumSubCategoryId = (formData.get("podiumSubCategoryId") as string)?.trim() || null;
+    const newPodiumSubCategory = (formData.get("newPodiumSubCategory") as string)?.trim();
+    if (newPodiumSubCategory) {
+      const subSlug = slugify(newPodiumSubCategory, { lower: true, strict: true });
+      const sub = await prisma.podiumSubCategory.upsert({
+        where: { slug: subSlug },
+        update: { name: newPodiumSubCategory },
+        create: { name: newPodiumSubCategory, slug: subSlug }
+      });
+      podiumSubCategoryId = sub.id;
+    }
+
     const bpParsed = parseFloat(formData.get("basePrice") as string);
     const basePrice = !isNaN(bpParsed) ? bpParsed : null;
     const dpParsed = parseFloat(formData.get("discountPrice") as string);
@@ -58,6 +73,7 @@ export default async function NewPodiumPage() {
         name,
         slug: generatedSlug,
         categoryId,
+        podiumSubCategoryId,
         sku,
         basePrice,
         discountPrice,
@@ -67,7 +83,7 @@ export default async function NewPodiumPage() {
         description,
         descriptionHtml,
         importantNoteHtml,
-        isPodium: true, // Specific to podiums
+        isPodium: true,
         
         features: {
           create: featureTexts.filter(t => t.trim() !== "").map(text => ({ text }))
@@ -90,7 +106,6 @@ export default async function NewPodiumPage() {
       }
     });
 
-    // Handle Variants (need loop for dynamic image keys)
     for (let i = 0; i < variantNames.length; i++) {
       if (!variantNames[i] || !variantNames[i].trim()) continue;
       const vImg = formData.get(`variantImage_${i}`) as string || null;
@@ -111,6 +126,10 @@ export default async function NewPodiumPage() {
       });
     }
 
+    revalidatePath("/", "layout");
+    revalidatePath("/podiums");
+    revalidatePath("/shop");
+    revalidatePath(`/shop/p/${product.slug}`);
     revalidatePath("/admin/podiums");
     redirect("/admin/podiums");
   }
@@ -130,8 +149,12 @@ export default async function NewPodiumPage() {
         </div>
       </div>
 
-      <ProductForm categories={categories} action={createProduct} />
+      <ProductForm
+        categories={categories}
+        podiumSubCategories={podiumSubCategories}
+        action={createProduct}
+        isPodiumForm={true}
+      />
     </div>
   );
 }
-

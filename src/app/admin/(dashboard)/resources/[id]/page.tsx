@@ -70,9 +70,11 @@ export default async function EditResourcePage({ params }: Props) {
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Resource Type</label>
           <select name="type" defaultValue={resource.type} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3]">
-            <option value="PDF">PDF Document</option>
+            <option value="PDF">PDF Document / Catalog</option>
+            <option value="Image">Image / Brochure</option>
+            <option value="Document">Document (Word / Excel / ZIP)</option>
+            <option value="Video">Video</option>
             <option value="Link">External Link</option>
-            <option value="Video">Video Link</option>
           </select>
         </div>
 

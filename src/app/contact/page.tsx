@@ -1,5 +1,7 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { ContactForm } from "@/components/ContactForm";
+import { TeamSection } from "@/components/team/TeamSection";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -9,10 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function ContactPage() {
-  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
+  const [settings, teamMembers] = await Promise.all([
+    prisma.siteSetting.findUnique({ where: { id: "default" } }),
+    prisma.teamMember.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    }),
+  ]);
   
   // Robustly handle cases where the user pasted the entire <iframe> tag from Google Maps
-  let mapSrc = settings?.mapEmbedUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m3!1d3768.4901928099684!2d72.8443906!3d19.173775!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b65345a331df%3A0xc6c764e5c8e31a0a!2sClassic%20Concepts!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin";
+  let mapSrc = settings?.mapEmbedUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3768.4901928099684!2d72.8443906!3d19.173775!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b65345a331df%3A0xc6c764e5c8e31a0a!2sClassic%20Concepts!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin";
   if (mapSrc.includes('<iframe') && mapSrc.includes('src="')) {
     const match = mapSrc.match(/src="([^"]+)"/);
     if (match && match[1]) {
@@ -66,7 +74,7 @@ export default async function ContactPage() {
                   <div>
                     <h3 className="font-bold text-slate-800 mb-1">Phone Number</h3>
                     <p className="text-slate-600 leading-relaxed">
-                      <a href={`tel:${settings?.phone1}`} className="hover:text-[#0056b3] transition-colors">{settings?.phone1}</a>
+                      <a href={`tel:${settings?.phone1 || "+917337222876"}`} className="hover:text-[#0056b3] transition-colors">{settings?.phone1 || "+917337222876"}</a>
                       {settings?.phone2 && (
                         <>
                           <br />
@@ -133,6 +141,13 @@ export default async function ContactPage() {
           </div>
 
         </div>
+
+        {/* Team Members Section on Contact Page */}
+        {teamMembers.length > 0 && (
+          <div className="mt-20 border-t border-slate-200/80 pt-10">
+            <TeamSection members={teamMembers} />
+          </div>
+        )}
       </div>
     </div>
   );

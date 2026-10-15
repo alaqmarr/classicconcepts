@@ -11,143 +11,142 @@ interface Props {
 }
 
 async function updateProduct(id: string, formData: FormData) {
-    "use server";
-    
-    const name = formData.get("name") as string;
-    const categoryId = formData.get("categoryId") as string;
-    const sku = formData.get("sku") as string || null;
-    
-    const bpParsed = parseFloat(formData.get("basePrice") as string);
-    const basePrice = !isNaN(bpParsed) ? bpParsed : null;
-    const dpParsed = parseFloat(formData.get("discountPrice") as string);
-    const discountPrice = !isNaN(dpParsed) ? dpParsed : null;
-    const stockStatus = formData.get("stockStatus") as string || "In stock";
-    const discountBadge = formData.get("discountBadge") as string || null;
-    
-    const videoUrl = formData.get("videoUrl") as string || null;
-    const description = formData.get("description") as string || null;
-    const descriptionHtml = formData.get("descriptionHtml") as string || null;
-    const importantNoteHtml = formData.get("importantNoteHtml") as string || null;
-    
-    const mainImage = formData.get("mainImage") as string || null;
+  "use server";
+  
+  const name = formData.get("name") as string;
+  const categoryId = formData.get("categoryId") as string;
+  const sku = formData.get("sku") as string || null;
+  
+  const bpParsed = parseFloat(formData.get("basePrice") as string);
+  const basePrice = !isNaN(bpParsed) ? bpParsed : null;
+  const dpParsed = parseFloat(formData.get("discountPrice") as string);
+  const discountPrice = !isNaN(dpParsed) ? dpParsed : null;
+  const stockStatus = formData.get("stockStatus") as string || "In stock";
+  const discountBadge = formData.get("discountBadge") as string || null;
+  
+  const videoUrl = formData.get("videoUrl") as string || null;
+  const description = formData.get("description") as string || null;
+  const descriptionHtml = formData.get("descriptionHtml") as string || null;
+  const importantNoteHtml = formData.get("importantNoteHtml") as string || null;
+  
+  const mainImage = formData.get("mainImage") as string || null;
 
-    const featureTexts = formData.getAll("featureText[]") as string[];
-    const specNames = formData.getAll("specName[]") as string[];
-    const specValues = formData.getAll("specValue[]") as string[];
-    const specTypes = formData.getAll("specType[]") as string[];
-    const variantNames = formData.getAll("variantName[]") as string[];
-    const variantPrices = formData.getAll("variantPrice[]") as string[];
-    
-    const problemStatementIds = formData.getAll("problemStatements[]") as string[];
-    const industryIds = formData.getAll("industries[]") as string[];
+  const featureTexts = formData.getAll("featureText[]") as string[];
+  const specNames = formData.getAll("specName[]") as string[];
+  const specValues = formData.getAll("specValue[]") as string[];
+  const specTypes = formData.getAll("specType[]") as string[];
+  const variantNames = formData.getAll("variantName[]") as string[];
+  const variantPrices = formData.getAll("variantPrice[]") as string[];
 
-    const imageCreates = [];
-    if (mainImage) {
-      imageCreates.push({ url: mainImage, isMain: true });
-    }
-    
-    const galleryImages = formData.getAll("galleryImages[]") as string[];
-    galleryImages.forEach(gImg => {
-      if (gImg && gImg.trim() !== "") {
-        imageCreates.push({ url: gImg, isMain: false });
-      }
-    });
-
-    // To cleanly update relations, we'll wipe the old arrays and recreate them.
-    // In production, you might do smart upserts, but this is safest for admin edits.
-    await prisma.$transaction([
-      prisma.productFeature.deleteMany({ where: { productId: id } }),
-      prisma.productSpecification.deleteMany({ where: { productId: id } }),
-      prisma.productVariant.deleteMany({ where: { productId: id } }),
-      prisma.productImage.deleteMany({ where: { productId: id } })
-    ]);
-
-    await prisma.product.update({
-      where: { id },
-      data: {
-        name,
-        categoryId,
-        sku,
-        basePrice,
-        discountPrice,
-        stockStatus,
-        discountBadge,
-        videoUrl,
-        description,
-        descriptionHtml,
-        importantNoteHtml,
-        
-        features: {
-          create: featureTexts.filter(t => t.trim() !== "").map(text => ({ text }))
-        },
-        
-        specifications: {
-          create: specNames.map((n, i) => {
-            if (!n || n.trim() === "" || !specValues[i] || specValues[i].trim() === "") return null;
-            return {
-              name: n,
-              value: specValues[i],
-              type: specTypes[i] || "specification"
-            };
-          }).filter(Boolean) as any
-        },
-
-        images: imageCreates.length > 0 ? {
-          create: imageCreates
-        } : undefined,
-
-        variants: {
-          create: variantNames.map((name, i) => {
-            if (!name || !name.trim()) return null;
-            const parsedPrice = parseFloat(variantPrices[i]);
-            const galleryUrls = (formData.getAll(`variantGallery_${i}[]`) as string[]).filter(u => u && u.trim() !== "");
-            return {
-              name,
-              price: !isNaN(parsedPrice) ? parsedPrice : null,
-              imageUrl: formData.get(`variantImage_${i}`) as string || null,
-              images: galleryUrls.length > 0 ? {
-                create: galleryUrls.map(url => ({ url }))
-              } : undefined
-            };
-          }).filter(Boolean) as any
-        },
-
-        problemStatements: { set: formData.getAll("problemStatements[]").map(id => ({ id: id as string })) },
-        industries: { set: formData.getAll("industries[]").map(id => ({ id: id as string })) },
-      }
-    });
-
-    revalidatePath("/admin/products");
-    redirect("/admin/products");
+  const imageCreates = [];
+  if (mainImage) {
+    imageCreates.push({ url: mainImage, isMain: true });
   }
+  
+  const galleryImages = formData.getAll("galleryImages[]") as string[];
+  galleryImages.forEach(gImg => {
+    if (gImg && gImg.trim() !== "") {
+      imageCreates.push({ url: gImg, isMain: false });
+    }
+  });
+
+  await prisma.$transaction([
+    prisma.productFeature.deleteMany({ where: { productId: id } }),
+    prisma.productSpecification.deleteMany({ where: { productId: id } }),
+    prisma.productVariant.deleteMany({ where: { productId: id } }),
+    prisma.productImage.deleteMany({ where: { productId: id } })
+  ]);
+
+  const updated = await prisma.product.update({
+    where: { id },
+    data: {
+      name,
+      categoryId,
+      sku,
+      basePrice,
+      discountPrice,
+      stockStatus,
+      discountBadge,
+      videoUrl,
+      description,
+      descriptionHtml,
+      importantNoteHtml,
+      
+      features: {
+        create: featureTexts.filter(t => t.trim() !== "").map(text => ({ text }))
+      },
+      
+      specifications: {
+        create: specNames.map((n, i) => {
+          if (!n || n.trim() === "" || !specValues[i] || specValues[i].trim() === "") return null;
+          return {
+            name: n,
+            value: specValues[i],
+            type: specTypes[i] || "specification"
+          };
+        }).filter(Boolean) as any
+      },
+
+      images: imageCreates.length > 0 ? {
+        create: imageCreates
+      } : undefined,
+
+      variants: {
+        create: variantNames.map((name, i) => {
+          if (!name || !name.trim()) return null;
+          const parsedPrice = parseFloat(variantPrices[i]);
+          const galleryUrls = (formData.getAll(`variantGallery_${i}[]`) as string[]).filter(u => u && u.trim() !== "");
+          return {
+            name,
+            price: !isNaN(parsedPrice) ? parsedPrice : null,
+            imageUrl: formData.get(`variantImage_${i}`) as string || null,
+            images: galleryUrls.length > 0 ? {
+              create: galleryUrls.map(url => ({ url }))
+            } : undefined
+          };
+        }).filter(Boolean) as any
+      },
+
+      problemStatements: { set: formData.getAll("problemStatements[]").map(id => ({ id: id as string })) },
+      industries: { set: formData.getAll("industries[]").map(id => ({ id: id as string })) },
+    }
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/shop");
+  revalidatePath("/podiums");
+  revalidatePath(`/shop/p/${updated.slug}`);
+  revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${id}`);
+  redirect("/admin/products");
+}
 
 export default async function EditProductPage({ params }: Props) {
   const { id } = await params;
-  const categories = await prisma.category.findMany({ select: { id: true, name: true } });
-  const problemStatements = await prisma.problemStatement.findMany({ select: { id: true, name: true } });
-  const industries = await prisma.industry.findMany({ select: { id: true, name: true } });
-  
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: {
-      images: true,
-      features: true,
-      specifications: true,
-      variants: {
-        include: {
-          images: true
-        }
-      },
-      problemStatements: true,
-      industries: true
-    }
-  });
+  const [categories, problemStatements, industries, product] = await Promise.all([
+    prisma.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.problemStatement.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.industry.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.product.findUnique({
+      where: { id },
+      include: {
+        images: true,
+        features: true,
+        specifications: true,
+        variants: {
+          include: {
+            images: true
+          }
+        },
+        problemStatements: true,
+        industries: true
+      }
+    })
+  ]);
 
   if (!product) {
     notFound();
   }
-
-  
 
   return (
     <div className="space-y-6 max-w-5xl">

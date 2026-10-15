@@ -36,7 +36,12 @@ export default async function ResourcesPage() {
           {/* Resources Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {resources.map((res) => {
-              const hasValidThumbnail = res.thumbnailUrl && isImageUrl(res.thumbnailUrl);
+              const previewImage =
+                res.thumbnailUrl && isImageUrl(res.thumbnailUrl)
+                  ? res.thumbnailUrl
+                  : isImageUrl(res.fileUrl)
+                  ? res.fileUrl
+                  : null;
 
               return (
                 <a 
@@ -49,11 +54,11 @@ export default async function ResourcesPage() {
                   <div className="flex gap-4 items-start w-full">
                     {/* Icon or Thumbnail */}
                     <div className="flex-shrink-0">
-                      {hasValidThumbnail ? (
+                      {previewImage ? (
                         <div className="w-16 h-16 relative rounded-2xl overflow-hidden bg-slate-100 shadow-xs border border-slate-200/60">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img 
-                            src={res.thumbnailUrl!} 
+                            src={previewImage} 
                             alt={res.title} 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                             loading="lazy" 

@@ -15,16 +15,13 @@ export async function HowWeDoIt() {
           <div className="w-full md:w-1/2">
             <span className="text-[#3b82f6] text-[10px] font-bold uppercase tracking-widest mb-3 block">How We Do It?</span>
             <h2 className="text-3xl md:text-5xl font-extrabold text-slate-800 tracking-tight leading-tight mb-8">
-              Manufacturing<br />
+              Our Manufacturing<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-[#e31837]">Process</span>
             </h2>
             
             <div className="text-slate-600 space-y-6 text-sm md:text-base leading-relaxed font-medium mb-10">
               <p>
-                At Classic Concepts, we utilize innovative technologies and employ a highly qualified team of engineers to design podiums and other acrylic products.
-              </p>
-              <p>
-                Our Acrylic products are crafted with the utmost attention to detail, ensuring they are durable and easy to handle. We also pride ourselves on our competitive pricing and elegant finish, providing exceptional value to our customers.
+                With over two decades of experience, Classic Concepts is a market leader in acrylic manufacturing. Our 16,000 sq. ft. factory combines advanced technology with a highly qualified team of engineers to design and craft podiums and other acrylic products. Every product is made with meticulous attention to detail, delivering durability, ease of handling and an elegant finish—all at competitive prices.
               </p>
             </div>
             

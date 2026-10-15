@@ -13,13 +13,23 @@ interface Category {
 
 interface ProductFormProps {
   categories: Category[];
+  podiumSubCategories?: Category[];
   problemStatements?: Category[];
   industries?: Category[];
   action: (formData: FormData) => Promise<void>;
   product?: any;
+  isPodiumForm?: boolean;
 }
 
-export function ProductForm({ categories, problemStatements = [], industries = [], action, product }: ProductFormProps) {
+export function ProductForm({
+  categories,
+  podiumSubCategories = [],
+  problemStatements = [],
+  industries = [],
+  action,
+  product,
+  isPodiumForm = false,
+}: ProductFormProps) {
   const [features, setFeatures] = useState(
     product?.features?.length ? product.features : [{ id: 1, text: "" }]
   );
@@ -44,6 +54,7 @@ export function ProductForm({ categories, problemStatements = [], industries = [
 
   const mainImage = product?.images?.find((i: any) => i.isMain)?.url || "";
   const initialGalleryImages = product?.images?.filter((i: any) => !i.isMain).map((i: any) => i.url) || [];
+  const showPodiumSubCategory = isPodiumForm || product?.isPodium || podiumSubCategories.length > 0;
 
   return (
     <form action={action} className="space-y-8">
@@ -67,36 +78,73 @@ export function ProductForm({ categories, problemStatements = [], industries = [
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">SKU</label>
             <input type="text" name="sku" defaultValue={product?.sku || ""} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white text-sm" placeholder="e.g. CCP053" />
           </div>
+
+          {showPodiumSubCategory && (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Podium Sub-Category (Optional)
+                </label>
+                <select
+                  name="podiumSubCategoryId"
+                  defaultValue={product?.podiumSubCategoryId || ""}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white text-sm appearance-none"
+                >
+                  <option value="">— No Sub-Category —</option>
+                  {podiumSubCategories.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Or Create New Podium Sub-Category
+                </label>
+                <input
+                  type="text"
+                  name="newPodiumSubCategory"
+                  placeholder="Type new sub-category name to auto-create & assign"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white text-sm"
+                />
+              </div>
+            </>
+          )}
           
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Problem Statements (Optional)</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {problemStatements.map(ps => {
-                const isSelected = product?.problemStatements?.some((p: any) => p.id === ps.id);
-                return (
-                  <label key={ps.id} className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                    <input type="checkbox" name="problemStatements[]" value={ps.id} defaultChecked={isSelected} className="rounded text-[#0056b3] focus:ring-[#0056b3]" />
-                    <span className="text-sm text-slate-700">{ps.name}</span>
-                  </label>
-                )
-              })}
+          {problemStatements.length > 0 && (
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Problem Statements (Optional)</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {problemStatements.map(ps => {
+                  const isSelected = product?.problemStatements?.some((p: any) => p.id === ps.id);
+                  return (
+                    <label key={ps.id} className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                      <input type="checkbox" name="problemStatements[]" value={ps.id} defaultChecked={isSelected} className="rounded text-[#0056b3] focus:ring-[#0056b3]" />
+                      <span className="text-sm text-slate-700">{ps.name}</span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
           
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Industries (Optional)</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {industries.map(ind => {
-                const isSelected = product?.industries?.some((i: any) => i.id === ind.id);
-                return (
-                  <label key={ind.id} className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                    <input type="checkbox" name="industries[]" value={ind.id} defaultChecked={isSelected} className="rounded text-[#0056b3] focus:ring-[#0056b3]" />
-                    <span className="text-sm text-slate-700">{ind.name}</span>
-                  </label>
-                )
-              })}
+          {industries.length > 0 && (
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Industries (Optional)</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {industries.map(ind => {
+                  const isSelected = product?.industries?.some((i: any) => i.id === ind.id);
+                  return (
+                    <label key={ind.id} className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                      <input type="checkbox" name="industries[]" value={ind.id} defaultChecked={isSelected} className="rounded text-[#0056b3] focus:ring-[#0056b3]" />
+                      <span className="text-sm text-slate-700">{ind.name}</span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

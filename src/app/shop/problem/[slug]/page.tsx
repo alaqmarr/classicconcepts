@@ -5,12 +5,15 @@ import Link from "next/link";
 import { Filter, Search } from "lucide-react";
 import { notFound } from "next/navigation";
 
+export const revalidate = 60;
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
   const problemStatements = await prisma.problemStatement.findMany({
     select: { slug: true }
   });
   
-  return problemStatements.map((problemStatement: any) => ({
+  return problemStatements.map((problemStatement) => ({
     slug: problemStatement.slug,
   }));
 }
@@ -21,19 +24,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     where: { slug }
   });
 
-  if (!problemStatement) return { title: "ProblemStatement Not Found - Classic Concepts" };
+  if (!problemStatement) return { title: "Problem Statement Not Found - Classic Concepts" };
 
-  const title = `${problemStatement.name} - Shop at Classic Concepts`;
-  const description = `Browse our collection of premium acrylic ${problemStatement.name.toLowerCase()}.`;
+  const title = `${problemStatement.name} - Acrylic Solutions | Classic Concepts`;
+  const description = `Browse our collection of premium acrylic ${problemStatement.name.toLowerCase()} solutions by Classic Concepts.`;
   const mainImage = problemStatement.imageUrl || "/short-logo.png";
+  const canonicalUrl = `https://classicconcepts.in/shop/problem/${problemStatement.slug}`;
 
   return {
     title,
     description,
+    keywords: [problemStatement.name, "Classic Concepts", "Acrylic Solutions"],
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
-      url: `https://classicconcepts.in/shop/problem/${problemStatement.slug}`,
+      url: canonicalUrl,
       siteName: "Classic Concepts",
       images: [
         {
@@ -59,7 +67,7 @@ export default async function ProblemStatementShopPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
   const awaitedSearchParams = await searchParams;
@@ -82,7 +90,7 @@ export default async function ProblemStatementShopPage({
       images: { orderBy: { createdAt: 'asc' } },
       category: true,
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { name: 'asc' }
   });
 
   const allProblemStatements = await prisma.problemStatement.findMany({
@@ -151,7 +159,7 @@ export default async function ProblemStatementShopPage({
           {/* Top Bar (Search) */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-slate-600 text-sm font-medium">
-              Showing <span className="font-bold text-slate-900">{products.length}</span> products in {problemStatement.name}
+              Showing <span className="font-bold text-slate-900">{products.length}</span> products in {problemStatement.name} (Sorted A–Z)
             </p>
             
             <form className="relative w-full sm:w-72" method="GET" action={`/shop/problem/${problemStatement.slug}`}>
@@ -172,7 +180,7 @@ export default async function ProblemStatementShopPage({
           {products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map(product => (
-                <ProductCard key={product.id} product={product} phone={settings?.phone1} />
+                <ProductCard key={product.id} product={product} phone={settings?.whatsappNumber || "+917337222876"} />
               ))}
             </div>
           ) : (
@@ -182,7 +190,7 @@ export default async function ProblemStatementShopPage({
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">No products found</h3>
               <p className="text-slate-500 max-w-md mx-auto">
-                We couldn't find any products in this problemStatement matching your criteria.
+                We couldn&apos;t find any products in this problemStatement matching your criteria.
               </p>
               {searchQuery && (
                 <Link href={`/shop/problem/${problemStatement.slug}`} className="inline-block mt-6 bg-[#0056b3] text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 transition-colors">

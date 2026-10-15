@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Plus, Trash2, Edit, FileText, Link as LinkIcon, Video, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { isImageUrl } from "@/lib/media-utils";
+import { DeleteForm } from "@/components/admin/DeleteForm";
 
 async function deleteResource(formData: FormData) {
   "use server";
@@ -53,16 +54,21 @@ export default async function ResourcesPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {resources.map((res) => {
-              const hasValidThumbnail = res.thumbnailUrl && isImageUrl(res.thumbnailUrl);
+              const previewImage =
+                res.thumbnailUrl && isImageUrl(res.thumbnailUrl)
+                  ? res.thumbnailUrl
+                  : isImageUrl(res.fileUrl)
+                  ? res.fileUrl
+                  : null;
 
               return (
                 <tr key={res.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-4 px-6">
-                    {hasValidThumbnail ? (
+                    {previewImage ? (
                       <div className="w-14 h-14 relative rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-xs">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
-                          src={res.thumbnailUrl!} 
+                          src={previewImage} 
                           alt={res.title} 
                           className="w-full h-full object-cover" 
                           loading="lazy"
@@ -115,19 +121,16 @@ export default async function ResourcesPage() {
                       >
                         <Edit size={18} />
                       </Link>
-                      <form action={deleteResource}>
+                      <DeleteForm action={deleteResource} successMessage="Resource deleted!">
                         <input type="hidden" name="id" value={res.id} />
                         <button 
                           type="submit" 
                           className="p-2 text-slate-400 hover:text-red-500 transition-colors"
                           title="Delete resource"
-                          onClick={(e) => {
-                            if (!confirm('Are you sure you want to delete this resource?')) e.preventDefault();
-                          }}
                         >
                           <Trash2 size={18} />
                         </button>
-                      </form>
+                      </DeleteForm>
                     </div>
                   </td>
                 </tr>

@@ -15,11 +15,15 @@ interface ProductActionsProps {
   phone: string;
 }
 
-export function ProductActions({ product, phone }: ProductActionsProps) {
+export function ProductActions({ product, phone = "+917337222876" }: ProductActionsProps) {
   const { addToCart } = useCart();
 
   const handleEnquire = () => {
-    const cleanPhone = phone ? phone.replace(/[^\d+]/g, "") : "";
+    const rawPhone = phone || "+917337222876";
+    let cleanPhone = rawPhone.replace(/\D/g, "");
+    if (!cleanPhone.startsWith("91") && cleanPhone.length === 10) {
+      cleanPhone = "91" + cleanPhone;
+    }
     const text = encodeURIComponent(`Hi, I would like to enquire about the product: ${product.name} (SKU/Link: ${window.location.origin}/shop/p/${product.slug})`);
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank");
   };

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductCard } from "@/components/shop/ProductCard";
@@ -46,7 +47,7 @@ export default async function ShopPage({
       images: { orderBy: { createdAt: 'asc' } },
       category: true,
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { name: 'asc' }
   });
 
   const categories = await prisma.category.findMany({
@@ -106,7 +107,7 @@ export default async function ShopPage({
           {/* Top Bar (Search) */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-slate-600 text-sm font-medium">
-              Showing <span className="font-bold text-slate-900">{products.length}</span> products
+              Showing <span className="font-bold text-slate-900">{products.length}</span> products (Sorted A–Z)
             </p>
             
             <form className="relative w-full sm:w-72" method="GET" action="/shop">
@@ -127,7 +128,7 @@ export default async function ShopPage({
           {products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map(product => (
-                <ProductCard key={product.id} product={product} phone={settings?.phone1} />
+                <ProductCard key={product.id} product={product} phone={settings?.whatsappNumber || "+917337222876"} />
               ))}
             </div>
           ) : (
@@ -137,7 +138,7 @@ export default async function ShopPage({
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">No products found</h3>
               <p className="text-slate-500 max-w-md mx-auto">
-                We couldn't find any products matching your criteria. Please try a different search term or browse all categories.
+                We couldn&apos;t find any products matching your criteria. Please try a different search term or browse all categories.
               </p>
               <Link href="/shop" className="inline-block mt-6 bg-[#0056b3] text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 transition-colors">
                 Clear Search

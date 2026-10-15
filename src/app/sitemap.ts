@@ -1,13 +1,16 @@
 import { MetadataRoute } from 'next';
 import { prisma } from '@/lib/db';
 
+export const revalidate = 60;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://classicconcepts.in';
 
   // Fetch dynamic routes
-  const [products, categories, industries, problems] = await Promise.all([
+  const [products, categories, podiumSubCategories, industries, problems] = await Promise.all([
     prisma.product.findMany({ select: { slug: true, updatedAt: true } }),
     prisma.category.findMany({ select: { slug: true, updatedAt: true } }),
+    prisma.podiumSubCategory.findMany({ select: { slug: true, updatedAt: true } }),
     prisma.industry.findMany({ select: { slug: true, updatedAt: true } }),
     prisma.problemStatement.findMany({ select: { slug: true, updatedAt: true } })
   ]);
@@ -16,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${baseUrl}/shop/p/${product.slug}`,
     lastModified: product.updatedAt,
     changeFrequency: 'weekly' as const,
-    priority: 0.8,
+    priority: 0.85,
   }));
 
   const categoryUrls = categories.map((category) => ({
@@ -24,6 +27,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: category.updatedAt,
     changeFrequency: 'weekly' as const,
     priority: 0.9,
+  }));
+
+  const podiumSubUrls = podiumSubCategories.map((sub) => ({
+    url: `${baseUrl}/podiums?sub=${sub.slug}`,
+    lastModified: sub.updatedAt,
+    changeFrequency: 'weekly' as const,
+    priority: 0.85,
   }));
 
   const industryUrls = industries.map((industry) => ({
@@ -44,11 +54,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     '',
     '/about',
+    '/about/story',
+    '/about/team',
     '/about/infrastructure',
     '/about/press',
     '/about/clients',
     '/about/certificates',
     '/shop',
+    '/shop/c',
     '/podiums',
     '/resources',
     '/contact',
@@ -59,5 +72,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === '' ? 1.0 : 0.8,
   }));
 
-  return [...staticRoutes, ...categoryUrls, ...productUrls, ...industryUrls, ...problemUrls];
+  return [
+    ...staticRoutes,
+    ...categoryUrls,
+    ...podiumSubUrls,
+    ...productUrls,
+    ...industryUrls,
+    ...problemUrls,
+  ];
 }

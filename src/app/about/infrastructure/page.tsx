@@ -32,6 +32,14 @@ export default async function OurInfrastructurePage() {
 
       <div className="container mx-auto px-6 py-12 space-y-16">
         
+        {/* Our Manufacturing Process */}
+        <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 rounded-3xl p-8 md:p-10 border border-slate-200/80 shadow-xs space-y-4">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800">Our Manufacturing Process</h2>
+          <p className="text-slate-600 text-base md:text-lg leading-relaxed">
+            With over two decades of experience, Classic Concepts is a market leader in acrylic manufacturing. Our 16,000 sq. ft. factory combines advanced technology with a highly qualified team of engineers to design and craft podiums and other acrylic products. Every product is made with meticulous attention to detail, delivering durability, ease of handling and an elegant finish—all at competitive prices.
+          </p>
+        </div>
+
         {/* Business Model and Initial Approach */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div className="space-y-4">

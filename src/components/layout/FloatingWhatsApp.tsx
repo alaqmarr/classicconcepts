@@ -1,10 +1,10 @@
 import Link from 'next/link';
 
-export function FloatingWhatsApp({ phoneNumber }: { phoneNumber?: string | null }) {
-  if (!phoneNumber) return null;
+export function FloatingWhatsApp({ phoneNumber = "+917337222876" }: { phoneNumber?: string | null }) {
+  const activePhone = phoneNumber || "+917337222876";
   
   // Format phone number for WhatsApp URL (remove spaces, plus, etc.)
-  let formattedNumber = phoneNumber.replace(/\D/g, '');
+  let formattedNumber = activePhone.replace(/\D/g, '');
   if (!formattedNumber.startsWith('91') && formattedNumber.length === 10) {
       formattedNumber = '91' + formattedNumber;
   }

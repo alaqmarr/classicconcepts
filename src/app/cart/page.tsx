@@ -2,15 +2,31 @@
 
 import { useCart } from "@/context/CartContext";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Trash2, ShoppingCart, ArrowRight, Minus, Plus } from "lucide-react";
+import { Trash2, ShoppingCart, ArrowRight, Minus, Plus, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
+  const { cartItems, addToCart, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+
+  useEffect(() => {
+    const excludeSlugs = cartItems.map((i) => i.slug).join(",");
+    setLoadingSuggestions(true);
+    fetch(`/api/products/suggestions?exclude=${encodeURIComponent(excludeSlugs)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.products) {
+          setSuggestions(data.products);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSuggestions(false));
+  }, [cartItems]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -66,14 +82,14 @@ export default function CartPage() {
         }
       />
 
-      <section className="py-12 container mx-auto px-6 relative z-20">
+      <section className="py-12 container mx-auto px-6 relative z-20 space-y-12">
         {cartItems.length === 0 ? (
           <div className="bg-white rounded-3xl p-16 shadow-sm border border-slate-200 text-center max-w-2xl mx-auto">
             <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400">
               <ShoppingCart size={40} />
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Your cart is empty</h2>
-            <p className="text-slate-500 mb-8">Looks like you haven't added any products to your cart yet.</p>
+            <p className="text-slate-500 mb-8">Looks like you haven&apos;t added any products to your cart yet.</p>
             <Link href="/shop" className="inline-flex items-center gap-2 bg-[#0056b3] text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-800 transition-colors shadow-lg hover:shadow-xl">
               Continue Shopping <ArrowRight size={20} />
             </Link>
@@ -81,7 +97,7 @@ export default function CartPage() {
         ) : (
           <div className="flex flex-col lg:flex-row gap-10">
             {/* Cart Items List */}
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-8">
               <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-6 md:p-8 space-y-8">
                   {cartItems.map(item => (
@@ -180,6 +196,98 @@ export default function CartPage() {
                   </p>
                 </form>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Related & Suggested Products Section */}
+        {!loadingSuggestions && suggestions.length > 0 && (
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                  <Sparkles className="text-[#0056b3]" size={22} />
+                  Suggested Related Products
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Customers also explore these popular acrylic products &amp; podiums
+                </p>
+              </div>
+              <Link
+                href="/shop"
+                className="text-sm font-bold text-[#0056b3] hover:underline flex items-center gap-1"
+              >
+                Browse All Products <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {suggestions.slice(0, 4).map((product) => {
+                const mainImg =
+                  product.images?.find((img: any) => img.isMain)?.url ||
+                  product.images?.[0]?.url ||
+                  "https://placehold.co/600x600/f8fafc/0f172a?text=No+Image";
+                const effectivePrice = product.discountPrice || product.basePrice || null;
+
+                return (
+                  <div
+                    key={product.id}
+                    className="group bg-slate-50/70 rounded-2xl border border-slate-200/80 overflow-hidden flex flex-col hover:shadow-md hover:border-blue-300 transition-all"
+                  >
+                    <Link
+                      href={`/shop/p/${product.slug}`}
+                      className="relative aspect-square w-full bg-white overflow-hidden block"
+                    >
+                      <Image
+                        src={mainImg}
+                        alt={product.name}
+                        fill
+                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </Link>
+                    <div className="p-4 flex flex-col flex-grow">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        {product.category?.name || "Acrylic Product"}
+                      </span>
+                      <Link
+                        href={`/shop/p/${product.slug}`}
+                        className="font-bold text-slate-800 hover:text-[#0056b3] transition-colors line-clamp-2 text-sm mb-2"
+                      >
+                        {product.name}
+                      </Link>
+                      <div className="mt-auto pt-3 border-t border-slate-200/60 flex items-center justify-between gap-2">
+                        <div>
+                          {effectivePrice ? (
+                            <span className="font-extrabold text-[#0056b3] text-base">
+                              ₹{effectivePrice.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold text-slate-500">
+                              Price on Request
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            addToCart({
+                              id: product.id,
+                              name: product.name,
+                              slug: product.slug,
+                              price: effectivePrice,
+                              image: mainImg,
+                            })
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#0056b3] text-white text-xs font-bold hover:bg-blue-800 transition-colors shadow-sm"
+                        >
+                          <Plus size={14} />
+                          Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

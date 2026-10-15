@@ -5,12 +5,15 @@ import Link from "next/link";
 import { Filter, Search } from "lucide-react";
 import { notFound } from "next/navigation";
 
+export const revalidate = 60;
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
   const industries = await prisma.industry.findMany({
     select: { slug: true }
   });
   
-  return industries.map((industry: any) => ({
+  return industries.map((industry) => ({
     slug: industry.slug,
   }));
 }
@@ -23,17 +26,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   if (!industry) return { title: "Industry Not Found - Classic Concepts" };
 
-  const title = `${industry.name} - Shop at Classic Concepts`;
-  const description = `Browse our collection of premium acrylic ${industry.name.toLowerCase()}.`;
+  const title = `${industry.name} Acrylic Solutions - Shop at Classic Concepts`;
+  const description = `Browse our collection of premium acrylic products and podiums for ${industry.name.toLowerCase()} by Classic Concepts.`;
   const mainImage = industry.imageUrl || "/short-logo.png";
+  const canonicalUrl = `https://classicconcepts.in/shop/industry/${industry.slug}`;
 
   return {
     title,
     description,
+    keywords: [industry.name, `Acrylic for ${industry.name}`, "Classic Concepts"],
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
-      url: `https://classicconcepts.in/shop/industry/${industry.slug}`,
+      url: canonicalUrl,
       siteName: "Classic Concepts",
       images: [
         {
@@ -59,7 +67,7 @@ export default async function IndustryShopPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
   const awaitedSearchParams = await searchParams;
@@ -82,7 +90,7 @@ export default async function IndustryShopPage({
       images: { orderBy: { createdAt: 'asc' } },
       category: true,
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { name: 'asc' }
   });
 
   const allIndustries = await prisma.industry.findMany({
@@ -151,7 +159,7 @@ export default async function IndustryShopPage({
           {/* Top Bar (Search) */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-slate-600 text-sm font-medium">
-              Showing <span className="font-bold text-slate-900">{products.length}</span> products in {industry.name}
+              Showing <span className="font-bold text-slate-900">{products.length}</span> products in {industry.name} (Sorted A–Z)
             </p>
             
             <form className="relative w-full sm:w-72" method="GET" action={`/shop/industry/${industry.slug}`}>
@@ -172,7 +180,7 @@ export default async function IndustryShopPage({
           {products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map(product => (
-                <ProductCard key={product.id} product={product} phone={settings?.phone1} />
+                <ProductCard key={product.id} product={product} phone={settings?.whatsappNumber || "+917337222876"} />
               ))}
             </div>
           ) : (
@@ -182,7 +190,7 @@ export default async function IndustryShopPage({
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">No products found</h3>
               <p className="text-slate-500 max-w-md mx-auto">
-                We couldn't find any products in this industry matching your criteria.
+                We couldn&apos;t find any products in this industry matching your criteria.
               </p>
               {searchQuery && (
                 <Link href={`/shop/industry/${industry.slug}`} className="inline-block mt-6 bg-[#0056b3] text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 transition-colors">

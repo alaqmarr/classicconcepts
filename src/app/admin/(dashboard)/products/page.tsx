@@ -8,15 +8,19 @@ import { ProductListTable } from "@/components/admin/ProductListTable";
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
     where: { isPodium: false },
-    orderBy: { createdAt: 'desc' },
-    include: { category: true }
+    orderBy: { name: 'asc' },
+    include: { category: true, podiumSubCategory: true }
   });
 
   async function deleteProduct(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
     await prisma.product.delete({ where: { id } });
+    revalidatePath("/", "layout");
+    revalidatePath("/shop");
+    revalidatePath("/podiums");
     revalidatePath("/admin/products");
+    revalidatePath("/admin/podiums");
   }
 
   return (
@@ -27,7 +31,7 @@ export default async function AdminProductsPage() {
             <Package className="text-[#0056b3]" />
             Products
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Manage your standard inventory</p>
+          <p className="text-sm text-slate-500 mt-1">Manage your standard inventory (Sorted A–Z)</p>
         </div>
         <div className="flex items-center gap-3">
           <Link 

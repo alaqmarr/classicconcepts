@@ -2,9 +2,13 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Edit2, Trash2, CheckSquare, Square, Layers, Search, Loader2, ArrowRightLeft } from "lucide-react";
+import { Edit2, Trash2, CheckSquare, Square, Layers, Search, Loader2, ArrowRightLeft, FolderTree } from "lucide-react";
 import { DeleteForm } from "@/components/admin/DeleteForm";
-import { bulkSetPodiumStatus, bulkDeleteProducts } from "@/app/admin/(dashboard)/products/bulk-actions";
+import {
+  bulkSetPodiumStatus,
+  bulkSetPodiumSubCategory,
+  bulkDeleteProducts,
+} from "@/app/admin/(dashboard)/products/bulk-actions";
 import toast from "react-hot-toast";
 
 interface ProductItem {
@@ -16,26 +20,52 @@ interface ProductItem {
   category: {
     name: string;
   };
+  podiumSubCategory?: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+interface SubCategoryOption {
+  id: string;
+  name: string;
 }
 
 interface ProductListTableProps {
   products: ProductItem[];
   deleteAction: (formData: FormData) => Promise<void>;
   currentType: "products" | "podiums";
+  podiumSubCategories?: SubCategoryOption[];
 }
 
-export function ProductListTable({ products, deleteAction, currentType }: ProductListTableProps) {
+export function ProductListTable({
+  products,
+  deleteAction,
+  currentType,
+  podiumSubCategories = [],
+}: ProductListTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterSubCatId, setFilterSubCatId] = useState("");
+  const [targetSubCatId, setTargetSubCatId] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const filteredProducts = products.filter((p) => {
     const q = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
       p.name.toLowerCase().includes(q) ||
       (p.sku && p.sku.toLowerCase().includes(q)) ||
-      p.category.name.toLowerCase().includes(q)
-    );
+      p.category.name.toLowerCase().includes(q) ||
+      (p.podiumSubCategory && p.podiumSubCategory.name.toLowerCase().includes(q));
+
+    if (!matchesSearch) return false;
+    if (filterSubCatId === "unassigned") {
+      return !p.podiumSubCategory;
+    }
+    if (filterSubCatId) {
+      return p.podiumSubCategory?.id === filterSubCatId;
+    }
+    return true;
   });
 
   const isAllSelected =
@@ -71,6 +101,25 @@ export function ProductListTable({ products, deleteAction, currentType }: Produc
     });
   };
 
+  const handleBulkAssignSubCategory = () => {
+    if (selectedIds.length === 0) return;
+
+    startTransition(async () => {
+      try {
+        const subId = targetSubCatId === "__none__" ? null : targetSubCatId;
+        if (!targetSubCatId) {
+          toast.error("Please select a sub-category first");
+          return;
+        }
+        const res = await bulkSetPodiumSubCategory(selectedIds, subId);
+        toast.success(`Updated sub-category for ${res.count} podiums!`);
+        setSelectedIds([]);
+      } catch (err: any) {
+        toast.error(`Failed to update sub-category: ${err.message}`);
+      }
+    });
+  };
+
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
     if (!confirm(`Are you sure you want to permanently delete ${selectedIds.length} items?`)) {
@@ -90,17 +139,35 @@ export function ProductListTable({ products, deleteAction, currentType }: Produc
 
   return (
     <div className="space-y-4">
-      {/* Top Bar with Search & Quick Selection summary */}
+      {/* Top Bar with Search, Filter & Quick Selection summary */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search ${currentType}...`}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0056b3]"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search ${currentType} (A-Z)...`}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0056b3]"
+            />
+          </div>
+
+          {currentType === "podiums" && podiumSubCategories.length > 0 && (
+            <select
+              value={filterSubCatId}
+              onChange={(e) => setFilterSubCatId(e.target.value)}
+              className="w-full sm:w-56 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0056b3]"
+            >
+              <option value="">All Sub-Categories</option>
+              <option value="unassigned">Unassigned Only</option>
+              {podiumSubCategories.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
@@ -126,11 +193,38 @@ export function ProductListTable({ products, deleteAction, currentType }: Produc
               {selectedIds.length} Selected
             </span>
             <span className="text-xs text-white/80 hidden sm:inline">
-              Choose bulk action to apply:
+              Choose bulk action:
             </span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {currentType === "podiums" && podiumSubCategories.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-lg border border-white/15">
+                <select
+                  value={targetSubCatId}
+                  onChange={(e) => setTargetSubCatId(e.target.value)}
+                  className="bg-slate-900 text-white text-xs px-2.5 py-1.5 rounded-md border border-white/10 focus:outline-none"
+                >
+                  <option value="">Select Sub-Category...</option>
+                  {podiumSubCategories.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
+                  <option value="__none__">-- Remove Sub-Category --</option>
+                </select>
+                <button
+                  type="button"
+                  disabled={isPending || !targetSubCatId}
+                  onClick={handleBulkAssignSubCategory}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-xs font-bold transition-colors disabled:opacity-50"
+                >
+                  <FolderTree size={13} />
+                  Assign
+                </button>
+              </div>
+            )}
+
             {currentType === "products" ? (
               <button
                 type="button"
@@ -189,8 +283,8 @@ export function ProductListTable({ products, deleteAction, currentType }: Produc
                     {isAllSelected ? <CheckSquare size={16} className="text-[#0056b3]" /> : <Square size={16} />}
                   </button>
                 </th>
-                <th className="p-4">{currentType === "podiums" ? "Podium Name" : "Product Name"}</th>
-                <th className="p-4">Category</th>
+                <th className="p-4">{currentType === "podiums" ? "Podium Name (A-Z)" : "Product Name (A-Z)"}</th>
+                <th className="p-4">{currentType === "podiums" ? "Category / Sub-Category" : "Category"}</th>
                 <th className="p-4">SKU / Price</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
@@ -229,7 +323,12 @@ export function ProductListTable({ products, deleteAction, currentType }: Produc
                       </div>
                     </td>
                     <td className="p-4 text-slate-500 text-sm">
-                      {product.category?.name || "Uncategorized"}
+                      <div>{product.category?.name || "Uncategorized"}</div>
+                      {product.podiumSubCategory && (
+                        <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#0056b3] border border-blue-200/60">
+                          {product.podiumSubCategory.name}
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 text-slate-500 text-sm">
                       <div>{product.sku || "No SKU"}</div>

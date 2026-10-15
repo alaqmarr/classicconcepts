@@ -62,9 +62,11 @@ model Product {
   descriptionHtml   String?  // HTML description for Description Tab
   importantNoteHtml String?  // HTML description for Important Note Tab
 
-  categoryId        String
-  category          Category @relation(fields: [categoryId], references: [id])
-  isPodium          Boolean  @default(false)
+  categoryId          String
+  category            Category           @relation(fields: [categoryId], references: [id])
+  isPodium            Boolean            @default(false)
+  podiumSubCategoryId String?
+  podiumSubCategory   PodiumSubCategory? @relation(fields: [podiumSubCategoryId], references: [id], onDelete: SetNull)
 
   // Advanced Relations
   images            ProductImage[]
@@ -144,15 +146,16 @@ model OnlinePlatform {
 }
 
 model SiteSetting {
-  id        String   @id @default("default") // Singleton
-  address   String
-  phone1        String
-  phone2        String?
-  email         String
-  email2        String?
-  businessHours String?
-  upiId         String?
-  upiName       String?
+  id             String   @id @default("default") // Singleton
+  address        String
+  phone1         String
+  phone2         String?
+  whatsappNumber String?  @default("+917337222876")
+  email          String
+  email2         String?
+  businessHours  String?
+  upiId          String?
+  upiName        String?
 
   // Dynamic About Page Media
   aboutIntroImage String?
@@ -286,4 +289,31 @@ model PageVisit {
   visits    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model PodiumSubCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  name        String
+  position    String
+  photoUrl    String?
+  phone       String?
+  whatsapp    String?
+  email       String?
+  bio         String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

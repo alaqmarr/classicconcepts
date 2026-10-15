@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Plus, Trash2, Edit, FileText, ExternalLink, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { isPdfUrl } from "@/lib/media-utils";
+import { DeleteForm } from "@/components/admin/DeleteForm";
 
 async function deleteCertificate(formData: FormData) {
   "use server";
@@ -28,7 +29,7 @@ export default async function CertificatesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Certificates & Awards</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Certificates &amp; Awards</h1>
           <p className="text-sm text-slate-500">Manage company certifications, ISO awards, and PDF documents</p>
         </div>
         <Link 
@@ -109,19 +110,16 @@ export default async function CertificatesPage() {
                       >
                         <Edit size={18} />
                       </Link>
-                      <form action={deleteCertificate}>
+                      <DeleteForm action={deleteCertificate} successMessage="Certificate deleted!">
                         <input type="hidden" name="id" value={cert.id} />
                         <button 
                           type="submit" 
                           className="p-2 text-slate-400 hover:text-red-500 transition-colors"
                           title="Delete certificate"
-                          onClick={(e) => {
-                            if (!confirm('Are you sure you want to delete this certificate?')) e.preventDefault();
-                          }}
                         >
                           <Trash2 size={18} />
                         </button>
-                      </form>
+                      </DeleteForm>
                     </div>
                   </td>
                 </tr>
