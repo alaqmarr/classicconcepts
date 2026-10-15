@@ -130,6 +130,7 @@ async function updateProduct(id: string, formData: FormData) {
 
   revalidatePath("/", "layout");
   revalidatePath("/podiums");
+  revalidatePath("/podiums/[slug]", "page");
   revalidatePath("/shop");
   revalidatePath(`/shop/p/${updated.slug}`);
   revalidatePath("/admin/podiums");

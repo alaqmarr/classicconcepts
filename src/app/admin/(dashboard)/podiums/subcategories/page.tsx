@@ -32,6 +32,8 @@ export default async function AdminPodiumSubCategoriesPage() {
 
     revalidatePath("/", "layout");
     revalidatePath("/podiums");
+    revalidatePath(`/podiums/${slug}`);
+    revalidatePath("/podiums/[slug]", "page");
     revalidatePath("/admin/podiums");
     revalidatePath("/admin/podiums/subcategories");
   }
@@ -47,6 +49,7 @@ export default async function AdminPodiumSubCategoriesPage() {
 
     revalidatePath("/", "layout");
     revalidatePath("/podiums");
+    revalidatePath("/podiums/[slug]", "page");
     revalidatePath("/admin/podiums");
     revalidatePath("/admin/podiums/subcategories");
   }

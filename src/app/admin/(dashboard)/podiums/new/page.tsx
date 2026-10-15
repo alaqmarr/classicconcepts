@@ -128,6 +128,7 @@ export default async function NewPodiumPage() {
 
     revalidatePath("/", "layout");
     revalidatePath("/podiums");
+    revalidatePath("/podiums/[slug]", "page");
     revalidatePath("/shop");
     revalidatePath(`/shop/p/${product.slug}`);
     revalidatePath("/admin/podiums");

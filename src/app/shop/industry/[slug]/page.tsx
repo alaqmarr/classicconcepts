@@ -1,21 +1,25 @@
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ProductCard } from "@/components/shop/ProductCard";
+import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
 import Link from "next/link";
-import { Filter, Search } from "lucide-react";
+import { Filter } from "lucide-react";
 import { notFound } from "next/navigation";
 
 export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const industries = await prisma.industry.findMany({
-    select: { slug: true }
-  });
-  
-  return industries.map((industry) => ({
-    slug: industry.slug,
-  }));
+  try {
+    const industries = await prisma.industry.findMany({
+      select: { slug: true }
+    });
+    
+    return industries.map((industry) => ({
+      slug: industry.slug,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -64,14 +68,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function IndustryShopPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
-  const awaitedSearchParams = await searchParams;
-  const searchQuery = typeof awaitedSearchParams.q === 'string' ? awaitedSearchParams.q : undefined;
 
   const industry = await prisma.industry.findUnique({
     where: { slug }
@@ -81,24 +81,23 @@ export default async function IndustryShopPage({
     notFound();
   }
 
-  const products = await prisma.product.findMany({
-    where: {
-      industries: { some: { id: industry.id } },
-      ...(searchQuery ? { name: { contains: searchQuery } } : {})
-    },
-    include: {
-      images: { orderBy: { createdAt: 'asc' } },
-      category: true,
-    },
-    orderBy: { name: 'asc' }
-  });
-
-  const allIndustries = await prisma.industry.findMany({
-    orderBy: { name: 'asc' }
-  });
-
-  const totalProductsOverall = await prisma.product.count();
-  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
+  const [products, allIndustries, totalProductsOverall, settings] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        industries: { some: { id: industry.id } },
+      },
+      include: {
+        images: { orderBy: { createdAt: 'asc' } },
+        category: true,
+      },
+      orderBy: { name: 'asc' }
+    }),
+    prisma.industry.findMany({
+      orderBy: { name: 'asc' }
+    }),
+    prisma.product.count(),
+    prisma.siteSetting.findUnique({ where: { id: "default" } }),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">
@@ -154,52 +153,15 @@ export default async function IndustryShopPage({
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 space-y-6">
-          
-          {/* Top Bar (Search) */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-slate-600 text-sm font-medium">
-              Showing <span className="font-bold text-slate-900">{products.length}</span> products in {industry.name} (Sorted A–Z)
-            </p>
-            
-            <form className="relative w-full sm:w-72" method="GET" action={`/shop/industry/${industry.slug}`}>
-              <input 
-                type="text" 
-                name="q"
-                defaultValue={searchQuery}
-                placeholder={`Search in ${industry.name}...`} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-full py-2 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:border-transparent transition-all"
-              />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#0056b3]">
-                <Search size={18} />
-              </button>
-            </form>
-          </div>
-
-          {/* Product Grid */}
-          {products.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map(product => (
-                <ProductCard key={product.id} product={product} phone={settings?.whatsappNumber || "+917337222876"} />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-200">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                <Search size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">No products found</h3>
-              <p className="text-slate-500 max-w-md mx-auto">
-                We couldn&apos;t find any products in this industry matching your criteria.
-              </p>
-              {searchQuery && (
-                <Link href={`/shop/industry/${industry.slug}`} className="inline-block mt-6 bg-[#0056b3] text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 transition-colors">
-                  Clear Search
-                </Link>
-              )}
-            </div>
-          )}
-
+        <div className="flex-1">
+          <ProductGridWithSearch
+            products={products}
+            phone={settings?.whatsappNumber || "+917337222876"}
+            contextLabel={industry.name}
+            itemLabel="products"
+            clearHref="/shop"
+            clearText="Browse All Products"
+          />
         </div>
       </section>
     </main>

@@ -1,21 +1,25 @@
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ProductCard } from "@/components/shop/ProductCard";
+import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
 import Link from "next/link";
-import { Filter, Layers, Search } from "lucide-react";
+import { Layers } from "lucide-react";
 import { notFound } from "next/navigation";
 
 export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const subCategories = await prisma.podiumSubCategory.findMany({
-    select: { slug: true },
-  });
+  try {
+    const subCategories = await prisma.podiumSubCategory.findMany({
+      select: { slug: true },
+    });
 
-  return subCategories.map((sub) => ({
-    slug: sub.slug,
-  }));
+    return subCategories.map((sub) => ({
+      slug: sub.slug,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -72,14 +76,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function PodiumSubCategoryPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
-  const resolvedParams = await searchParams;
-  const searchQuery = typeof resolvedParams.q === "string" ? resolvedParams.q : undefined;
 
   const subCategory = await prisma.podiumSubCategory.findUnique({
     where: { slug },
@@ -103,7 +103,6 @@ export default async function PodiumSubCategoryPage({
       where: {
         isPodium: true,
         podiumSubCategoryId: subCategory.id,
-        ...(searchQuery ? { name: { contains: searchQuery } } : {}),
       },
       include: {
         images: { orderBy: { createdAt: "asc" } },
@@ -248,55 +247,14 @@ export default async function PodiumSubCategoryPage({
             </div>
           )}
 
-          {/* Top Bar (Search) */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-slate-600 text-sm font-medium">
-              Showing <span className="font-bold text-slate-900">{products.length}</span> podiums in{" "}
-              <span className="font-bold text-[#0056b3]">{subCategory.name}</span> (Sorted A–Z)
-            </p>
-
-            <form className="relative w-full sm:w-72" method="GET" action={`/podiums/${subCategory.slug}`}>
-              <input
-                type="text"
-                name="q"
-                defaultValue={searchQuery}
-                placeholder={`Search in ${subCategory.name}...`}
-                className="w-full bg-slate-50 border border-slate-200 rounded-full py-2 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:border-transparent transition-all"
-              />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#0056b3]">
-                <Search size={18} />
-              </button>
-            </form>
-          </div>
-
-          {/* Product Grid */}
-          {products.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  phone={settings?.whatsappNumber || "+917337222876"}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-200">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                <Search size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">No podiums found</h3>
-              <p className="text-slate-500 max-w-md mx-auto">
-                We couldn&apos;t find any podiums in {subCategory.name} matching your criteria.
-              </p>
-              <Link
-                href="/podiums"
-                className="inline-block mt-6 bg-[#0056b3] text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-800 transition-colors"
-              >
-                View All Podiums
-              </Link>
-            </div>
-          )}
+          <ProductGridWithSearch
+            products={products}
+            phone={settings?.whatsappNumber || "+917337222876"}
+            contextLabel={subCategory.name}
+            itemLabel="podiums"
+            clearHref="/podiums"
+            clearText="View All Podiums"
+          />
         </div>
       </section>
     </main>

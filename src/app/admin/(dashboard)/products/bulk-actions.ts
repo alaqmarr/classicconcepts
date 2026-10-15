@@ -15,6 +15,7 @@ export async function bulkSetPodiumStatus(ids: string[], isPodium: boolean) {
   revalidatePath("/admin/products");
   revalidatePath("/admin/podiums");
   revalidatePath("/podiums");
+  revalidatePath("/podiums/[slug]", "page");
   revalidatePath("/shop");
 
   return { count: result.count };
@@ -34,6 +35,7 @@ export async function bulkSetPodiumSubCategory(
   revalidatePath("/", "layout");
   revalidatePath("/admin/podiums");
   revalidatePath("/podiums");
+  revalidatePath("/podiums/[slug]", "page");
   revalidatePath("/shop");
 
   return { count: result.count };
@@ -50,6 +52,7 @@ export async function bulkDeleteProducts(ids: string[]) {
   revalidatePath("/admin/products");
   revalidatePath("/admin/podiums");
   revalidatePath("/podiums");
+  revalidatePath("/podiums/[slug]", "page");
   revalidatePath("/shop");
 
   return { count: result.count };
