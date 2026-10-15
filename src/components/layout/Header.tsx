@@ -243,15 +243,23 @@ export function Header({
                 <div className="absolute top-full left-0 mt-0 w-64 max-h-[70vh] overflow-y-auto bg-[#0a0f1c]/95 backdrop-blur-sm border border-white/10 shadow-soft rounded-xl flex flex-col py-2 z-50">
                   <Link
                     href="/podiums"
-                    className="px-5 py-2.5 text-sm font-bold border-b border-white/10 text-white hover:bg-white/5 hover:pl-6 transition-all duration-200"
+                    className={`px-5 py-2.5 text-sm font-bold border-b border-white/10 hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${
+                      pathname === "/podiums"
+                        ? "text-blue-400 bg-white/5 pl-6"
+                        : "text-white"
+                    }`}
                   >
                     All Acrylic Podiums
                   </Link>
                   {podiumSubCategories.map((sub) => (
                     <Link
                       key={sub.id}
-                      href={`/podiums?sub=${sub.slug}`}
-                      className="px-5 py-2.5 text-sm font-semibold normal-case text-white/75 hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200"
+                      href={`/podiums/${sub.slug}`}
+                      className={`px-5 py-2.5 text-sm font-semibold normal-case hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${
+                        pathname === `/podiums/${sub.slug}`
+                          ? "text-white bg-white/5 pl-6"
+                          : "text-white/75"
+                      }`}
                     >
                       {sub.name}
                     </Link>
@@ -522,7 +530,7 @@ export function Header({
                   {podiumSubCategories.map((sub) => (
                     <Link
                       key={sub.id}
-                      href={`/podiums?sub=${sub.slug}`}
+                      href={`/podiums/${sub.slug}`}
                       onClick={() => setIsOpen(false)}
                       className="text-white/75 hover:text-white"
                     >

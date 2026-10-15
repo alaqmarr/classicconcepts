@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const podiumSubUrls = podiumSubCategories.map((sub) => ({
-    url: `${baseUrl}/podiums?sub=${sub.slug}`,
+    url: `${baseUrl}/podiums/${sub.slug}`,
     lastModified: sub.updatedAt,
     changeFrequency: 'weekly' as const,
     priority: 0.85,

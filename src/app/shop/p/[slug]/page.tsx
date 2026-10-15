@@ -206,7 +206,7 @@ export default async function ProductDetailPage({
             </Link>
             {product.podiumSubCategory && (
               <Link
-                href={`/podiums?sub=${product.podiumSubCategory.slug}`}
+                href={`/podiums/${product.podiumSubCategory.slug}`}
                 className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold hover:bg-blue-500/30 transition-colors"
               >
                 {product.podiumSubCategory.name}

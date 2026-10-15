@@ -141,7 +141,7 @@ export default async function PodiumsPage({
                     return (
                       <li key={sub.id}>
                         <Link
-                          href={`/podiums?sub=${sub.slug}`}
+                          href={`/podiums/${sub.slug}`}
                           className={`${isActive ? "text-[#0056b3] font-bold bg-blue-50/70" : "text-slate-600 hover:text-[#0056b3] font-medium"} px-3 py-2 rounded-xl text-sm flex items-center justify-between transition-colors`}
                         >
                           <span>{sub.name}</span>
@@ -203,7 +203,7 @@ export default async function PodiumsPage({
               {subCategories.map((sub) => (
                 <Link
                   key={sub.id}
-                  href={`/podiums?sub=${sub.slug}`}
+                  href={`/podiums/${sub.slug}`}
                   className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
                     sub.slug === subSlug
                       ? "bg-[#0056b3] text-white shadow-sm"
