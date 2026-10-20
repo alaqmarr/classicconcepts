@@ -174,12 +174,12 @@ export function ProductForm({
         <h2 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-2">Media & Descriptions</h2>
         <div>
            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Main Image</label>
-           <ImageUploader name="mainImage" defaultValue={mainImage} />
+           <ImageUploader name="mainImage" defaultValue={mainImage} aspectRatio={1} aspectLabel="1:1 Square (Product Image)" />
         </div>
         
         <div className="pt-4 border-t border-slate-100">
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">Additional Gallery Images</label>
-          <MultiImageUploader name="galleryImages[]" defaultValues={initialGalleryImages} />
+          <MultiImageUploader name="galleryImages[]" defaultValues={initialGalleryImages} aspectRatio={1} aspectLabel="1:1 Square (Product Gallery)" />
         </div>
         <div>
            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">YouTube Video URL</label>
@@ -262,11 +262,11 @@ export function ProductForm({
             </div>
             <div>
                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Variant Main Image</label>
-               <ImageUploader name={`variantImage_${index}`} defaultValue={v.imageUrl || ""} />
+               <ImageUploader name={`variantImage_${index}`} defaultValue={v.imageUrl || ""} aspectRatio={1} aspectLabel="1:1 Square (Variant Image)" />
             </div>
             <div className="pt-2 border-t border-slate-200">
                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Additional Images for this Variant (Optional)</label>
-               <MultiImageUploader name={`variantGallery_${index}[]`} defaultValues={v.images || []} />
+               <MultiImageUploader name={`variantGallery_${index}[]`} defaultValues={v.images || []} aspectRatio={1} aspectLabel="1:1 Square (Variant Gallery)" />
             </div>
           </div>
         ))}

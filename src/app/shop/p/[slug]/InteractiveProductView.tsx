@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Package } from "lucide-react";
+import { Package, PlayCircle } from "lucide-react";
 import { ProductGallery } from "./ProductGallery";
 import { ProductActions } from "./ProductActions";
+import { getYouTubeEmbedUrl } from "@/lib/youtube";
 
 interface Variant {
   id: string;
@@ -24,6 +25,7 @@ interface Product {
   discountPrice?: number | null;
   discountBadge?: string | null;
   stockStatus: string;
+  videoUrl?: string | null;
   description?: string | null;
   category: {
     name: string;
@@ -61,14 +63,34 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-      {/* Left Column: Image Gallery */}
-      <div className="p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50">
+      {/* Left Column: Image Gallery & Product Video */}
+      <div className="p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50 space-y-8">
         <ProductGallery 
           images={allImageUrls} 
           productName={product.name} 
           discountBadge={product.discountBadge} 
           selectedImageUrl={selectedVariant?.imageUrl}
         />
+
+        {product.videoUrl && (
+          <div className="pt-6 border-t border-slate-200/80">
+            <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <PlayCircle size={20} className="text-[#0056b3]" />
+              Product Video
+            </h3>
+            <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-slate-900">
+              <iframe
+                width="100%"
+                height="100%"
+                src={getYouTubeEmbedUrl(product.videoUrl) || ""}
+                title={`${product.name} Video`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Column: Product Details */}

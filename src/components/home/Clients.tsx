@@ -30,7 +30,7 @@ export async function Clients() {
         <div className="flex animate-marquee w-max items-center">
           {/* Double the list for infinite effect */}
           {[...clients, ...clients].map((client, idx) => (
-            <div key={`${client.id}-${idx}`} className="flex-shrink-0 flex items-center justify-center w-40 h-16 md:w-48 md:h-20 mx-8 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+            <div key={`${client.id}-${idx}`} className="flex-shrink-0 flex items-center justify-center w-40 h-16 md:w-48 md:h-20 mx-8 hover:scale-105 transition-all duration-300">
               {client.logoUrl ? (
                 <div className="relative w-full h-full">
                   <Image src={client.logoUrl} alt={client.name} fill className="object-contain" unoptimized />

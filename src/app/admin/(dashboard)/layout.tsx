@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, LayoutDashboard, LogOut, Package, Image as ImageIcon, Users, FolderTree, Menu, X, MapPin, Link2, Mail, ShoppingCart, BarChart } from "lucide-react";
+import { Settings, LayoutDashboard, LogOut, Package, Image as ImageIcon, Users, FolderTree, Menu, X, MapPin, Link2, Mail, ShoppingCart, BarChart, Cog, Newspaper } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 
@@ -27,6 +27,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     { name: "Resources", href: "/admin/resources", icon: FolderTree },
     { name: "Certificates", href: "/admin/certificates", icon: ImageIcon },
     { name: "Gallery", href: "/admin/gallery", icon: ImageIcon },
+    { name: "Machinery", href: "/admin/machinery", icon: Cog },
+    { name: "Press & Newsroom", href: "/admin/press", icon: Newspaper },
     { name: "Locations", href: "/admin/locations", icon: MapPin },
     { name: "Site Settings", href: "/admin/settings", icon: Settings },
     { name: "About Pages", href: "/admin/about-settings", icon: Settings },

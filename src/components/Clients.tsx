@@ -21,7 +21,7 @@ export default function Clients({ clients, platforms }: { clients: ClientType[],
               {clients.map((client) => (
                 <div 
                   key={client.id} 
-                  className="min-w-[140px] h-24 bg-white border border-slate-100 shadow-sm rounded-xl flex items-center justify-center p-4 text-slate-400 font-bold hover:grayscale-0 grayscale hover:shadow-md transition-all shrink-0"
+                  className="min-w-[140px] h-24 bg-white border border-slate-100 shadow-sm rounded-xl flex items-center justify-center p-4 text-slate-400 font-bold hover:shadow-md transition-all shrink-0"
                 >
                   {client.logoUrl ? (
                     <div className="relative w-full h-full">

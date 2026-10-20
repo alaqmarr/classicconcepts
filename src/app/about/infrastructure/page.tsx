@@ -1,19 +1,21 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import Image from "next/image";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { getYouTubeEmbedUrl } from "@/lib/youtube";
+import { Cog, MapPin } from "lucide-react";
 
 export const metadata = {
-  title: "Our Infrastructure - Classic Concepts",
-  description: "Take a tour of our state-of-the-art manufacturing facilities and showrooms across India.",
+  title: "Our Infrastructure & Machinery - Classic Concepts",
+  description: "Take a tour of our state-of-the-art 16,000 sq. ft. manufacturing facility, advanced machinery, and showrooms across India.",
 };
 
 export default async function OurInfrastructurePage() {
-  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
-  
-  const locations = await prisma.infrastructureLocation.findMany({
-    orderBy: { sortOrder: 'asc' }
-  });
+  const [settings, locations, machinery] = await Promise.all([
+    prisma.siteSetting.findUnique({ where: { id: "default" } }),
+    prisma.infrastructureLocation.findMany({ orderBy: { sortOrder: 'asc' } }),
+    prisma.machinery.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] }),
+  ]);
 
   return (
     <main className="min-h-screen bg-white">
@@ -40,19 +42,69 @@ export default async function OurInfrastructurePage() {
           </p>
         </div>
 
+        {/* Dynamic Machinery Used in Our Company */}
+        {machinery.length > 0 && (
+          <div className="space-y-8 pt-4">
+            <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-[#0056b3] flex items-center justify-center">
+                <Cog size={24} />
+              </div>
+              <div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800">
+                  Machinery &amp; Equipment Used in Our Factory
+                </h2>
+                <p className="text-slate-500 text-sm font-medium">
+                  Precision fabrication equipment powering our 16,000 sq. ft. manufacturing facility
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {machinery.map((item) => (
+                <div
+                  key={item.id}
+                  className="group bg-white rounded-2xl border border-slate-200/90 shadow-soft hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 border-b border-slate-100">
+                    <Image
+                      src={item.imageUrl}
+                      alt={item.name}
+                      fill
+                      unoptimized
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800 group-hover:text-[#0056b3] transition-colors">
+                        {item.name}
+                      </h3>
+                      {item.description && (
+                        <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Business Model and Initial Approach */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800">Business Model</h2>
             <p className="text-slate-600 text-[15px] leading-relaxed">
-              Based on the fundamental principle of creating value to the end customer by using innovative methodologies for designing Acrylic solutions and conceptualizing client requirements to provide customized products & items, thus sustaining ourselves by generating profits.
+              Based on the fundamental principle of creating value to the end customer by using innovative methodologies for designing Acrylic solutions and conceptualizing client requirements to provide customized products &amp; items, thus sustaining ourselves by generating profits.
             </p>
           </div>
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-800">Our Initial Approach</h2>
             <div className="text-slate-600 text-[15px] leading-relaxed space-y-2">
               <p>Our initial discovery phase was focused as a conservative approach.</p>
-              <p>The soft launch at Deccan States Expo - HICC Novotel, Hyderabad was a carefully calibrated & calculated approach designed to help us gain a dip-stick view of our target audience.</p>
+              <p>The soft launch at Deccan States Expo - HICC Novotel, Hyderabad was a carefully calibrated &amp; calculated approach designed to help us gain a dip-stick view of our target audience.</p>
             </div>
           </div>
         </div>
@@ -62,19 +114,19 @@ export default async function OurInfrastructurePage() {
           <h2 className="text-xl font-bold text-slate-800">Redefined Go-2-Market Strategy</h2>
           <div className="text-slate-600 text-[15px] leading-relaxed space-y-4">
             <p>
-              During our initial concept design & project planning phase in 2008 our strategy was formulated to align our products and solutions to the lifestyle sector only. Acrylic Furniture items constituted a major part of our display products at the soft launch at Novotel Lifestyle Exhibition, Hyderabad. The exhibition forum gave us a dip stick analysis of varied customers buying patterns, also gave us an opportunity to check the pulse of our potential market/ target audience, and a ready chance to influence their perceptions/ perspectives of Acrylic products and solutions.
+              During our initial concept design &amp; project planning phase in 2008 our strategy was formulated to align our products and solutions to the lifestyle sector only. Acrylic Furniture items constituted a major part of our display products at the soft launch at Novotel Lifestyle Exhibition, Hyderabad. The exhibition forum gave us a dip stick analysis of varied customers buying patterns, also gave us an opportunity to check the pulse of our potential market/ target audience, and a ready chance to influence their perceptions/ perspectives of Acrylic products and solutions.
             </p>
             <p>
-              Based on these learning's from our Soft launch - we decided to redefine our Go-2-Market Strategy according to changing industry trends and market conditions. This was our defining moment that lead us to the firm conviction that Classic Concepts would offer a full suite of end-2-end Acrylic solutions encompassing,
+              Based on these learning&apos;s from our Soft launch - we decided to redefine our Go-2-Market Strategy according to changing industry trends and market conditions. This was our defining moment that lead us to the firm conviction that Classic Concepts would offer a full suite of end-2-end Acrylic solutions encompassing,
             </p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 pt-4 pl-4 md:pl-8 list-disc">
               <ul className="list-disc space-y-3">
                 <li>Furniture items</li>
-                <li>News Studio (Design, Erection & Fabrication)</li>
+                <li>News Studio (Design, Erection &amp; Fabrication)</li>
                 <li>Mementos, Gifts</li>
                 <li>Packaging Items</li>
-                <li>Rewards & Awards products</li>
+                <li>Rewards &amp; Awards products</li>
               </ul>
               <ul className="list-disc space-y-3">
                 <li>Jewelry boxes</li>
@@ -88,7 +140,7 @@ export default async function OurInfrastructurePage() {
 
         {/* YouTube Video Embed */}
         <div className="w-full mx-auto flex justify-center py-8">
-          <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-900 aspect-video relative group">
+          <div className="w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-900 aspect-video relative group">
              <iframe 
                width="100%" 
                height="100%" 
@@ -103,17 +155,25 @@ export default async function OurInfrastructurePage() {
         </div>
 
         {/* Dynamic Locations Grid */}
-        <div className="py-12 border-t border-slate-100">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="py-12 border-t border-slate-100 space-y-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0056b3] flex items-center justify-center">
+              <MapPin size={20} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800">Our Locations &amp; Showrooms</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {locations.length > 0 ? (
               locations.map((loc) => {
                 const Card = (
-                  <div className="group bg-white border-2 border-[#0056b3] flex flex-col h-full hover:shadow-lg transition-shadow duration-300">
+                  <div className="group bg-white border-2 border-[#0056b3] rounded-2xl overflow-hidden flex flex-col h-full hover:shadow-lg transition-shadow duration-300">
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
                       <Image 
                         src={loc.imageUrl} 
                         alt={loc.name} 
                         fill 
+                        unoptimized
                         className="object-cover group-hover:scale-105 transition-transform duration-500" 
                       />
                     </div>

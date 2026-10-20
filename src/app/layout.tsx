@@ -6,6 +6,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
+import { CustomAnalyticsInjector } from "@/components/layout/CustomAnalyticsInjector";
 import { prisma } from "@/lib/db";
 import { CartProvider } from "@/context/CartContext";
 
@@ -118,6 +119,11 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <CustomAnalyticsInjector
+          googleAnalyticsId={settings?.googleAnalyticsId}
+          headScripts={settings?.headScripts}
+          bodyScripts={settings?.bodyScripts}
         />
         <CartProvider>
           <Header

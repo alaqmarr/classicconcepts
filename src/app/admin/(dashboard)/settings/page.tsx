@@ -26,6 +26,9 @@ async function updateSettings(formData: FormData) {
       adminEmail: formData.get("adminEmail") as string,
       mapEmbedUrl: formData.get("mapEmbedUrl") as string,
       homeVideoUrl: formData.get("homeVideoUrl") as string,
+      googleAnalyticsId: (formData.get("googleAnalyticsId") as string)?.trim() || null,
+      headScripts: (formData.get("headScripts") as string) || null,
+      bodyScripts: (formData.get("bodyScripts") as string) || null,
     },
     create: {
       id: "default",
@@ -45,6 +48,9 @@ async function updateSettings(formData: FormData) {
       adminEmail: formData.get("adminEmail") as string,
       mapEmbedUrl: formData.get("mapEmbedUrl") as string,
       homeVideoUrl: formData.get("homeVideoUrl") as string,
+      googleAnalyticsId: (formData.get("googleAnalyticsId") as string)?.trim() || null,
+      headScripts: (formData.get("headScripts") as string) || null,
+      bodyScripts: (formData.get("bodyScripts") as string) || null,
     }
   });
 
@@ -70,18 +76,18 @@ export default async function AdminSettingsPage() {
               rows={3}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">Google Maps Embed URL</label>
-            <p className="text-xs text-gray-500 mb-1">Go to Google Maps -&gt; Share -&gt; Embed a map -&gt; Copy HTML. Then extract the &apos;src&apos; attribute link from the copied code and paste it here.</p>
-            <input 
-              type="text" 
-              name="mapEmbedUrl" 
-              defaultValue={settings?.mapEmbedUrl || ""} 
-              placeholder="https://www.google.com/maps/embed?pb=..."
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="space-y-2 md:col-span-2 pt-2">
+              <label className="text-sm font-semibold text-gray-700">Google Maps Embed URL</label>
+              <p className="text-xs text-gray-500 mb-1">Go to Google Maps -&gt; Share -&gt; Embed a map -&gt; Copy HTML. Then extract the &apos;src&apos; attribute link from the copied code and paste it here.</p>
+              <input 
+                type="text" 
+                name="mapEmbedUrl" 
+                defaultValue={settings?.mapEmbedUrl || ""} 
+                placeholder="https://www.google.com/maps/embed?pb=..."
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
-        </div>
 
           <div className="space-y-2">
             <label className="text-sm font-semibold text-gray-700">Primary Phone</label>
@@ -147,7 +153,7 @@ export default async function AdminSettingsPage() {
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">Home Page "How We Do It" Video URL</label>
+            <label className="text-sm font-semibold text-gray-700">Home Page &quot;How We Do It&quot; Video URL</label>
             <input 
               type="text" 
               name="homeVideoUrl" 
@@ -246,6 +252,53 @@ export default async function AdminSettingsPage() {
           </div>
         </div>
 
+        <hr className="my-8 border-gray-100" />
+        <h2 className="text-xl font-bold mb-2">Google Analytics &amp; Custom Scripts</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Add your Google Analytics ID or custom tracking scripts (Google Tag Manager, Meta Pixel, Microsoft Clarity, Search Console verification tags, etc.) to automatically inject them into the client website.
+        </p>
+
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">Google Analytics Measurement ID (Optional)</label>
+            <input
+              type="text"
+              name="googleAnalyticsId"
+              defaultValue={settings?.googleAnalyticsId || ""}
+              placeholder="e.g., G-XXXXXXXXXX"
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">Custom Head Scripts / Tags (Injected into &lt;head&gt;)</label>
+            <p className="text-xs text-gray-500">
+              Paste full HTML tags such as <code className="bg-gray-100 px-1 rounded">&lt;script&gt;...&lt;/script&gt;</code> or <code className="bg-gray-100 px-1 rounded">&lt;meta name=&quot;google-site-verification&quot; ... /&gt;</code>.
+            </p>
+            <textarea
+              name="headScripts"
+              defaultValue={settings?.headScripts || ""}
+              rows={5}
+              placeholder={"<!-- Google Tag Manager / Meta Pixel / Verification Tags -->\n<script>...</script>"}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs bg-slate-50"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">Custom Body Scripts (Injected into &lt;body&gt;)</label>
+            <p className="text-xs text-gray-500">
+              Paste any <code className="bg-gray-100 px-1 rounded">&lt;noscript&gt;</code> or body-level tracking scripts here.
+            </p>
+            <textarea
+              name="bodyScripts"
+              defaultValue={settings?.bodyScripts || ""}
+              rows={4}
+              placeholder={"<!-- Google Tag Manager (noscript) or Body Scripts -->\n<noscript>...</noscript>"}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs bg-slate-50"
+            />
+          </div>
+        </div>
+
         <div className="pt-6 flex justify-end">
           <button 
             type="submit" 
@@ -260,4 +313,3 @@ export default async function AdminSettingsPage() {
     </div>
   );
 }
-

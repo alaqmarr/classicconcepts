@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, FileRejection } from "react-dropzone";
 import { UploadCloud, X, Loader2, FileText, ExternalLink, CheckCircle, Image as ImageIcon } from "lucide-react";
 import { isImageUrl, isPdfUrl } from "@/lib/media-utils";
+import { ImageCropperModal } from "./ImageCropperModal";
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
 interface FileUploaderProps {
   name: string;
@@ -11,6 +14,8 @@ interface FileUploaderProps {
   required?: boolean;
   accept?: Record<string, string[]>;
   placeholder?: string;
+  aspectRatio?: number;
+  aspectLabel?: string;
 }
 
 export function FileUploader({
@@ -19,22 +24,23 @@ export function FileUploader({
   required = false,
   accept,
   placeholder = "Upload file to Cloudflare R2 or enter link below",
+  aspectRatio,
+  aspectLabel,
 }: FileUploaderProps) {
   const [uploadedUrl, setUploadedUrl] = useState<string>(defaultValue);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
   const [fileName, setFileName] = useState("");
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
+  const uploadFileToR2 = useCallback(async (fileToUpload: File) => {
+    setCropFile(null);
     setIsUploading(true);
     setError("");
-    setFileName(file.name);
+    setFileName(fileToUpload.name);
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", fileToUpload);
 
     try {
       const res = await fetch("/api/upload", {
@@ -42,30 +48,69 @@ export function FileUploader({
         body: formData,
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        throw new Error("Upload failed");
+        throw new Error(data.error || "Upload failed");
       }
 
-      const data = await res.json();
       setUploadedUrl(data.url);
     } catch (err: any) {
       console.error(err);
-      setError("Failed to upload file to storage. Please try again.");
+      setError(err.message || "Failed to upload file to storage. Please try again.");
     } finally {
       setIsUploading(false);
     }
   }, []);
 
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+      if (fileRejections.length > 0) {
+        const isTooLarge = fileRejections.some((r) =>
+          r.errors.some((e) => e.code === "file-too-large")
+        );
+        setError(
+          isTooLarge
+            ? "File exceeds the maximum size limit of 20 MB."
+            : "Unsupported file format."
+        );
+        return;
+      }
+
+      const file = acceptedFiles[0];
+      if (!file) return;
+
+      if (file.size > MAX_FILE_SIZE) {
+        setError("File size exceeds the maximum allowed limit of 20 MB.");
+        return;
+      }
+
+      setError("");
+
+      // If it's a raster image, open the inbuilt cropper
+      if (
+        file.type.startsWith("image/") &&
+        file.type !== "image/svg+xml" &&
+        file.type !== "image/gif"
+      ) {
+        setCropFile(file);
+      } else {
+        uploadFileToR2(file);
+      }
+    },
+    [uploadFileToR2]
+  );
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: accept || {
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/zip': ['.zip'],
-      'video/*': ['.mp4', '.webm'],
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp'],
+      "application/pdf": [".pdf"],
+      "application/msword": [".doc"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/zip": [".zip"],
+      "video/*": [".mp4", ".webm"],
+      "image/*": [".jpeg", ".jpg", ".png", ".webp", ".svg", ".gif"],
     },
+    maxSize: MAX_FILE_SIZE,
     maxFiles: 1,
     multiple: false,
     disabled: isUploading,
@@ -79,6 +124,17 @@ export function FileUploader({
 
   return (
     <div className="space-y-3">
+      {cropFile && (
+        <ImageCropperModal
+          file={cropFile}
+          defaultAspectRatio={aspectRatio}
+          aspectLabel={aspectLabel}
+          onComplete={(croppedFile) => uploadFileToR2(croppedFile)}
+          onSkipCrop={(originalFile) => uploadFileToR2(originalFile)}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
+
       {/* Upload Box */}
       <div
         {...getRootProps()}
@@ -95,6 +151,7 @@ export function FileUploader({
         {isUploading ? (
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="w-8 h-8 text-[#0056b3] animate-spin" />
+            <span className="text-xs font-semibold text-[#0056b3]">Uploading to R2...</span>
           </div>
         ) : uploadedUrl ? (
           <div className="flex flex-col items-center gap-2.5 py-1" onClick={(e) => e.stopPropagation()}>
@@ -106,7 +163,7 @@ export function FileUploader({
             {isImageUrl(uploadedUrl) && (
               <div className="relative w-28 h-20 rounded-lg overflow-hidden border border-slate-200 bg-white shadow-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={uploadedUrl} alt="Preview" className="w-full h-full object-cover" />
+                <img src={uploadedUrl} alt="Preview" className="w-full h-full object-contain" />
               </div>
             )}
 
@@ -139,7 +196,7 @@ export function FileUploader({
                 <X size={16} />
               </button>
             </div>
-            <p className="text-[11px] text-slate-400">Click or drag a new file to replace</p>
+            <p className="text-[11px] text-slate-400">Click or drag a new file to replace (Max 20MB)</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
@@ -151,7 +208,7 @@ export function FileUploader({
                 Click or drag & drop file to upload
               </p>
               <p className="text-xs text-slate-400 mt-0.5">
-                PDFs, Catalogs, Documents, Videos, or Images
+                PDFs, Catalogs, Documents, Videos, or Images (Max 20MB • Inbuilt Cropper for Images)
               </p>
             </div>
           </div>
@@ -163,7 +220,7 @@ export function FileUploader({
       {/* Direct URL input fallback */}
       <div>
         <label className="block text-xs font-semibold text-slate-500 mb-1">
-          Or Enter / Edit File or External Link URL
+          {placeholder}
         </label>
         <input
           type="text"

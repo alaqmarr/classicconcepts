@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { Settings, Save } from "lucide-react";
+import { Settings, Save, Cog, Newspaper, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 
 async function updateSettings(formData: FormData) {
@@ -97,19 +98,19 @@ export default async function AboutSettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">ISO Certificate</label>
-                <ImageUploader name="aboutCertIso" defaultValue={settings.aboutCertIso || ""} />
+                <ImageUploader name="aboutCertIso" defaultValue={settings.aboutCertIso || ""} aspectRatio={1} aspectLabel="1:1 Logo" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">HYM Certificate</label>
-                <ImageUploader name="aboutCertHym" defaultValue={settings.aboutCertHym || ""} />
+                <ImageUploader name="aboutCertHym" defaultValue={settings.aboutCertHym || ""} aspectRatio={1} aspectLabel="1:1 Logo" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">GA Certificate</label>
-                <ImageUploader name="aboutCertGa" defaultValue={settings.aboutCertGa || ""} />
+                <ImageUploader name="aboutCertGa" defaultValue={settings.aboutCertGa || ""} aspectRatio={1} aspectLabel="1:1 Logo" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">ASCB Certificate</label>
-                <ImageUploader name="aboutCertAscb" defaultValue={settings.aboutCertAscb || ""} />
+                <ImageUploader name="aboutCertAscb" defaultValue={settings.aboutCertAscb || ""} aspectRatio={1} aspectLabel="1:1 Logo" />
               </div>
             </div>
           </div>
@@ -117,7 +118,17 @@ export default async function AboutSettingsPage() {
 
         {/* Infrastructure Page Settings */}
         <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-          <h2 className="text-xl font-bold text-slate-800 border-b pb-4">Infrastructure Page</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+            <h2 className="text-xl font-bold text-slate-800">Infrastructure Page</h2>
+            <Link
+              href="/admin/machinery"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 text-[#0056b3] text-xs font-bold hover:bg-[#0056b3] hover:text-white transition-colors"
+            >
+              <Cog size={15} />
+              Manage Factory Machinery
+              <ArrowRight size={14} />
+            </Link>
+          </div>
           
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">YouTube Video URL</label>
@@ -128,13 +139,23 @@ export default async function AboutSettingsPage() {
               placeholder="e.g., https://www.youtube.com/embed/dQw4w9WgXcQ"
               className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:border-transparent transition-all"
             />
-            <p className="text-xs text-slate-500 mt-2">Use the embedded URL format (e.g. https://www.youtube.com/embed/...)</p>
+            <p className="text-xs text-slate-500 mt-2">Use the embedded URL format or standard YouTube URL</p>
           </div>
         </div>
 
         {/* Press Page Settings */}
         <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
-          <h2 className="text-xl font-bold text-slate-800 border-b pb-4">Press Page</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+            <h2 className="text-xl font-bold text-slate-800">Press &amp; Newsroom Page</h2>
+            <Link
+              href="/admin/press"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 text-[#0056b3] text-xs font-bold hover:bg-[#0056b3] hover:text-white transition-colors"
+            >
+              <Newspaper size={15} />
+              Manage Newspapers &amp; Newsroom Articles
+              <ArrowRight size={14} />
+            </Link>
+          </div>
           
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">YouTube Feature Video URL</label>
@@ -148,15 +169,15 @@ export default async function AboutSettingsPage() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-bold text-slate-700">Newspaper Clippings</h3>
+            <h3 className="font-bold text-slate-700">Featured Newspaper Clippings</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">Clipping 1</label>
-                <ImageUploader name="pressClipping1" defaultValue={settings.pressClipping1 || ""} />
+                <ImageUploader name="pressClipping1" defaultValue={settings.pressClipping1 || ""} aspectRatio={4 / 3} aspectLabel="4:3 Press Clipping" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">Clipping 2</label>
-                <ImageUploader name="pressClipping2" defaultValue={settings.pressClipping2 || ""} />
+                <ImageUploader name="pressClipping2" defaultValue={settings.pressClipping2 || ""} aspectRatio={4 / 3} aspectLabel="4:3 Press Clipping" />
               </div>
             </div>
           </div>
@@ -176,4 +197,3 @@ export default async function AboutSettingsPage() {
     </div>
   );
 }
-

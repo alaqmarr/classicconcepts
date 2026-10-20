@@ -47,7 +47,7 @@ export default async function AboutClientsPage() {
                 >
                   <div className="w-full aspect-[3/2] relative flex items-center justify-center p-2">
                     {client.logoUrl ? (
-                      <div className="relative w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-300">
+                      <div className="relative w-full h-full group-hover:scale-105 transition-all duration-300">
                         <Image 
                           src={client.logoUrl} 
                           alt={client.name} 
