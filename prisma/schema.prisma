@@ -176,10 +176,11 @@ model SiteSetting {
   smtpPass        String?
   adminEmail      String?
   
-  mapEmbedUrl       String?
-  googleAnalyticsId String?
-  headScripts       String?
-  bodyScripts       String?
+  mapEmbedUrl         String?
+  googleAnalyticsId   String?
+  headScripts         String?
+  bodyScripts         String?
+  clientCarouselSpeed Int      @default(25)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

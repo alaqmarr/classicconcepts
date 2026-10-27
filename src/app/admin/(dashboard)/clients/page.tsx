@@ -2,18 +2,50 @@ export const dynamic = 'force-dynamic';
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { Building2, Globe, Trash2, Plus } from "lucide-react";
+import { Building2, Globe, Trash2, Plus, Gauge, Save } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
 export default async function AdminClientsPage() {
-  const clients = await prisma.client.findMany({ orderBy: { createdAt: 'desc' } });
-  const platforms = await prisma.onlinePlatform.findMany({ orderBy: { createdAt: 'asc' } });
+  const [clients, platforms, settings] = await Promise.all([
+    prisma.client.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.onlinePlatform.findMany({ orderBy: { createdAt: 'asc' } }),
+    prisma.siteSetting.findUnique({ where: { id: "default" } }),
+  ]);
+
+  const currentSpeed = settings?.clientCarouselSpeed || 25;
+
+  async function updateCarouselSpeed(formData: FormData) {
+    "use server";
+    const rawSpeed = parseInt(formData.get("clientCarouselSpeed") as string);
+    const speed = !isNaN(rawSpeed) ? Math.max(3, Math.min(180, rawSpeed)) : 25;
+
+    await prisma.siteSetting.upsert({
+      where: { id: "default" },
+      update: { clientCarouselSpeed: speed },
+      create: {
+        id: "default",
+        address: "",
+        phone1: "+917337222876",
+        email: "sales@classicconcepts.in",
+        clientCarouselSpeed: speed,
+      },
+    });
+
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/about");
+    revalidatePath("/about/press");
+    revalidatePath("/admin/clients");
+  }
 
   async function deleteClient(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
     await prisma.client.delete({ where: { id } });
+    revalidatePath("/");
+    revalidatePath("/about");
+    revalidatePath("/about/clients");
     revalidatePath("/admin/clients");
   }
 
@@ -21,11 +53,50 @@ export default async function AdminClientsPage() {
     "use server";
     const id = formData.get("id") as string;
     await prisma.onlinePlatform.delete({ where: { id } });
+    revalidatePath("/");
     revalidatePath("/admin/clients");
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
+      {/* Brands Showcase Carousel Speed Control */}
+      <div className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Gauge size={20} className="text-[#0056b3]" />
+              Brands Showcase Carousel Speed
+            </h2>
+            <p className="text-xs text-slate-500">
+              Control the scrolling duration (in seconds) of the client logos marquee across the website.{" "}
+              <strong className="text-slate-700">Lower seconds = Faster scroll</strong> (e.g., 10s is fast, 25s is medium, 50s is slow).
+            </p>
+          </div>
+
+          <form action={updateCarouselSpeed} className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+              <input
+                type="number"
+                name="clientCarouselSpeed"
+                min={3}
+                max={180}
+                defaultValue={currentSpeed}
+                className="w-20 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-sm font-bold text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-[#0056b3]"
+              />
+              <span className="text-xs font-bold text-slate-500">seconds / loop</span>
+            </div>
+
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#0056b3] text-white text-sm font-bold rounded-xl hover:bg-blue-800 transition-colors shadow-xs"
+            >
+              <Save size={16} />
+              Update Speed
+            </button>
+          </form>
+        </div>
+      </div>
+
       {/* Clients Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -111,7 +182,7 @@ export default async function AdminClientsPage() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-bold">
                   <th className="p-4">Logo</th>
-                  <th className="p-4">Name & URL</th>
+                  <th className="p-4">Name &amp; URL</th>
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -119,7 +190,6 @@ export default async function AdminClientsPage() {
                 {platforms.map(platform => (
                   <tr key={platform.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4">
-                      {/* For platforms we use iconName or colorClass instead of images in our schema, but keeping layout consistent */}
                       <div className={`w-10 h-10 ${platform.colorClass || 'bg-slate-200'} rounded flex items-center justify-center text-white text-xs`}>
                         {platform.iconName || 'P'}
                       </div>
@@ -150,4 +220,3 @@ export default async function AdminClientsPage() {
     </div>
   );
 }
-

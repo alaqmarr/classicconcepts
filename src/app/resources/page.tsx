@@ -6,8 +6,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { isImageUrl } from "@/lib/media-utils";
 
 export const metadata: Metadata = {
-  title: "Resources & Downloads - Classic Concepts",
-  description: "Downloadable product catalogs, brochures, guides, and corporate resources.",
+  title: "Catalogues & Downloads - Classic Concepts",
+  description: "Downloadable product catalogues, brochures, guides, and corporate resources.",
 };
 
 export default async function ResourcesPage() {
@@ -20,14 +20,14 @@ export default async function ResourcesPage() {
       <PageHeader
         breadcrumbs={[
           { label: "Home", href: "/" },
-          { label: "Resources & Downloads" }
+          { label: "Catalogues & Downloads" }
         ]}
         title={
           <>
-            Catalogs &amp; <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Downloads</span>
+            Catalogues &amp; <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Downloads</span>
           </>
         }
-        description="Access our official product brochures, technical specifications, design guides, and company documentation."
+        description="Access our official product catalogues, brochures, technical specifications, design guides, and company documentation."
       />
 
       <section className="py-16 md:py-20">
@@ -120,8 +120,8 @@ export default async function ResourcesPage() {
             {resources.length === 0 && (
               <div className="col-span-full py-16 text-center text-slate-500 bg-white rounded-3xl border border-slate-200/80 shadow-soft">
                 <FolderOpen size={48} className="mx-auto text-slate-300 mb-3" />
-                <h3 className="text-lg font-bold text-slate-700 mb-1">Resources being updated</h3>
-                <p className="text-sm text-slate-400">Our catalogs and downloads will be available shortly. Contact us for direct assistance.</p>
+                <h3 className="text-lg font-bold text-slate-700 mb-1">Catalogues being updated</h3>
+                <p className="text-sm text-slate-400">Our catalogues and downloads will be available shortly. Contact us for direct assistance.</p>
               </div>
             )}
           </div>

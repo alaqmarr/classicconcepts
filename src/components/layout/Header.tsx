@@ -27,9 +27,11 @@ export function Header({
   const [isOpen, setIsOpen] = useState(false);
   const [aboutDropdownOpen, setAboutDropdownOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+  const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
   const [podiumDropdownOpen, setPodiumDropdownOpen] = useState(false);
   const [linksDropdownOpen, setLinksDropdownOpen] = useState(false);
   const [mobileShopOpen, setMobileShopOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [mobilePodiumOpen, setMobilePodiumOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname() || "";
@@ -158,6 +160,58 @@ export function Header({
                   >
                     Clients
                   </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Categories Dropdown */}
+            <div
+              className="relative group"
+              onMouseEnter={() => setCategoriesDropdownOpen(true)}
+              onMouseLeave={() => setCategoriesDropdownOpen(false)}
+            >
+              <Link
+                href="/shop/c"
+                className={`flex items-center gap-1 transition-colors py-2 ${
+                  pathname.startsWith("/shop/c")
+                    ? "text-white"
+                    : "text-white/70 hover:text-white"
+                }`}
+              >
+                CATEGORIES
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    categoriesDropdownOpen ? "rotate-180 text-white" : ""
+                  }`}
+                />
+              </Link>
+
+              {categoriesDropdownOpen && (
+                <div className="absolute top-full left-0 mt-0 w-64 max-h-[70vh] overflow-y-auto bg-[#0a0f1c]/95 backdrop-blur-sm border border-white/10 shadow-soft rounded-xl flex flex-col py-2 z-50">
+                  <Link
+                    href="/shop/c"
+                    className={`px-5 py-2.5 text-sm font-bold border-b border-white/10 hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${
+                      pathname === "/shop/c"
+                        ? "text-blue-400 bg-white/5 pl-6"
+                        : "text-white"
+                    }`}
+                  >
+                    All Categories
+                  </Link>
+                  {categories.map((cat) => (
+                    <Link
+                      key={cat.id}
+                      href={`/shop/c/${cat.slug}`}
+                      className={`px-5 py-2.5 text-sm font-semibold normal-case hover:bg-white/5 hover:text-white hover:pl-6 transition-all duration-200 ${
+                        pathname === `/shop/c/${cat.slug}`
+                          ? "text-white bg-white/5 pl-6"
+                          : "text-white/75"
+                      }`}
+                    >
+                      {cat.name}
+                    </Link>
+                  ))}
                 </div>
               )}
             </div>
@@ -447,6 +501,52 @@ export function Header({
                   Clients
                 </Link>
               </div>
+            </div>
+
+            {/* Mobile Categories Dropdown */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Link
+                  href="/shop/c"
+                  onClick={() => setIsOpen(false)}
+                  className={`${pathname.startsWith("/shop/c") ? "text-white" : "hover:text-white"}`}
+                >
+                  CATEGORIES
+                </Link>
+                {categories.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}
+                    className="p-1 text-white/70 hover:text-white"
+                  >
+                    <ChevronDown
+                      size={18}
+                      className={`transition-transform ${mobileCategoriesOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                )}
+              </div>
+              {mobileCategoriesOpen && categories.length > 0 && (
+                <div className="flex flex-col pl-4 gap-2.5 border-l-2 border-white/10 ml-2 normal-case font-semibold">
+                  <Link
+                    href="/shop/c"
+                    onClick={() => setIsOpen(false)}
+                    className="text-blue-400 hover:text-white"
+                  >
+                    All Categories
+                  </Link>
+                  {categories.map((cat) => (
+                    <Link
+                      key={cat.id}
+                      href={`/shop/c/${cat.slug}`}
+                      onClick={() => setIsOpen(false)}
+                      className="text-white/75 hover:text-white"
+                    >
+                      {cat.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Mobile Products Dropdown */}

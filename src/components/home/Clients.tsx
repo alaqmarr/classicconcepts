@@ -2,9 +2,16 @@ import Image from "next/image";
 import { prisma } from "@/lib/db";
 
 export async function Clients() {
-  const clients = await prisma.client.findMany({ orderBy: { createdAt: 'desc' } });
+  const [clients, settings] = await Promise.all([
+    prisma.client.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.siteSetting.findUnique({ where: { id: "default" } }),
+  ]);
 
   if (!clients || clients.length === 0) return null;
+
+  const speedSeconds = settings?.clientCarouselSpeed && settings.clientCarouselSpeed >= 3
+    ? settings.clientCarouselSpeed
+    : 25;
 
   return (
     <section className="relative bg-[#f8fafc] py-20 overflow-hidden">
@@ -27,7 +34,10 @@ export async function Clients() {
         <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#f8fafc] to-transparent z-10 pointer-events-none"></div>
         <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#f8fafc] to-transparent z-10 pointer-events-none"></div>
 
-        <div className="flex animate-marquee w-max items-center">
+        <div
+          className="flex animate-marquee w-max items-center"
+          style={{ animationDuration: `${speedSeconds}s` }}
+        >
           {/* Double the list for infinite effect */}
           {[...clients, ...clients].map((client, idx) => (
             <div key={`${client.id}-${idx}`} className="flex-shrink-0 flex items-center justify-center w-40 h-16 md:w-48 md:h-20 mx-8 hover:scale-105 transition-all duration-300">

@@ -29,6 +29,7 @@ async function updateSettings(formData: FormData) {
       googleAnalyticsId: (formData.get("googleAnalyticsId") as string)?.trim() || null,
       headScripts: (formData.get("headScripts") as string) || null,
       bodyScripts: (formData.get("bodyScripts") as string) || null,
+      clientCarouselSpeed: formData.get("clientCarouselSpeed") ? parseInt(formData.get("clientCarouselSpeed") as string) : 25,
     },
     create: {
       id: "default",
@@ -51,6 +52,7 @@ async function updateSettings(formData: FormData) {
       googleAnalyticsId: (formData.get("googleAnalyticsId") as string)?.trim() || null,
       headScripts: (formData.get("headScripts") as string) || null,
       bodyScripts: (formData.get("bodyScripts") as string) || null,
+      clientCarouselSpeed: formData.get("clientCarouselSpeed") ? parseInt(formData.get("clientCarouselSpeed") as string) : 25,
     }
   });
 
@@ -160,6 +162,19 @@ export default async function AdminSettingsPage() {
               defaultValue={settings?.homeVideoUrl || ""} 
               placeholder="e.g. https://www.youtube.com/embed/... or .mp4 link"
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm font-semibold text-gray-700">Brands Showcase Carousel Speed (Seconds per Loop)</label>
+            <p className="text-xs text-gray-500 mb-1">Lower seconds = Faster scroll (e.g. 12 = Fast, 25 = Normal, 45 = Slow).</p>
+            <input 
+              type="number" 
+              name="clientCarouselSpeed" 
+              min={3}
+              max={180}
+              defaultValue={settings?.clientCarouselSpeed || 25} 
+              className="w-40 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
