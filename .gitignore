@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.db.backup.*
 *.env
 # debug
 npm-debug.log*
