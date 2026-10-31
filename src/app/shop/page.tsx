@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
+import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductCard } from "@/components/shop/ProductCard";
 import Link from "next/link";
@@ -39,22 +40,25 @@ export default async function ShopPage({
   const resolvedParams = await searchParams;
   const searchQuery = typeof resolvedParams.q === 'string' ? resolvedParams.q : undefined;
 
-  const products = await prisma.product.findMany({
-    where: searchQuery ? {
-      name: { contains: searchQuery }
-    } : undefined,
-    include: {
-      images: { orderBy: { createdAt: 'asc' } },
-      category: true,
-    },
-    orderBy: { name: 'asc' }
-  });
-
-  const categories = await prisma.category.findMany({
-    orderBy: { name: 'asc' }
-  });
-
-  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
+  const [products, categories, settings] = await Promise.all([
+    prisma.product.findMany({
+      where: searchQuery
+        ? {
+            name: { contains: searchQuery },
+          }
+        : undefined,
+      select: PRODUCT_CARD_SELECT,
+      orderBy: { name: "asc" },
+    }),
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    }),
+    prisma.siteSetting.findUnique({
+      where: { id: "default" },
+      select: { whatsappNumber: true },
+    }),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col relative">

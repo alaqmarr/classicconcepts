@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,7 @@ export async function GET(request: Request) {
           categoryId: { in: preferredCategoryIds },
           slug: { notIn: excludeSlugs },
         },
-        include: {
-          images: { orderBy: { createdAt: "asc" } },
-          category: true,
-        },
+        select: PRODUCT_CARD_SELECT,
         orderBy: { name: "asc" },
         take: 8,
       });
@@ -49,10 +47,7 @@ export async function GET(request: Request) {
           id: { notIn: existingIds },
           slug: { notIn: excludeSlugs },
         },
-        include: {
-          images: { orderBy: { createdAt: "asc" } },
-          category: true,
-        },
+        select: PRODUCT_CARD_SELECT,
         orderBy: { name: "asc" },
         take: 8 - relatedProducts.length,
       });

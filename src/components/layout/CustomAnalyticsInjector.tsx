@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import Script from "next/script";
 
 interface CustomAnalyticsInjectorProps {
@@ -14,8 +15,41 @@ export function CustomAnalyticsInjector({
   headScripts,
   bodyScripts,
 }: CustomAnalyticsInjectorProps) {
+  const pathname = usePathname();
   const injectedHeadRef = useRef(false);
   const injectedBodyRef = useRef(false);
+
+  // Lightweight client-side session page-visit tracking (zero cookie bloat, skips bots)
+  useEffect(() => {
+    if (!pathname || pathname.startsWith("/admin") || pathname.startsWith("/api")) {
+      return;
+    }
+
+    try {
+      const storageKey = "cc_visited_paths";
+      const raw = sessionStorage.getItem(storageKey);
+      const visited: string[] = raw ? JSON.parse(raw) : [];
+      if (visited.includes(pathname)) return;
+
+      const updated = [...visited.slice(-99), pathname];
+      sessionStorage.setItem(storageKey, JSON.stringify(updated));
+
+      const payload = JSON.stringify({ path: pathname });
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: "application/json" });
+        navigator.sendBeacon("/api/analytics", blob);
+      } else {
+        fetch("/api/analytics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // Ignore storage errors in private browsing
+    }
+  }, [pathname]);
 
   // Dynamically execute any <script> tags included in headScripts on the client
   useEffect(() => {

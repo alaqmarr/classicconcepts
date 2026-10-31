@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
 import Link from "next/link";
@@ -86,17 +87,18 @@ export default async function ProblemStatementShopPage({
       where: {
         problemStatements: { some: { id: problemStatement.id } },
       },
-      include: {
-        images: { orderBy: { createdAt: 'asc' } },
-        category: true,
-      },
+      select: PRODUCT_CARD_SELECT,
       orderBy: { name: 'asc' }
     }),
     prisma.problemStatement.findMany({
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, slug: true },
     }),
     prisma.product.count(),
-    prisma.siteSetting.findUnique({ where: { id: "default" } }),
+    prisma.siteSetting.findUnique({
+      where: { id: "default" },
+      select: { whatsappNumber: true },
+    }),
   ]);
 
   return (

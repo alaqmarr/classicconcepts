@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
+import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductCard } from "@/components/shop/ProductCard";
 import Link from "next/link";
@@ -41,10 +42,13 @@ export default async function PodiumsPage({
   const subSlug = typeof resolvedParams.sub === 'string' ? resolvedParams.sub : undefined;
   const catSlug = typeof resolvedParams.category === 'string' ? resolvedParams.category : undefined;
 
-  const [subCategories, allPodiumsCount, products, settings] = await Promise.all([
+  const [subCategories, allPodiumsCount, products, settings, podiumCategories] = await Promise.all([
     prisma.podiumSubCategory.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
         _count: {
           select: { products: true }
         }
@@ -58,30 +62,30 @@ export default async function PodiumsPage({
         ...(subSlug ? { podiumSubCategory: { slug: subSlug } } : {}),
         ...(catSlug ? { category: { slug: catSlug } } : {}),
       },
-      include: {
-        images: { orderBy: { createdAt: 'asc' } },
-        category: true,
-        podiumSubCategory: true,
-      },
+      select: PRODUCT_CARD_SELECT,
       orderBy: { name: 'asc' }
     }),
-    prisma.siteSetting.findUnique({ where: { id: "default" } })
+    prisma.siteSetting.findUnique({
+      where: { id: "default" },
+      select: { whatsappNumber: true },
+    }),
+    prisma.category.findMany({
+      where: {
+        products: {
+          some: { isPodium: true }
+        }
+      },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        _count: {
+          select: { products: { where: { isPodium: true } } }
+        }
+      }
+    }),
   ]);
-
-  // Also get distinct categories used by podiums
-  const podiumCategories = await prisma.category.findMany({
-    where: {
-      products: {
-        some: { isPodium: true }
-      }
-    },
-    orderBy: { name: 'asc' },
-    include: {
-      _count: {
-        select: { products: { where: { isPodium: true } } }
-      }
-    }
-  });
 
   const activeSubCategory = subSlug ? subCategories.find(s => s.slug === subSlug) : null;
   const activeCategory = catSlug ? podiumCategories.find(c => c.slug === catSlug) : null;

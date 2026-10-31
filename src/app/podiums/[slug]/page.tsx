@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
 import Link from "next/link";
@@ -92,7 +93,10 @@ export default async function PodiumSubCategoryPage({
   const [allSubCategories, allPodiumsCount, products, settings] = await Promise.all([
     prisma.podiumSubCategory.findMany({
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
         _count: {
           select: { products: true },
         },
@@ -104,14 +108,13 @@ export default async function PodiumSubCategoryPage({
         isPodium: true,
         podiumSubCategoryId: subCategory.id,
       },
-      include: {
-        images: { orderBy: { createdAt: "asc" } },
-        category: true,
-        podiumSubCategory: true,
-      },
+      select: PRODUCT_CARD_SELECT,
       orderBy: { name: "asc" },
     }),
-    prisma.siteSetting.findUnique({ where: { id: "default" } }),
+    prisma.siteSetting.findUnique({
+      where: { id: "default" },
+      select: { whatsappNumber: true },
+    }),
   ]);
 
   const collectionJsonLd = {

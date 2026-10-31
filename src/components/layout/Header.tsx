@@ -14,12 +14,11 @@ interface CategoryItem {
 }
 
 export function Header({
-  settings,
   usefulLinks = [],
   categories = [],
   podiumSubCategories = [],
 }: {
-  settings: any;
+  settings?: any;
   usefulLinks?: any[];
   categories?: CategoryItem[];
   podiumSubCategories?: CategoryItem[];

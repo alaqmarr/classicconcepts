@@ -9,24 +9,37 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const products = await prisma.product.findMany({
-    select: { slug: true }
-  });
-  
-  return products.map((product) => ({
-    slug: product.slug,
-  }));
+  try {
+    const products = await prisma.product.findMany({
+      select: { slug: true },
+    });
+
+    return products.map((product) => ({
+      slug: product.slug,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: { 
-      category: true,
-      podiumSubCategory: true,
-      images: true 
-    }
+    select: {
+      name: true,
+      slug: true,
+      sku: true,
+      description: true,
+      isPodium: true,
+      category: { select: { name: true } },
+      podiumSubCategory: { select: { name: true } },
+      images: {
+        select: { url: true, isMain: true },
+        orderBy: [{ isMain: "desc" }, { createdAt: "asc" }],
+        take: 1,
+      },
+    },
   });
 
   if (!product) return { title: "Product Not Found - Classic Concepts" };
@@ -85,22 +98,26 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({
-    where: { slug },
-    include: {
-      category: true,
-      podiumSubCategory: true,
-      images: { orderBy: { createdAt: 'asc' } },
-      features: { orderBy: { createdAt: 'asc' } },
-      specifications: { orderBy: { createdAt: 'asc' } },
-      variants: {
-        include: { images: true },
-        orderBy: { createdAt: 'asc' }
+  const [product, settings] = await Promise.all([
+    prisma.product.findUnique({
+      where: { slug },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        podiumSubCategory: { select: { id: true, name: true, slug: true } },
+        images: { orderBy: { createdAt: "asc" } },
+        features: { orderBy: { createdAt: "asc" } },
+        specifications: { orderBy: { createdAt: "asc" } },
+        variants: {
+          include: { images: true },
+          orderBy: { createdAt: "asc" },
+        },
       },
-    }
-  });
-
-  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
+    }),
+    prisma.siteSetting.findUnique({
+      where: { id: "default" },
+      select: { whatsappNumber: true, phone1: true, email: true },
+    }),
+  ]);
 
   if (!product) {
     notFound();
@@ -218,9 +235,35 @@ export default async function ProductDetailPage({
 
       <section className="container mx-auto px-6 pt-12 pb-16">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-          <InteractiveProductView 
-            product={product} 
-            phone={settings?.whatsappNumber || "+917337222876"} 
+          <InteractiveProductView
+            product={{
+              id: product.id,
+              name: product.name,
+              slug: product.slug,
+              sku: product.sku,
+              basePrice: product.basePrice,
+              discountPrice: product.discountPrice,
+              discountBadge: product.discountBadge,
+              stockStatus: product.stockStatus,
+              videoUrl: product.videoUrl,
+              description: product.description,
+              category: {
+                name: product.category.name,
+                slug: product.category.slug,
+              },
+              images: product.images.map((img) => ({
+                url: img.url,
+                isMain: img.isMain,
+              })),
+              variants: product.variants.map((v) => ({
+                id: v.id,
+                name: v.name,
+                price: v.price,
+                imageUrl: v.imageUrl,
+                images: v.images.map((vi) => ({ url: vi.url })),
+              })),
+            }}
+            phone={settings?.whatsappNumber || "+917337222876"}
           />
         </div>
       </section>

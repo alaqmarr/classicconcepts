@@ -16,26 +16,28 @@ export const metadata = {
 };
 
 export default async function Home() {
-  const problemStatements = await prisma.problemStatement.findMany({
-    include: {
-      products: {
-        select: {
-          name: true
+  const [problemStatements, industries] = await Promise.all([
+    prisma.problemStatement.findMany({
+      include: {
+        products: {
+          select: {
+            name: true,
+          },
+          take: 4,
         },
-        take: 4
-      }
-    }
-  });
-  const industries = await prisma.industry.findMany({
-    include: {
-      products: {
-        select: {
-          name: true
+      },
+    }),
+    prisma.industry.findMany({
+      include: {
+        products: {
+          select: {
+            name: true,
+          },
+          take: 4,
         },
-        take: 4
-      }
-    }
-  });
+      },
+    }),
+  ]);
 
   return (
     <div className="min-h-screen">

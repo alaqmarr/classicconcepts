@@ -207,16 +207,29 @@ export function ImageCropperModal({
 
       const canvas = document.createElement("canvas");
       const isRotated90 = rotation % 180 !== 0;
-      canvas.width = Math.round(isRotated90 ? sh : sw);
-      canvas.height = Math.round(isRotated90 ? sw : sh);
+      const rawOutW = isRotated90 ? sh : sw;
+      const rawOutH = isRotated90 ? sw : sh;
+
+      // Cap output canvas to max 2000px on longest side so 20MB DSLR photos become fast, crisp ~300KB web assets
+      const MAX_OUTPUT_DIMENSION = 2000;
+      const downscale =
+        Math.max(rawOutW, rawOutH) > MAX_OUTPUT_DIMENSION
+          ? MAX_OUTPUT_DIMENSION / Math.max(rawOutW, rawOutH)
+          : 1;
+
+      canvas.width = Math.max(1, Math.round(rawOutW * downscale));
+      canvas.height = Math.max(1, Math.round(rawOutH * downscale));
 
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas context unavailable");
 
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate((rotation * Math.PI) / 180);
-      ctx.scale(scale, scale);
+      ctx.scale(scale * downscale, scale * downscale);
 
       const drawW = sw;
       const drawH = sh;

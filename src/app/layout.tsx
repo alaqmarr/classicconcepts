@@ -80,17 +80,37 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
-  const usefulLinks = await prisma.usefulLink.findMany({
-    where: { isActive: true },
-    orderBy: { sortOrder: 'asc' }
-  });
-  const categories = await prisma.category.findMany({
-    orderBy: { name: 'asc' }
-  });
-  const podiumSubCategories = await prisma.podiumSubCategory.findMany({
-    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
-  });
+  const [settings, usefulLinks, categories, podiumSubCategories] = await Promise.all([
+    prisma.siteSetting.findUnique({
+      where: { id: "default" },
+      select: {
+        address: true,
+        phone1: true,
+        phone2: true,
+        whatsappNumber: true,
+        email: true,
+        email2: true,
+        upiId: true,
+        upiName: true,
+        googleAnalyticsId: true,
+        headScripts: true,
+        bodyScripts: true,
+      },
+    }),
+    prisma.usefulLink.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, title: true, url: true },
+    }),
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    }),
+    prisma.podiumSubCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, slug: true },
+    }),
+  ]);
 
   const organizationJsonLd = {
     "@context": "https://schema.org",
@@ -127,7 +147,6 @@ export default async function RootLayout({
         />
         <CartProvider>
           <Header
-            settings={settings}
             usefulLinks={usefulLinks}
             categories={categories}
             podiumSubCategories={podiumSubCategories}
