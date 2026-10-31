@@ -64,16 +64,16 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
       {/* Left Column: Image Gallery & Product Video */}
-      <div className="p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50 space-y-8">
+      <div className="p-6 sm:p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50 space-y-8 min-w-0">
         <ProductGallery 
           images={allImageUrls} 
           productName={product.name} 
           discountBadge={product.discountBadge} 
-          selectedImageUrl={selectedVariant?.imageUrl}
+          selectedImageUrl={selectedVariant?.imageUrl || selectedVariant?.images?.[0]?.url}
         />
 
         {product.videoUrl && (
-          <div className="pt-6 border-t border-slate-200/80">
+          <div className="pt-6 border-t border-slate-200/80 max-w-[340px] sm:max-w-[460px] md:max-w-[540px] lg:max-w-[500px] xl:max-w-[560px] 2xl:max-w-[620px] mx-auto w-full">
             <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
               <PlayCircle size={20} className="text-[#0056b3]" />
               Product Video
@@ -94,7 +94,7 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
       </div>
 
       {/* Right Column: Product Details */}
-      <div className="p-8 lg:p-12 flex flex-col">
+      <div className="p-6 sm:p-8 lg:p-12 flex flex-col min-w-0">
         <div className="mb-6">
           <Link href={`/shop/c/${product.category.slug}`} className="inline-block px-3 py-1 bg-blue-50 text-[#0056b3] text-xs font-bold rounded-full uppercase tracking-wider mb-4 hover:bg-[#0056b3] hover:text-white transition-colors">
             {product.category.name}
