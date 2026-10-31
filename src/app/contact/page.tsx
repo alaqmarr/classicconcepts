@@ -60,7 +60,7 @@ export default async function ContactPage() {
                     <MapPin size={24} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-800 mb-1">Head Office</h3>
+                    <h3 className="font-bold text-slate-800 mb-1">Head Office and Manufacturing Unit</h3>
                     <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
                       {(settings?.address || "Mumbai, Maharashtra, India").replace(/\\n/g, '\n')}
                     </p>
