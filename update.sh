@@ -1,18 +1,38 @@
 #!/usr/bin/env bash
+{
 set -e
+
+restart_on_error() {
+  echo "⚠️ Build/update failed — restarting previous PM2 process..."
+  pm2 start ecosystem.config.cjs --update-env || pm2 restart classicconcepts || true
+}
+trap restart_on_error ERR
 
 echo "=========================================="
 echo "🚀 Starting Classic Concepts Update..."
 echo "=========================================="
 
-# 1. Stop live PM2 process before backup & build so SQLite WAL checkpoints cleanly
-#    and `next build` gets full available VPS RAM without competing with Node.js.
+# 1. Pull latest code & install dependencies BEFORE stopping live site
+echo "📦 Pulling latest code from Git..."
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  git stash push -m "pre-update-$(date +%Y%m%d_%H%M%S)" || true
+fi
+git pull --ff-only || git pull
+
+echo "📥 Installing dependencies..."
+npm install --no-audit --no-fund --legacy-peer-deps
+
+echo "🗄️ Syncing Prisma schema and indexes..."
+npx prisma db push
+npx prisma generate
+
+# 2. Stop live PM2 process briefly for clean SQLite WAL checkpoint & low-RAM build
 if pm2 describe classicconcepts > /dev/null 2>&1; then
   echo "⏸️ Stopping running PM2 process before build..."
   pm2 stop classicconcepts || true
 fi
 
-# 2. Safe SQLite WAL-aware backup (keep latest 3 backups)
+# 3. Safe SQLite WAL-aware backup (keep latest 3 backups)
 if [ -f "dev.db" ]; then
   BACKUP_NAME="dev.db.backup.$(date +%Y%m%d_%H%M%S)"
   node -e "
@@ -25,28 +45,15 @@ if [ -f "dev.db" ]; then
   ls -1t dev.db.backup.* 2>/dev/null | tail -n +4 | xargs -r rm -f || true
 fi
 
-# 3. Pull latest code (preserving untracked dev.db & uploads)
-echo "📦 Pulling latest code from Git..."
-git stash --include-untracked=false || true
-git pull --ff-only || git pull
-
-# 4. Install dependencies cleanly
-echo "📥 Installing dependencies..."
-npm install --no-audit --no-fund --legacy-peer-deps
-
-# 5. Sync Prisma schema & regenerate Prisma client
-echo "🗄️ Syncing Prisma schema and indexes..."
-npx prisma db push
-npx prisma generate
-
-# 6. Wipe old .next build (eliminates stale .next/server/edge chunks) & build cleanly
+# 4. Wipe old .next build & build cleanly
 echo "🧹 Cleaning previous .next build artifacts..."
 rm -rf .next
 
 echo "🏗️ Building Next.js production app (memory-safe mode)..."
 NODE_OPTIONS="--max-old-space-size=1024" npm run build
 
-# 7. Flush old PM2 error logs & start fresh process from ecosystem.config.cjs
+# 5. Start fresh PM2 process on configured port (default 3003)
+trap - ERR
 echo "🔄 Starting PM2 process (classicconcepts)..."
 pm2 flush classicconcepts || true
 if pm2 describe classicconcepts > /dev/null 2>&1; then
@@ -55,6 +62,18 @@ fi
 pm2 start ecosystem.config.cjs --update-env
 pm2 save
 
+APP_PORT=$(node -e "console.log(require('./ecosystem.config.cjs').apps[0].env.PORT)")
+echo "⏳ Verifying server health on port ${APP_PORT}..."
+sleep 3
+if curl -sSf -o /dev/null "http://127.0.0.1:${APP_PORT}"; then
+  echo "✅ Server is live and responding (HTTP 200) on port ${APP_PORT}!"
+else
+  echo "⚠️ Health check did not immediately return 200; recent PM2 logs:"
+  pm2 logs classicconcepts --lines 30 --nostream || true
+fi
+
 echo "=========================================="
 echo "✅ Classic Concepts updated & restarted!"
 echo "=========================================="
+exit 0
+}
