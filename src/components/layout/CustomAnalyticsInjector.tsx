@@ -107,7 +107,11 @@ export function CustomAnalyticsInjector({
     }
   }, [bodyScripts]);
 
-  const cleanGaId = googleAnalyticsId?.trim();
+  const candidateGaId = googleAnalyticsId?.trim();
+  const cleanGaId =
+    candidateGaId && /^[A-Za-z0-9-]+$/.test(candidateGaId)
+      ? candidateGaId
+      : null;
 
   return (
     <>

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TeamSection } from "@/components/team/TeamSection";
@@ -26,7 +26,7 @@ export default async function TeamPage() {
       <PageHeader
         breadcrumbs={[
           { label: "Home", href: "/" },
-          { label: "About Us", href: "/about/story" },
+          { label: "About Us", href: "/about" },
           { label: "Our Team" },
         ]}
         title={

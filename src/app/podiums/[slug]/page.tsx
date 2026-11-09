@@ -10,17 +10,7 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  try {
-    const subCategories = await prisma.podiumSubCategory.findMany({
-      select: { slug: true },
-    });
-
-    return subCategories.map((sub) => ({
-      slug: sub.slug,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -156,11 +146,15 @@ export default async function PodiumSubCategoryPage({
     <main className="min-h-screen bg-[#fafbfc] flex flex-col relative">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(collectionJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
 
       {/* Subtle Radial Gradient Pattern */}

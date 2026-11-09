@@ -46,15 +46,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cartItems, isLoaded]);
 
   const addToCart = (item: Omit<CartItem, "quantity">) => {
-    setCartItems(prev => {
-      const existing = prev.find(i => i.id === item.id);
+    const alreadyInCart = cartItems.some((i) => i.id === item.id);
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
       if (existing) {
-        toast.success(`Increased quantity of ${item.name}`);
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map((i) =>
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+        );
       }
-      toast.success(`Added ${item.name} to cart`);
       return [...prev, { ...item, quantity: 1 }];
     });
+    if (alreadyInCart) {
+      toast.success(`Increased quantity of ${item.name}`);
+    } else {
+      toast.success(`Added ${item.name} to cart`);
+    }
   };
 
   const removeFromCart = (id: string) => {

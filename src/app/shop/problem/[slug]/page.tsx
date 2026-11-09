@@ -10,17 +10,7 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  try {
-    const problemStatements = await prisma.problemStatement.findMany({
-      select: { slug: true }
-    });
-    
-    return problemStatements.map((problemStatement) => ({
-      slug: problemStatement.slug,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -107,7 +97,7 @@ export default async function ProblemStatementShopPage({
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Shop", href: "/shop" },
-          { label: "ProblemStatements", href: "/shop/c" },
+          { label: "Problem Statements", href: "/shop/problem" },
           { label: problemStatement.name }
         ]}
         title={
@@ -124,7 +114,7 @@ export default async function ProblemStatementShopPage({
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
             <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
               <Filter size={18} className="text-[#0056b3]" />
-              ProblemStatements
+              Problem Statements
             </h3>
             <ul className="space-y-3">
               <li>

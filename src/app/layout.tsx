@@ -3,9 +3,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
+import { PublicChrome } from "@/components/layout/PublicChrome";
 import { CustomAnalyticsInjector } from "@/components/layout/CustomAnalyticsInjector";
 import { prisma } from "@/lib/db";
 import { CartProvider } from "@/context/CartContext";
@@ -138,7 +136,9 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd).replace(/</g, "\\u003c"),
+          }}
         />
         <CustomAnalyticsInjector
           googleAnalyticsId={settings?.googleAnalyticsId}
@@ -146,16 +146,14 @@ export default async function RootLayout({
           bodyScripts={settings?.bodyScripts}
         />
         <CartProvider>
-          <Header
+          <PublicChrome
+            settings={settings}
             usefulLinks={usefulLinks}
             categories={categories}
             podiumSubCategories={podiumSubCategories}
-          />
-          <main className="flex-1">
+          >
             {children}
-          </main>
-          <Footer settings={settings} categories={categories} usefulLinks={usefulLinks} />
-          <FloatingWhatsApp phoneNumber={settings?.whatsappNumber || "+917337222876"} />
+          </PublicChrome>
           <Toaster position="top-right" />
         </CartProvider>
       </body>

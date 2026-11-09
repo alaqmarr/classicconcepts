@@ -14,8 +14,13 @@ export default function CartPage() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
+  const excludeSlugs = cartItems
+    .map((i) => i.slug)
+    .filter(Boolean)
+    .sort()
+    .join(",");
+
   useEffect(() => {
-    const excludeSlugs = cartItems.map((i) => i.slug).join(",");
     setLoadingSuggestions(true);
     fetch(`/api/products/suggestions?exclude=${encodeURIComponent(excludeSlugs)}`)
       .then((res) => res.json())
@@ -26,7 +31,7 @@ export default function CartPage() {
       })
       .catch(() => {})
       .finally(() => setLoadingSuggestions(false));
-  }, [cartItems]);
+  }, [excludeSlugs]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -103,7 +108,7 @@ export default function CartPage() {
                   {cartItems.map(item => (
                     <div key={item.id} className="flex flex-col sm:flex-row items-center gap-6 pb-8 border-b border-slate-100 last:border-0 last:pb-0">
                       <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
-                        <Image src={item.image} alt={item.name} fill className="object-cover" />
+                        <Image src={item.image || "/short-logo.png"} alt={item.name} fill className="object-cover" />
                       </div>
                       
                       <div className="flex-1 text-center sm:text-left">

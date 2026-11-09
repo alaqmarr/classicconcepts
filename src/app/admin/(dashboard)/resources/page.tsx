@@ -5,9 +5,11 @@ import { Plus, Trash2, Edit, FileText, Link as LinkIcon, Video, ExternalLink } f
 import Link from "next/link";
 import { isImageUrl } from "@/lib/media-utils";
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { requireAdminSession } from "@/lib/auth";
 
 async function deleteResource(formData: FormData) {
   "use server";
+  await requireAdminSession();
   try {
     const id = formData.get("id") as string;
     if (id) {

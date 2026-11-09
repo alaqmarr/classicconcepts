@@ -1,4 +1,6 @@
+export const revalidate = 60;
 import { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -30,12 +32,12 @@ export default async function OnlinePaymentsPage() {
               <h2 className="text-2xl font-bold text-slate-800 mb-6">Pay Online</h2>
               
               <div className="text-center mb-6">
-                <a 
-                  href="#" 
+                <Link 
+                  href="/contact" 
                   className="inline-block bg-[#0056b3] text-white font-bold py-3 px-8 rounded-full hover:bg-blue-800 transition-colors shadow-md"
                 >
-                  Click Here Now
-                </a>
+                  Request Payment Link
+                </Link>
                 <p className="text-sm font-medium text-slate-600 mt-3">[Net Banking, Debit/Credit Cards, and Online Wallets]</p>
               </div>
 
@@ -73,12 +75,12 @@ export default async function OnlinePaymentsPage() {
                     </a>
                   </div>
                 ) : (
-                  <a 
-                    href="#" 
+                  <Link 
+                    href="/contact" 
                     className="inline-block bg-[#0056b3] text-white font-bold py-3 px-8 rounded-full hover:bg-blue-800 transition-colors shadow-md"
                   >
-                    Click Here Now
-                  </a>
+                    Contact for UPI Details
+                  </Link>
                 )}
               </div>
 

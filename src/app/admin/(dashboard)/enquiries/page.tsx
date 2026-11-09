@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { requireAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -12,6 +13,7 @@ export default async function AdminEnquiriesPage() {
 
   async function deleteEnquiry(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.enquiry.delete({ where: { id } });
     revalidatePath("/admin/enquiries");

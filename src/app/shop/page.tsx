@@ -38,21 +38,27 @@ export default async function ShopPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const resolvedParams = await searchParams;
-  const searchQuery = typeof resolvedParams.q === 'string' ? resolvedParams.q : undefined;
+  const searchQuery = typeof resolvedParams.q === 'string' ? resolvedParams.q.trim() : undefined;
+  const categorySlug = typeof resolvedParams.category === 'string' ? resolvedParams.category.trim() : undefined;
 
-  const [products, categories, settings] = await Promise.all([
+  const [products, totalProductsOverall, categories, settings] = await Promise.all([
     prisma.product.findMany({
-      where: searchQuery
-        ? {
-            name: { contains: searchQuery },
-          }
-        : undefined,
+      where: {
+        ...(searchQuery ? { name: { contains: searchQuery } } : {}),
+        ...(categorySlug ? { category: { slug: categorySlug } } : {}),
+      },
       select: PRODUCT_CARD_SELECT,
       orderBy: { name: "asc" },
     }),
+    prisma.product.count(),
     prisma.category.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        _count: { select: { products: true } },
+      },
     }),
     prisma.siteSetting.findUnique({
       where: { id: "default" },
@@ -87,17 +93,20 @@ export default async function ShopPage({
             </h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/shop" className="text-[#0056b3] font-bold text-sm flex items-center justify-between group">
+                <Link href="/shop" className={`${!categorySlug ? "text-[#0056b3] font-bold" : "text-slate-600 hover:text-[#0056b3] font-medium"} text-sm flex items-center justify-between group`}>
                   <span>All Products</span>
                   <span className="bg-blue-50 text-[#0056b3] px-2 py-0.5 rounded-full text-xs group-hover:bg-[#0056b3] group-hover:text-white transition-colors">
-                    {products.length}
+                    {totalProductsOverall}
                   </span>
                 </Link>
               </li>
               {categories.map(cat => (
                 <li key={cat.id}>
-                  <Link href={`/shop/c/${cat.slug}`} className="text-slate-600 hover:text-[#0056b3] font-medium text-sm transition-colors">
-                    {cat.name}
+                  <Link href={`/shop/c/${cat.slug}`} className={`${categorySlug === cat.slug ? "text-[#0056b3] font-bold" : "text-slate-600 hover:text-[#0056b3] font-medium"} text-sm flex items-center justify-between transition-colors`}>
+                    <span>{cat.name}</span>
+                    <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs">
+                      {cat._count.products}
+                    </span>
                   </Link>
                 </li>
               ))}

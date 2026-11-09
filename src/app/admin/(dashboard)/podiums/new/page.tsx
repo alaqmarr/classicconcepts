@@ -1,144 +1,44 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { Package, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ProductForm } from "@/components/admin/ProductForm";
-import slugify from "slugify";
+import { createCatalogItem } from "@/lib/product-mutations";
 
 export default async function NewPodiumPage() {
-  const [categories, podiumSubCategories] = await Promise.all([
-    prisma.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
-    prisma.podiumSubCategory.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], select: { id: true, name: true } })
-  ]);
+  const [categories, podiumSubCategories, problemStatements, industries] =
+    await Promise.all([
+      prisma.category.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.podiumSubCategory.findMany({
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true },
+      }),
+      prisma.problemStatement.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.industry.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+    ]);
 
-  async function createProduct(formData: FormData) {
+  async function createPodium(formData: FormData) {
     "use server";
-    
-    const name = formData.get("name") as string;
-    const generatedSlug = slugify(name, { lower: true, strict: true });
-    
-    const categoryId = formData.get("categoryId") as string;
-    const sku = formData.get("sku") as string || null;
-    
-    let podiumSubCategoryId = (formData.get("podiumSubCategoryId") as string)?.trim() || null;
-    const newPodiumSubCategory = (formData.get("newPodiumSubCategory") as string)?.trim();
-    if (newPodiumSubCategory) {
-      const subSlug = slugify(newPodiumSubCategory, { lower: true, strict: true });
-      const sub = await prisma.podiumSubCategory.upsert({
-        where: { slug: subSlug },
-        update: { name: newPodiumSubCategory },
-        create: { name: newPodiumSubCategory, slug: subSlug }
-      });
-      podiumSubCategoryId = sub.id;
-    }
-
-    const bpParsed = parseFloat(formData.get("basePrice") as string);
-    const basePrice = !isNaN(bpParsed) ? bpParsed : null;
-    const dpParsed = parseFloat(formData.get("discountPrice") as string);
-    const discountPrice = !isNaN(dpParsed) ? dpParsed : null;
-    const stockStatus = formData.get("stockStatus") as string || "In stock";
-    const discountBadge = formData.get("discountBadge") as string || null;
-    
-    const videoUrl = formData.get("videoUrl") as string || null;
-    const description = formData.get("description") as string || null;
-    const descriptionHtml = formData.get("descriptionHtml") as string || null;
-    const importantNoteHtml = formData.get("importantNoteHtml") as string || null;
-    
-    const mainImage = formData.get("mainImage") as string || null;
-
-    const featureTexts = formData.getAll("featureText[]") as string[];
-    const specNames = formData.getAll("specName[]") as string[];
-    const specValues = formData.getAll("specValue[]") as string[];
-    const specTypes = formData.getAll("specType[]") as string[];
-    const variantNames = formData.getAll("variantName[]") as string[];
-    const variantPrices = formData.getAll("variantPrice[]") as string[];
-
-    const imageCreates = [];
-    if (mainImage) {
-      imageCreates.push({ url: mainImage, isMain: true });
-    }
-    
-    const galleryImages = formData.getAll("galleryImages[]") as string[];
-    galleryImages.forEach(gImg => {
-      if (gImg && gImg.trim() !== "") {
-        imageCreates.push({ url: gImg, isMain: false });
-      }
-    });
-
-    const product = await prisma.product.create({
-      data: {
-        id: generatedSlug,
-        name,
-        slug: generatedSlug,
-        categoryId,
-        podiumSubCategoryId,
-        sku,
-        basePrice,
-        discountPrice,
-        stockStatus,
-        discountBadge,
-        videoUrl,
-        description,
-        descriptionHtml,
-        importantNoteHtml,
-        isPodium: true,
-        
-        features: {
-          create: featureTexts.filter(t => t.trim() !== "").map(text => ({ text }))
-        },
-        
-        specifications: {
-          create: specNames.map((name, i) => {
-            if (!name || name.trim() === "" || !specValues[i] || specValues[i].trim() === "") return null;
-            return {
-              name,
-              value: specValues[i],
-              type: specTypes[i] || "specification"
-            };
-          }).filter(Boolean) as any
-        },
-
-        images: imageCreates.length > 0 ? {
-          create: imageCreates
-        } : undefined
-      }
-    });
-
-    for (let i = 0; i < variantNames.length; i++) {
-      if (!variantNames[i] || !variantNames[i].trim()) continue;
-      const vImg = formData.get(`variantImage_${i}`) as string || null;
-      const parsedPrice = parseFloat(variantPrices[i]);
-      const vPrice = !isNaN(parsedPrice) ? parsedPrice : null;
-      const galleryUrls = (formData.getAll(`variantGallery_${i}[]`) as string[]).filter(u => u && u.trim() !== "");
-      
-      await prisma.productVariant.create({
-        data: {
-          name: variantNames[i],
-          price: vPrice,
-          imageUrl: vImg,
-          productId: product.id,
-          images: galleryUrls.length > 0 ? {
-            create: galleryUrls.map(url => ({ url }))
-          } : undefined
-        }
-      });
-    }
-
-    revalidatePath("/", "layout");
-    revalidatePath("/podiums");
-    revalidatePath("/podiums/[slug]", "page");
-    revalidatePath("/shop");
-    revalidatePath(`/shop/p/${product.slug}`);
-    revalidatePath("/admin/podiums");
-    redirect("/admin/podiums");
+    return createCatalogItem(formData, { isPodium: true });
   }
 
   return (
     <div className="space-y-6 w-full">
       <div className="flex items-center gap-4">
-        <Link href="/admin/podiums" className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 hover:text-[#0056b3] transition-colors">
+        <Link
+          href="/admin/podiums"
+          className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 hover:text-[#0056b3] transition-colors"
+        >
           <ArrowLeft size={20} />
         </Link>
         <div>
@@ -146,15 +46,21 @@ export default async function NewPodiumPage() {
             <Package className="text-[#0056b3]" />
             Add New Podium
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Fill out the details for the new podium</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Fill out the details for the new podium
+          </p>
         </div>
       </div>
 
       <ProductForm
         categories={categories}
         podiumSubCategories={podiumSubCategories}
-        action={createProduct}
+        problemStatements={problemStatements}
+        industries={industries}
+        action={createPodium}
         isPodiumForm={true}
+        redirectTo="/admin/podiums"
+        successMessage="Podium created successfully!"
       />
     </div>
   );

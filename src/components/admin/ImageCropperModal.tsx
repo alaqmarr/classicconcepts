@@ -5,7 +5,7 @@ import { Crop, RotateCw, ZoomIn, ZoomOut, Check, X, Maximize2, Sparkles } from "
 
 interface ImageCropperModalProps {
   file: File;
-  defaultAspectRatio?: number; // e.g., 1 for 1:1, 4/3 for 4:3, 16/9 for 16:9, undefined for freeform
+  defaultAspectRatio?: number;
   aspectLabel?: string;
   onComplete: (croppedFile: File) => void;
   onSkipCrop: (originalFile: File) => void;
@@ -39,14 +39,14 @@ export function ImageCropperModal({
   const [imageSrc, setImageSrc] = useState<string>("");
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number }>({ w: 1, h: 1 });
   const [aspect, setAspect] = useState<number | undefined>(defaultAspectRatio);
-  const [rotation, setRotation] = useState<number>(0);
   const [scale, setScale] = useState<number>(1);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Crop box in percentage (0-100) of the rendered image element
+  // Crop box in percentage (0-100) of the current rendered image
   const [crop, setCrop] = useState<CropBox>({ x: 5, y: 5, w: 90, h: 90 });
 
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const activeObjectUrlRef = useRef<string | null>(null);
   const dragStateRef = useRef<{
     mode: "move" | "nw" | "ne" | "sw" | "se" | null;
     startX: number;
@@ -61,8 +61,14 @@ export function ImageCropperModal({
 
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file);
+    activeObjectUrlRef.current = objectUrl;
     setImageSrc(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
+    return () => {
+      if (activeObjectUrlRef.current) {
+        URL.revokeObjectURL(activeObjectUrlRef.current);
+        activeObjectUrlRef.current = null;
+      }
+    };
   }, [file]);
 
   const applyAspectRatioToCrop = useCallback(
@@ -71,8 +77,6 @@ export function ImageCropperModal({
         setCrop({ x: 5, y: 5, w: 90, h: 90 });
         return;
       }
-      // targetAspect = (w_pct * imgW) / (h_pct * imgH)
-      // => w_pct / h_pct = targetAspect * (imgH / imgW)
       const pctRatio = targetAspect * (imgH / imgW);
       let w = 85;
       let h = w / pctRatio;
@@ -98,6 +102,64 @@ export function ImageCropperModal({
   const handleSelectAspect = (newAspect: number | undefined) => {
     setAspect(newAspect);
     applyAspectRatioToCrop(newAspect, naturalSize.w, naturalSize.h);
+  };
+
+  // Bake 90° clockwise rotation directly into the working image blob so preview & crop are 100% WYSIWYG
+  const handleRotate90 = async () => {
+    if (!imgRef.current || isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const img = imgRef.current;
+      const nw = img.naturalWidth;
+      const nh = img.naturalHeight;
+      const MAX_WORK_DIM = 2400;
+      const factor =
+        Math.max(nw, nh) > MAX_WORK_DIM ? MAX_WORK_DIM / Math.max(nw, nh) : 1;
+      const cw = Math.max(1, Math.round(nh * factor));
+      const ch = Math.max(1, Math.round(nw * factor));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.translate(cw / 2, ch / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(
+        img,
+        -(nw * factor) / 2,
+        -(nh * factor) / 2,
+        nw * factor,
+        nh * factor
+      );
+
+      const outMime =
+        file.type === "image/png" || file.type === "image/webp"
+          ? "image/webp"
+          : "image/jpeg";
+
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("Rotation failed"))),
+          outMime,
+          0.92
+        );
+      });
+
+      const nextUrl = URL.createObjectURL(blob);
+      if (activeObjectUrlRef.current) {
+        URL.revokeObjectURL(activeObjectUrlRef.current);
+      }
+      activeObjectUrlRef.current = nextUrl;
+      setImageSrc(nextUrl);
+    } catch (err) {
+      console.error("Rotate error:", err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const startDrag = (
@@ -202,54 +264,42 @@ export function ImageCropperModal({
 
       const sx = (crop.x / 100) * nw;
       const sy = (crop.y / 100) * nh;
-      const sw = (crop.w / 100) * nw;
-      const sh = (crop.h / 100) * nh;
+      const sw = Math.max(1, (crop.w / 100) * nw);
+      const sh = Math.max(1, (crop.h / 100) * nh);
 
-      const canvas = document.createElement("canvas");
-      const isRotated90 = rotation % 180 !== 0;
-      const rawOutW = isRotated90 ? sh : sw;
-      const rawOutH = isRotated90 ? sw : sh;
-
-      // Cap output canvas to max 2000px on longest side so 20MB DSLR photos become fast, crisp ~300KB web assets
+      // Cap output canvas to max 2000px on longest side so 20MB DSLR photos become fast, crisp ~250KB web assets
       const MAX_OUTPUT_DIMENSION = 2000;
       const downscale =
-        Math.max(rawOutW, rawOutH) > MAX_OUTPUT_DIMENSION
-          ? MAX_OUTPUT_DIMENSION / Math.max(rawOutW, rawOutH)
+        Math.max(sw, sh) > MAX_OUTPUT_DIMENSION
+          ? MAX_OUTPUT_DIMENSION / Math.max(sw, sh)
           : 1;
 
-      canvas.width = Math.max(1, Math.round(rawOutW * downscale));
-      canvas.height = Math.max(1, Math.round(rawOutH * downscale));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(sw * downscale));
+      canvas.height = Math.max(1, Math.round(sh * downscale));
 
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas context unavailable");
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
-      ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((rotation * Math.PI) / 180);
-      ctx.scale(scale * downscale, scale * downscale);
-
-      const drawW = sw;
-      const drawH = sh;
-      ctx.drawImage(img, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
-      ctx.restore();
-
+      // Use WebP for PNG/WebP to preserve full alpha transparency at ~1/8th the file size
       const mimeType =
         file.type === "image/png" || file.type === "image/webp"
-          ? file.type
+          ? "image/webp"
           : "image/jpeg";
 
       const blob: Blob = await new Promise((resolve, reject) => {
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("Canvas toBlob failed"))),
           mimeType,
-          0.92
+          0.9
         );
       });
 
-      const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+      const ext = mimeType === "image/webp" ? "webp" : "jpg";
       const baseName = file.name.replace(/\.[^/.]+$/, "");
       const croppedFile = new File([blob], `${baseName}-cropped.${ext}`, {
         type: mimeType,
@@ -354,14 +404,14 @@ export function ImageCropperModal({
             </button>
           </div>
 
-          {/* Zoom & Rotate Controls */}
+          {/* Preview Zoom & Rotate Controls */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg">
               <ZoomOut size={14} className="text-slate-500" />
               <input
                 type="range"
                 min={1}
-                max={2.5}
+                max={2}
                 step={0.05}
                 value={scale}
                 onChange={(e) => setScale(parseFloat(e.target.value))}
@@ -371,11 +421,12 @@ export function ImageCropperModal({
             </div>
             <button
               type="button"
-              onClick={() => setRotation((r) => (r + 90) % 360)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1"
+              onClick={handleRotate90}
+              disabled={isProcessing}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1 disabled:opacity-50"
             >
               <RotateCw size={13} />
-              Rotate
+              Rotate 90°
             </button>
           </div>
         </div>
@@ -383,7 +434,12 @@ export function ImageCropperModal({
         {/* Interactive Canvas Area */}
         <div className="flex-1 bg-slate-950 flex items-center justify-center p-6 overflow-auto select-none min-h-[340px] max-h-[58vh]">
           {imageSrc && (
-            <div className="relative inline-block max-w-full max-h-full">
+            <div
+              className="relative inline-block max-w-full max-h-full origin-center transition-transform duration-75"
+              style={{
+                transform: scale !== 1 ? `scale(${scale})` : undefined,
+              }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 ref={imgRef}
@@ -391,7 +447,6 @@ export function ImageCropperModal({
                 alt="Crop preview"
                 onLoad={handleImageLoad}
                 style={{
-                  transform: `rotate(${rotation}deg) scale(${scale})`,
                   maxHeight: "50vh",
                   maxWidth: "100%",
                   display: "block",
@@ -473,7 +528,7 @@ export function ImageCropperModal({
               type="button"
               onClick={() => onSkipCrop(file)}
               disabled={isProcessing}
-              className="px-5 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+              className="px-5 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
             >
               Upload Original (Skip Crop)
             </button>
@@ -481,7 +536,7 @@ export function ImageCropperModal({
               type="button"
               onClick={handleCropAndSave}
               disabled={isProcessing}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[#0056b3] text-white hover:bg-blue-800 transition-colors flex items-center gap-2 shadow-md"
+              className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[#0056b3] text-white hover:bg-blue-800 transition-colors flex items-center gap-2 shadow-md disabled:opacity-50"
             >
               <Check size={16} />
               {isProcessing ? "Processing..." : "Crop & Upload"}

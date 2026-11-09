@@ -49,8 +49,9 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
   const currentName = selectedVariant ? `${product.name} - ${selectedVariant.name}` : product.name;
   
   // Use the variant image if available, otherwise use the main product image
-  const defaultImage = product.images.find(i => i.isMain)?.url || product.images[0]?.url || "/placeholder-image.jpg";
+  const defaultImage = product.images.find(i => i.isMain)?.url || product.images[0]?.url || "/short-logo.png";
   const currentImage = selectedVariant?.imageUrl || selectedVariant?.images?.[0]?.url || defaultImage;
+  const embedVideoUrl = product.videoUrl ? getYouTubeEmbedUrl(product.videoUrl) : null;
 
   // Gather all unique images (product images + variant images + variant gallery images)
   const allImageUrls = Array.from(new Set([
@@ -72,7 +73,7 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
           selectedImageUrl={selectedVariant?.imageUrl || selectedVariant?.images?.[0]?.url}
         />
 
-        {product.videoUrl && (
+        {embedVideoUrl && (
           <div className="pt-6 border-t border-slate-200/80 max-w-[340px] sm:max-w-[460px] md:max-w-[540px] lg:max-w-[500px] xl:max-w-[560px] 2xl:max-w-[620px] mx-auto w-full">
             <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
               <PlayCircle size={20} className="text-[#0056b3]" />
@@ -82,7 +83,7 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
               <iframe
                 width="100%"
                 height="100%"
-                src={getYouTubeEmbedUrl(product.videoUrl) || ""}
+                src={embedVideoUrl}
                 title={`${product.name} Video`}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -186,7 +187,7 @@ export function InteractiveProductView({ product, phone }: InteractiveProductVie
                     </span>
                     {variant.price ? (
                       <span className={`text-[11px] mt-1 font-medium ${isSelected ? 'text-blue-600' : 'text-slate-500'}`}>
-                        +₹{variant.price}
+                        ₹{variant.price.toLocaleString("en-IN")}
                       </span>
                     ) : null}
                   </button>

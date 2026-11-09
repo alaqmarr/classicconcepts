@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
 import { UploadCloud, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { ImageCropperModal } from "./ImageCropperModal";
+import { compressRasterImageIfNeeded, uploadAdminFile } from "@/lib/client-upload";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
@@ -25,33 +26,27 @@ export function MultiImageUploader({
   const [error, setError] = useState("");
   const [cropQueue, setCropQueue] = useState<File[]>([]);
 
-  const uploadSingleFile = useCallback(async (file: File) => {
+  const uploadSingleFile = useCallback(async (file: File, compressFirst = false) => {
     setIsUploading(true);
     setError("");
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || `Failed to upload ${file.name}`);
-      }
-      setUploadedUrls((prev) => [...prev, data.url]);
+      const readyFile = compressFirst
+        ? await compressRasterImageIfNeeded(file)
+        : file;
+      const url = await uploadAdminFile(readyFile);
+      setUploadedUrls((prev) => [...prev, url]);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to upload image. Please try again.");
+      setError(err?.message || "Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
     }
   }, []);
 
   const advanceQueueAfterFile = useCallback(
-    async (fileToUpload: File) => {
+    async (fileToUpload: File, compressFirst = false) => {
       setCropQueue((prev) => prev.slice(1));
-      await uploadSingleFile(fileToUpload);
+      await uploadSingleFile(fileToUpload, compressFirst);
     },
     [uploadSingleFile]
   );
@@ -65,7 +60,7 @@ export function MultiImageUploader({
         setError(
           isTooLarge
             ? "One or more images exceed the maximum size limit of 20 MB."
-            : "Some files were rejected. Please upload JPG, PNG, WEBP, SVG, or GIF (Max 20MB)."
+            : "Some files were rejected. Please upload JPG, PNG, WEBP, or GIF (Max 20MB)."
         );
       }
 
@@ -73,8 +68,8 @@ export function MultiImageUploader({
 
       const rasterFiles: File[] = [];
       for (const file of acceptedFiles) {
-        if (file.type === "image/svg+xml" || file.type === "image/gif") {
-          await uploadSingleFile(file);
+        if (file.type === "image/gif") {
+          await uploadSingleFile(file, false);
         } else {
           rasterFiles.push(file);
         }
@@ -90,10 +85,14 @@ export function MultiImageUploader({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".webp", ".svg", ".gif"],
+      "image/jpeg": [".jpeg", ".jpg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+      "image/gif": [".gif"],
     },
     maxSize: MAX_FILE_SIZE,
     multiple: true,
+    disabled: isUploading,
   });
 
   const removeImage = (indexToRemove: number) => {
@@ -103,8 +102,10 @@ export function MultiImageUploader({
   const currentCropFile = cropQueue[0] || null;
 
   return (
-    <div className="w-full">
-      {/* Hidden inputs to pass the URLs to Server Actions */}
+    <div
+      className="w-full"
+      data-uploading={isUploading || cropQueue.length > 0 ? "true" : undefined}
+    >
       {uploadedUrls.map((url, idx) => (
         <input key={`${url}-${idx}`} type="hidden" name={name} value={url} />
       ))}
@@ -118,8 +119,8 @@ export function MultiImageUploader({
               ? `${aspectLabel} (${cropQueue.length} remaining)`
               : aspectLabel
           }
-          onComplete={(croppedFile) => advanceQueueAfterFile(croppedFile)}
-          onSkipCrop={(originalFile) => advanceQueueAfterFile(originalFile)}
+          onComplete={(croppedFile) => advanceQueueAfterFile(croppedFile, false)}
+          onSkipCrop={(originalFile) => advanceQueueAfterFile(originalFile, true)}
           onCancel={() => setCropQueue((prev) => prev.slice(1))}
         />
       )}
@@ -187,7 +188,7 @@ export function MultiImageUploader({
                 : "Drag & drop multiple images, or click to select & crop"}
             </p>
             <p className="text-xs text-slate-400">
-              Supports JPEG, PNG, WEBP, SVG (Max 20MB each • Inbuilt Cropper)
+              Supports JPEG, PNG, WEBP, GIF (Max 20MB each • Inbuilt Cropper)
             </p>
           </div>
         )}

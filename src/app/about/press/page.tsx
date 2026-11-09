@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 import { prisma } from "@/lib/db";
 import Image from "next/image";
 import { Clients } from "@/components/home/Clients";
@@ -21,6 +21,9 @@ export default async function AboutPressPage() {
 
   const newspaperItems = pressArticles.filter((a) => a.category === "Newspaper");
   const newsroomItems = pressArticles.filter((a) => a.category === "Newsroom");
+  const pressEmbedUrl = settings?.pressVideoUrl
+    ? getYouTubeEmbedUrl(settings.pressVideoUrl)
+    : null;
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">
@@ -42,26 +45,28 @@ export default async function AboutPressPage() {
         <div className="container mx-auto px-6 w-full space-y-20">
           
           {/* YouTube Video Section */}
-          <div className="space-y-8 text-center">
-            <h2 className="text-3xl font-bold text-slate-800">Classic Concepts in Action</h2>
-            <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900 mx-auto">
-               <iframe 
-                 width="100%" 
-                 height="100%" 
-                 src={getYouTubeEmbedUrl(settings?.pressVideoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ") || ''} 
-                 title="Classic Concepts Press Video" 
-                 frameBorder="0" 
-                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                 allowFullScreen>
-               </iframe>
+          {pressEmbedUrl && (
+            <div className="space-y-8 text-center">
+              <h2 className="text-3xl font-bold text-slate-800">Classic Concepts in Action</h2>
+              <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900 mx-auto">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={pressEmbedUrl}
+                  title="Classic Concepts Press Video"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              <p className="text-slate-600 text-lg max-w-2xl mx-auto">
+                Watch our latest features and learn more about our commitment to quality acrylic manufacturing and innovative design solutions.
+              </p>
             </div>
-            <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-              Watch our latest features and learn more about our commitment to quality acrylic manufacturing and innovative design solutions.
-            </p>
-          </div>
+          )}
 
           {/* Newspaper Clippings Section */}
-          <div className="space-y-12 pt-12 border-t border-slate-200">
+          <div className={`space-y-12 ${pressEmbedUrl ? "pt-12 border-t border-slate-200" : ""}`}>
             <div className="text-center space-y-4">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-[#0056b3] text-xs font-bold uppercase tracking-wider">
                 <Newspaper size={15} />

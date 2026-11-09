@@ -5,12 +5,18 @@ import { redirect } from "next/navigation";
 import { Users, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 
 export default function NewTeamMemberPage() {
   async function createMember(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const name = (formData.get("name") as string)?.trim();
     const position = (formData.get("position") as string)?.trim();
+    if (!name || !position) {
+      throw new Error("Full Name and Position are required.");
+    }
     const photoUrl = (formData.get("photoUrl") as string)?.trim() || null;
     const phone = (formData.get("phone") as string)?.trim() || null;
     const whatsapp = (formData.get("whatsapp") as string)?.trim() || null;
@@ -58,7 +64,7 @@ export default function NewTeamMemberPage() {
         </div>
       </div>
 
-      <form
+      <SubmitForm
         action={createMember}
         className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6"
       >
@@ -164,7 +170,7 @@ export default function NewTeamMemberPage() {
         >
           Save Team Member
         </button>
-      </form>
+      </SubmitForm>
     </div>
   );
 }

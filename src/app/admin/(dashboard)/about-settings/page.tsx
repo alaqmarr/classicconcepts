@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 import { Settings, Save, Cog, Newspaper, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { requireAdminSession } from "@/lib/auth";
 
 async function updateSettings(formData: FormData) {
   "use server";
+  await requireAdminSession();
   
   const aboutIntroImage = formData.get("aboutIntroImage") as string;
   const aboutCertIso = formData.get("aboutCertIso") as string;

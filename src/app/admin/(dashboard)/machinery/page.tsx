@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { Cog, Plus, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 
 function revalidateInfraPaths() {
   revalidatePath("/about/infrastructure");
@@ -17,6 +19,7 @@ export default async function AdminMachineryPage() {
 
   async function createMachinery(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const name = (formData.get("name") as string)?.trim();
     const description = (formData.get("description") as string)?.trim() || null;
     const imageUrl = (formData.get("imageUrl") as string)?.trim();
@@ -27,7 +30,9 @@ export default async function AdminMachineryPage() {
         ? parseInt(rawSortOrder)
         : count + 1;
 
-    if (!name || !imageUrl) return;
+    if (!name || !imageUrl) {
+      return { error: "Please provide a machinery name and upload a photo." };
+    }
 
     await prisma.machinery.create({
       data: {
@@ -110,8 +115,9 @@ export default async function AdminMachineryPage() {
       </div>
 
       {/* Add Machinery Form */}
-      <form
+      <SubmitForm
         action={createMachinery}
+        successMessage="Machinery uploaded!"
         className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6"
       >
         <h2 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3">
@@ -177,7 +183,7 @@ export default async function AdminMachineryPage() {
             Upload & Add Machinery
           </button>
         </div>
-      </form>
+      </SubmitForm>
 
       {/* Machinery List */}
       <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">

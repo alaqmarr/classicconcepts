@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -9,9 +10,10 @@ import { ArrowLeft, Save } from "lucide-react";
 export default function NewUsefulLinkPage() {
   async function createLink(formData: FormData) {
     "use server";
+    await requireAdminSession();
     
-    const title = formData.get("title") as string;
-    const url = formData.get("url") as string;
+    const title = (formData.get("title") as string)?.trim();
+    const url = (formData.get("url") as string)?.trim();
     const sortOrder = parseInt(formData.get("sortOrder") as string) || 0;
     const isActive = formData.get("isActive") === "on";
 
@@ -29,7 +31,7 @@ export default function NewUsefulLinkPage() {
     });
 
     revalidatePath("/admin/useful-links");
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     redirect("/admin/useful-links");
   }
 

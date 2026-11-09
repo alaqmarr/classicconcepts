@@ -1,9 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { requireAdminSession } from "@/lib/auth";
+import { revalidateCatalogPaths } from "@/lib/product-mutations";
 
 export async function bulkSetPodiumStatus(ids: string[], isPodium: boolean) {
+  await requireAdminSession();
   if (!ids || ids.length === 0) return { count: 0 };
 
   const result = await prisma.product.updateMany({
@@ -11,13 +13,7 @@ export async function bulkSetPodiumStatus(ids: string[], isPodium: boolean) {
     data: { isPodium },
   });
 
-  revalidatePath("/", "layout");
-  revalidatePath("/admin/products");
-  revalidatePath("/admin/podiums");
-  revalidatePath("/podiums");
-  revalidatePath("/podiums/[slug]", "page");
-  revalidatePath("/shop");
-
+  revalidateCatalogPaths();
   return { count: result.count };
 }
 
@@ -25,6 +21,7 @@ export async function bulkSetPodiumSubCategory(
   ids: string[],
   podiumSubCategoryId: string | null
 ) {
+  await requireAdminSession();
   if (!ids || ids.length === 0) return { count: 0 };
 
   const result = await prisma.product.updateMany({
@@ -32,28 +29,18 @@ export async function bulkSetPodiumSubCategory(
     data: { podiumSubCategoryId: podiumSubCategoryId || null },
   });
 
-  revalidatePath("/", "layout");
-  revalidatePath("/admin/podiums");
-  revalidatePath("/podiums");
-  revalidatePath("/podiums/[slug]", "page");
-  revalidatePath("/shop");
-
+  revalidateCatalogPaths();
   return { count: result.count };
 }
 
 export async function bulkDeleteProducts(ids: string[]) {
+  await requireAdminSession();
   if (!ids || ids.length === 0) return { count: 0 };
 
   const result = await prisma.product.deleteMany({
     where: { id: { in: ids } },
   });
 
-  revalidatePath("/", "layout");
-  revalidatePath("/admin/products");
-  revalidatePath("/admin/podiums");
-  revalidatePath("/podiums");
-  revalidatePath("/podiums/[slug]", "page");
-  revalidatePath("/shop");
-
+  revalidateCatalogPaths();
   return { count: result.count };
 }

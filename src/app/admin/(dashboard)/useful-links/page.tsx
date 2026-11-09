@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Plus, Edit, Trash2, Link2, ExternalLink } from "lucide-react";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { requireAdminSession } from "@/lib/auth";
 
 export default async function UsefulLinksPage() {
   const links = await prisma.usefulLink.findMany({
@@ -13,10 +13,11 @@ export default async function UsefulLinksPage() {
 
   async function deleteLink(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.usefulLink.delete({ where: { id } });
     revalidatePath("/admin/useful-links");
-    revalidatePath("/");
+    revalidatePath("/", "layout");
   }
 
   return (

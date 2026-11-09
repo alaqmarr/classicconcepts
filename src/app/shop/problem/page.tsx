@@ -1,21 +1,23 @@
+export const revalidate = 60;
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProblemStatementCard } from "@/components/shop/ProblemStatementCard";
 import { FolderTree } from "lucide-react";
 
 export const metadata = {
-  title: "Shop ProblemStatements - Classic Concepts",
-  description: "Browse our premium acrylic furniture and products by problemStatement.",
+  title: "Shop by Problem Statement - Classic Concepts",
+  description:
+    "Browse our premium acrylic furniture, podiums, and custom products by problem statement and use case.",
 };
 
 export default async function ShopProblemStatementsPage() {
   const problemStatements = await prisma.problemStatement.findMany({
-    orderBy: { name: 'asc' },
+    orderBy: { name: "asc" },
     include: {
       _count: {
-        select: { products: true }
-      }
-    }
+        select: { products: true },
+      },
+    },
   });
 
   return (
@@ -24,11 +26,14 @@ export default async function ShopProblemStatementsPage() {
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Shop", href: "/shop" },
-          { label: "ProblemStatements" }
+          { label: "Problem Statements" },
         ]}
         title={
           <>
-            Shop by <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">ProblemStatement</span>
+            Shop by{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
+              Problem Statement
+            </span>
           </>
         }
       />
@@ -39,14 +44,18 @@ export default async function ShopProblemStatementsPage() {
             <FolderTree size={20} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-800">All ProblemStatements</h2>
-            <p className="text-slate-500 text-sm font-medium">Browse our extensive catalog structured for your convenience</p>
+            <h2 className="text-2xl font-bold text-slate-800">
+              All Problem Statements
+            </h2>
+            <p className="text-slate-500 text-sm font-medium">
+              Browse our extensive catalog structured for your convenience
+            </p>
           </div>
         </div>
 
         {problemStatements.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
-            {problemStatements.map(problemStatement => (
+            {problemStatements.map((problemStatement) => (
               <div key={problemStatement.id} className="relative group">
                 <ProblemStatementCard problemStatement={problemStatement} />
                 <div className="absolute top-4 right-4 z-30 bg-white/90 backdrop-blur text-[#0056b3] text-xs font-bold px-3 py-1 rounded-full shadow-sm pointer-events-none">
@@ -57,8 +66,13 @@ export default async function ShopProblemStatementsPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-200">
-            <h3 className="text-xl font-bold text-slate-800 mb-2">No problemStatements found</h3>
-            <p className="text-slate-500">ProblemStatements will appear here once they are added in the admin dashboard.</p>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">
+              No problem statements found
+            </h3>
+            <p className="text-slate-500">
+              Problem statements will appear here once they are added in the
+              admin dashboard.
+            </p>
           </div>
         )}
       </section>

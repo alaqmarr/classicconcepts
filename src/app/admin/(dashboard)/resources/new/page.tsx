@@ -3,12 +3,15 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { FileUploader } from "@/components/admin/FileUploader";
+import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 
 async function createResource(formData: FormData) {
   "use server";
+  await requireAdminSession();
   
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() || null;
@@ -50,7 +53,7 @@ export default function NewResourcePage() {
         </div>
       </div>
 
-      <form action={createResource} className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6 max-w-2xl">
+      <SubmitForm action={createResource} className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6 max-w-2xl">
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
             Title <span className="text-red-500">*</span>
@@ -94,7 +97,7 @@ export default function NewResourcePage() {
         <button type="submit" className="w-full py-4 bg-[#0c1a40] text-white rounded-xl font-bold hover:bg-[#1a295c] transition-colors shadow-md">
           Save Resource
         </button>
-      </form>
+      </SubmitForm>
     </div>
   );
 }

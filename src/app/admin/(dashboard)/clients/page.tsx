@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { requireAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { Building2, Globe, Trash2, Plus, Gauge, Save } from "lucide-react";
@@ -17,6 +18,7 @@ export default async function AdminClientsPage() {
 
   async function updateCarouselSpeed(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const rawSpeed = parseInt(formData.get("clientCarouselSpeed") as string);
     const speed = !isNaN(rawSpeed) ? Math.max(3, Math.min(180, rawSpeed)) : 25;
 
@@ -41,6 +43,7 @@ export default async function AdminClientsPage() {
 
   async function deleteClient(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.client.delete({ where: { id } });
     revalidatePath("/");
@@ -51,6 +54,7 @@ export default async function AdminClientsPage() {
 
   async function deletePlatform(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.onlinePlatform.delete({ where: { id } });
     revalidatePath("/");

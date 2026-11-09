@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 import { prisma } from "@/lib/db";
 import { Metadata } from "next";
 import { FileText, Link as LinkIcon, Video, Download, ArrowUpRight, FolderOpen } from "lucide-react";

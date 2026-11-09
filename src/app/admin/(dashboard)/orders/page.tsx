@@ -1,23 +1,28 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { ShoppingCart, Trash2, Eye } from "lucide-react";
+import { ShoppingCart, Eye } from "lucide-react";
+import { requireAdminSession } from "@/lib/auth";
 
 export default async function AdminOrdersPage() {
   const orders = await prisma.cartOrder.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     include: {
-      items: true
-    }
+      items: true,
+    },
   });
 
   async function deleteOrder(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
+    if (!id) return { error: "Missing order ID." };
     await prisma.cartOrder.delete({ where: { id } });
     revalidatePath("/admin/orders");
+    revalidatePath("/admin");
   }
 
   return (
@@ -27,7 +32,9 @@ export default async function AdminOrdersPage() {
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
             <ShoppingCart className="text-[#0056b3]" /> Cart Orders / Requests
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">View checkout requests from customers.</p>
+          <p className="text-slate-500 mt-1 text-sm">
+            View checkout requests from customers.
+          </p>
         </div>
       </div>
 
@@ -45,19 +52,35 @@ export default async function AdminOrdersPage() {
                   <th className="p-4 font-bold text-slate-600 text-sm">Date</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Name</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Email</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-center">Items</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-right">Total</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm text-center">
+                    Items
+                  </th>
+                  <th className="p-4 font-bold text-slate-600 text-sm text-right">
+                    Total
+                  </th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="p-4 text-slate-600 text-sm">{new Date(order.createdAt).toLocaleDateString()}</td>
+                  <tr
+                    key={order.id}
+                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="p-4 text-slate-600 text-sm">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </td>
                     <td className="p-4 font-bold text-slate-800">{order.name}</td>
                     <td className="p-4 text-slate-600 text-sm">
-                      <a href={`mailto:${order.email}`} className="hover:text-[#0056b3] transition-colors">{order.email}</a>
+                      <a
+                        href={`mailto:${order.email}`}
+                        className="hover:text-[#0056b3] transition-colors"
+                      >
+                        {order.email}
+                      </a>
                     </td>
                     <td className="p-4 text-center">
                       <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-bold">
@@ -68,25 +91,31 @@ export default async function AdminOrdersPage() {
                       ₹{(order.total || 0).toLocaleString("en-IN")}
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded-md text-xs font-bold ${
-                        order.status === 'New' ? 'bg-blue-100 text-blue-700' :
-                        order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
-                        order.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
+                      <span
+                        className={`px-2.5 py-1 rounded-md text-xs font-bold ${
+                          order.status === "Pending" || order.status === "New"
+                            ? "bg-blue-100 text-blue-700"
+                            : order.status === "Processing"
+                            ? "bg-amber-100 text-amber-700"
+                            : order.status === "Completed"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : order.status === "Cancelled"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
                         {order.status}
                       </span>
                     </td>
-                    <td className="p-4 flex gap-3 justify-end">
-                      <Link href={`/admin/orders/${order.id}`} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Details">
+                    <td className="p-4 flex gap-2 justify-end items-center">
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View Details"
+                      >
                         <Eye size={18} />
                       </Link>
-                      <DeleteForm action={deleteOrder}>
-                        <input type="hidden" name="id" value={order.id} />
-                        <button type="submit" className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                          <Trash2 size={18} />
-                        </button>
-                      </DeleteForm>
+                      <DeleteForm action={deleteOrder} id={order.id} />
                     </td>
                   </tr>
                 ))}
@@ -98,4 +127,3 @@ export default async function AdminOrdersPage() {
     </div>
   );
 }
-

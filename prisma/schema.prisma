@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -17,33 +15,39 @@ model Category {
   name            String
   slug            String    @unique
   imageUrl        String?
-  bgClass         String?   
+  bgClass         String?
   descriptionHtml String?   // Added for rich text description
   products        Product[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([name])
 }
 
 model ProblemStatement {
-  id              String    @id @default(cuid())
-  name            String
-  slug            String    @unique
-  imageUrl        String?
-  description     String?
-  products        Product[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  imageUrl    String?
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([name])
 }
 
 model Industry {
-  id              String    @id @default(cuid())
-  name            String
-  slug            String    @unique
-  imageUrl        String?
-  description     String?
-  products        Product[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  imageUrl    String?
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([name])
 }
 
 model Product {
@@ -56,7 +60,7 @@ model Product {
   discountBadge     String?  // e.g., "Up to 45% discount."
   stockStatus       String   @default("In stock")
   videoUrl          String?
-  
+
   // Text content
   description       String?  // Short description
   descriptionHtml   String?  // HTML description for Description Tab
@@ -78,44 +82,57 @@ model Product {
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([isPodium, name])
+  @@index([categoryId, name])
+  @@index([podiumSubCategoryId])
+  @@index([name])
 }
 
 model ProductImage {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   url       String
-  isMain    Boolean @default(false)
+  isMain    Boolean  @default(false)
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([productId, isMain, createdAt])
 }
 
 model ProductFeature {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   text      String
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 model ProductSpecification {
-  id        String  @id @default(cuid())
-  name      String  // Particulars (e.g., "Height")
-  value     String  // Specs (e.g., "40\" to 42\"")
-  type      String  @default("specification") // "specification" or "dimension"
+  id        String   @id @default(cuid())
+  name      String   // Particulars (e.g., "Height")
+  value     String   // Specs (e.g., "40\" to 42\"")
+  type      String   @default("specification") // "specification" or "dimension"
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 model ProductVariant {
   id        String                @id @default(cuid())
-  name      String  // e.g., "BLACK"
-  imageUrl  String? // thumbnail for variant
+  name      String                // e.g., "BLACK"
+  imageUrl  String?               // thumbnail for variant
   images    ProductVariantImage[]
-  price     Float?  // optional price override
+  price     Float?                // optional price override
   productId String
   product   Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime              @default(now())
+
+  @@index([productId])
 }
 
 model ProductVariantImage {
@@ -124,6 +141,8 @@ model ProductVariantImage {
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   createdAt DateTime       @default(now())
+
+  @@index([variantId])
 }
 
 model Client {
@@ -132,6 +151,8 @@ model Client {
   logoUrl   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
 }
 
 model OnlinePlatform {
@@ -163,7 +184,7 @@ model SiteSetting {
   aboutCertHym    String?
   aboutCertGa     String?
   aboutCertAscb   String?
-  
+
   infraVideoUrl   String?
   pressVideoUrl   String?
   homeVideoUrl    String?
@@ -175,7 +196,7 @@ model SiteSetting {
   smtpUser        String?
   smtpPass        String?
   adminEmail      String?
-  
+
   mapEmbedUrl         String?
   googleAnalyticsId   String?
   headScripts         String?
@@ -201,6 +222,8 @@ model GalleryImage {
   altText   String?
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
+
+  @@index([sortOrder])
 }
 
 model InfrastructureLocation {
@@ -211,6 +234,8 @@ model InfrastructureLocation {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
 }
 
 model UsefulLink {
@@ -221,6 +246,8 @@ model UsefulLink {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 model Enquiry {
@@ -233,10 +260,13 @@ model Enquiry {
   source    String   @default("Contact Form") // Contact Form, Product Page etc
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
 }
 
 model CartOrder {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   name      String
   email     String
   phone     String
@@ -246,14 +276,17 @@ model CartOrder {
   pincode   String?
   message   String?
   total     Float?
-  status    String   @default("Pending") // Pending, Processing, Completed, Cancelled
+  status    String          @default("Pending") // Pending, Processing, Completed, Cancelled
   items     CartOrderItem[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
 }
 
 model CartOrderItem {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   orderId      String
   order        CartOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId    String
@@ -262,7 +295,10 @@ model CartOrderItem {
   productImage String?
   price        Float?
   quantity     Int
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 model Certificate {
@@ -273,6 +309,8 @@ model Certificate {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
 }
 
 model Resource {
@@ -285,6 +323,8 @@ model Resource {
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([sortOrder])
 }
 
 model PageVisit {
@@ -293,6 +333,8 @@ model PageVisit {
   visits    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([visits(sort: Desc)])
 }
 
 model PodiumSubCategory {
@@ -305,21 +347,25 @@ model PodiumSubCategory {
   products    Product[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([sortOrder, name])
 }
 
 model TeamMember {
-  id          String   @id @default(cuid())
-  name        String
-  position    String
-  photoUrl    String?
-  phone       String?
-  whatsapp    String?
-  email       String?
-  bio         String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  position  String
+  photoUrl  String?
+  phone     String?
+  whatsapp  String?
+  email     String?
+  bio       String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 model Machinery {
@@ -330,6 +376,8 @@ model Machinery {
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([sortOrder])
 }
 
 model PressArticle {
@@ -344,4 +392,6 @@ model PressArticle {
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([category, sortOrder])
 }

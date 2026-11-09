@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 import { prisma } from "@/lib/db";
 import Image from "next/image";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -16,6 +16,10 @@ export default async function OurInfrastructurePage() {
     prisma.infrastructureLocation.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.machinery.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] }),
   ]);
+
+  const infraEmbedUrl = settings?.infraVideoUrl
+    ? getYouTubeEmbedUrl(settings.infraVideoUrl)
+    : null;
 
   return (
     <main className="min-h-screen bg-white">
@@ -65,14 +69,18 @@ export default async function OurInfrastructurePage() {
                   key={item.id}
                   className="group bg-white rounded-2xl border border-slate-200/90 shadow-soft hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
                 >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 border-b border-slate-100">
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.name}
-                      fill
-                      unoptimized
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 border-b border-slate-100 flex items-center justify-center">
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        unoptimized
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <Cog size={40} className="text-slate-300" />
+                    )}
                   </div>
                   <div className="p-5 flex-1 flex flex-col justify-between">
                     <div>
@@ -139,20 +147,22 @@ export default async function OurInfrastructurePage() {
         </div>
 
         {/* YouTube Video Embed */}
-        <div className="w-full mx-auto flex justify-center py-8">
-          <div className="w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-900 aspect-video relative group">
-             <iframe 
-               width="100%" 
-               height="100%" 
-               src={getYouTubeEmbedUrl(settings?.infraVideoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ") || ''} 
-               title="Infrastructure Video" 
-               frameBorder="0" 
-               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-               allowFullScreen
-               className="relative z-10"
-             ></iframe>
+        {infraEmbedUrl && (
+          <div className="w-full mx-auto flex justify-center py-8">
+            <div className="w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-900 aspect-video relative group">
+              <iframe
+                width="100%"
+                height="100%"
+                src={infraEmbedUrl}
+                title="Infrastructure Video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="relative z-10"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Dynamic Locations Grid */}
         <div className="py-12 border-t border-slate-100 space-y-8">
@@ -168,14 +178,18 @@ export default async function OurInfrastructurePage() {
               locations.map((loc) => {
                 const Card = (
                   <div className="group bg-white border-2 border-[#0056b3] rounded-2xl overflow-hidden flex flex-col h-full hover:shadow-lg transition-shadow duration-300">
-                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
-                      <Image 
-                        src={loc.imageUrl} 
-                        alt={loc.name} 
-                        fill 
-                        unoptimized
-                        className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                      />
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 flex items-center justify-center">
+                      {loc.imageUrl ? (
+                        <Image 
+                          src={loc.imageUrl} 
+                          alt={loc.name} 
+                          fill 
+                          unoptimized
+                          className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                        />
+                      ) : (
+                        <MapPin size={40} className="text-slate-300" />
+                      )}
                     </div>
                     <div className="p-4 text-center bg-white flex-1 flex items-center justify-center">
                       <h3 className="font-bold text-[#0056b3]">{loc.name}</h3>

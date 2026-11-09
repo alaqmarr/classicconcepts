@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { FileUploader } from "@/components/admin/FileUploader";
+import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -12,6 +14,7 @@ interface Props {
 
 async function updateCertificate(id: string, formData: FormData) {
   "use server";
+  await requireAdminSession();
   
   const title = (formData.get("title") as string)?.trim();
   const imageUrl = (formData.get("imageUrl") as string)?.trim();
@@ -55,7 +58,7 @@ export default async function EditCertificatePage({ params }: Props) {
         </div>
       </div>
 
-      <form action={updateCertificate.bind(null, id)} className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6 max-w-2xl">
+      <SubmitForm action={updateCertificate.bind(null, id)} className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6 max-w-2xl">
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
             Certificate Title <span className="text-red-500">*</span>
@@ -92,7 +95,7 @@ export default async function EditCertificatePage({ params }: Props) {
             placeholder="Upload Certificate (PDF, PNG, JPG) to R2 storage or enter URL"
             accept={{
               'application/pdf': ['.pdf'],
-              'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.svg'],
+              'image/*': ['.jpeg', '.jpg', '.png', '.webp'],
             }}
           />
         </div>
@@ -112,7 +115,7 @@ export default async function EditCertificatePage({ params }: Props) {
         <button type="submit" className="w-full py-4 bg-[#0c1a40] text-white rounded-xl font-bold hover:bg-[#1a295c] transition-colors shadow-md">
           Update Certificate
         </button>
-      </form>
+      </SubmitForm>
     </div>
   );
 }

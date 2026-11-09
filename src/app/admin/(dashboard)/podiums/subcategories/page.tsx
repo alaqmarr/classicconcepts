@@ -5,6 +5,7 @@ import { Layers, Plus, ArrowLeft, ArrowUp, ArrowDown, Save } from "lucide-react"
 import Link from "next/link";
 import slugify from "slugify";
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { requireAdminSession } from "@/lib/auth";
 
 function revalidateAllPodiumPaths(slug?: string) {
   revalidatePath("/", "layout");
@@ -27,13 +28,14 @@ export default async function AdminPodiumSubCategoriesPage() {
 
   async function createSubCategory(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const name = (formData.get("name") as string)?.trim();
     if (!name) return;
     const description = (formData.get("description") as string)?.trim() || null;
     const rawSortOrder = formData.get("sortOrder") as string;
     const count = await prisma.podiumSubCategory.count();
     const sortOrder = rawSortOrder !== "" && !isNaN(parseInt(rawSortOrder)) ? parseInt(rawSortOrder) : count + 1;
-    const slug = slugify(name, { lower: true, strict: true });
+    const slug = slugify(name, { lower: true, strict: true }) || `sub-${Date.now().toString(36)}`;
 
     await prisma.podiumSubCategory.upsert({
       where: { slug },
@@ -46,6 +48,7 @@ export default async function AdminPodiumSubCategoriesPage() {
 
   async function updateSubCategoryRow(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     const name = (formData.get("name") as string)?.trim();
     const description = (formData.get("description") as string)?.trim() || null;
@@ -62,6 +65,7 @@ export default async function AdminPodiumSubCategoriesPage() {
 
   async function moveSubCategory(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     const direction = formData.get("direction") as "up" | "down";
 
@@ -94,6 +98,7 @@ export default async function AdminPodiumSubCategoriesPage() {
 
   async function deleteSubCategory(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.product.updateMany({
       where: { podiumSubCategoryId: id },

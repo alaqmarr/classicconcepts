@@ -5,6 +5,8 @@ import { redirect, notFound } from "next/navigation";
 import { Users, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -12,8 +14,12 @@ interface Props {
 
 async function updateMember(id: string, formData: FormData) {
   "use server";
+  await requireAdminSession();
   const name = (formData.get("name") as string)?.trim();
   const position = (formData.get("position") as string)?.trim();
+  if (!name || !position) {
+    throw new Error("Full Name and Position are required.");
+  }
   const photoUrl = (formData.get("photoUrl") as string)?.trim() || null;
   const phone = (formData.get("phone") as string)?.trim() || null;
   const whatsapp = (formData.get("whatsapp") as string)?.trim() || null;
@@ -68,7 +74,7 @@ export default async function EditTeamMemberPage({ params }: Props) {
         </div>
       </div>
 
-      <form
+      <SubmitForm
         action={updateMember.bind(null, id)}
         className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6"
       >
@@ -176,7 +182,7 @@ export default async function EditTeamMemberPage({ params }: Props) {
         >
           Update Team Member
         </button>
-      </form>
+      </SubmitForm>
     </div>
   );
 }

@@ -4,7 +4,11 @@ import { sendAdminEnquiryNotification, sendClientEnquiryThankYou } from '@/lib/e
 
 export async function POST(req: Request) {
   try {
-    const { name, email, phone, message } = await req.json();
+    const body = await req.json();
+    const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 200) : '';
+    const email = typeof body?.email === 'string' ? body.email.trim().slice(0, 200) : '';
+    const phone = typeof body?.phone === 'string' ? body.phone.trim().slice(0, 60) : '';
+    const message = typeof body?.message === 'string' ? body.message.trim().slice(0, 5000) : '';
 
     if (!name || !email || !phone || !message) {
       return NextResponse.json(

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Users, Plus, Edit, Phone, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { requireAdminSession } from "@/lib/auth";
 
 export default async function AdminTeamPage() {
   const members = await prisma.teamMember.findMany({
@@ -12,6 +13,7 @@ export default async function AdminTeamPage() {
 
   async function deleteMember(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.teamMember.delete({ where: { id } });
     revalidatePath("/admin/team");

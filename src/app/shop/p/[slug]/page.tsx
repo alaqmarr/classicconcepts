@@ -5,21 +5,13 @@ import { notFound } from "next/navigation";
 import { InteractiveProductView } from "./InteractiveProductView";
 import { getYouTubeEmbedUrl } from "@/lib/youtube";
 
-export const revalidate = 60;
+export const revalidate = 300;
 export const dynamicParams = true;
 
+// Render product pages on-demand and cache via ISR (300s) + explicit revalidatePath on save.
+// Returning [] avoids pre-rendering hundreds of products in RAM during `npm run build` on VPS.
 export async function generateStaticParams() {
-  try {
-    const products = await prisma.product.findMany({
-      select: { slug: true },
-    });
-
-    return products.map((product) => ({
-      slug: product.slug,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -202,11 +194,15 @@ export default async function ProductDetailPage({
     <main className="min-h-screen bg-gradient-to-b from-[#fafbfc] to-[#f0f4ff] flex flex-col pb-24 relative">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
 
       {/* Soft Radial Blush Behind Product */}

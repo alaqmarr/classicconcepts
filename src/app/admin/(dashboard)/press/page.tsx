@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { Newspaper, Plus, ArrowUp, ArrowDown, Save, ExternalLink } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 
 function revalidatePressPaths() {
   revalidatePath("/about/press");
@@ -17,6 +19,7 @@ export default async function AdminPressPage() {
 
   async function createPressArticle(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const title = (formData.get("title") as string)?.trim();
     if (!title) return;
 
@@ -51,6 +54,7 @@ export default async function AdminPressPage() {
 
   async function updatePressArticle(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     const title = (formData.get("title") as string)?.trim();
     const category = (formData.get("category") as string) || "Newspaper";
@@ -80,6 +84,7 @@ export default async function AdminPressPage() {
 
   async function movePressArticle(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     const direction = formData.get("direction") as "up" | "down";
 
@@ -111,6 +116,7 @@ export default async function AdminPressPage() {
 
   async function deletePressArticle(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.pressArticle.delete({ where: { id } });
     revalidatePressPaths();
@@ -131,8 +137,9 @@ export default async function AdminPressPage() {
       </div>
 
       {/* Add Form */}
-      <form
+      <SubmitForm
         action={createPressArticle}
+        successMessage="Press item added!"
         className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6"
       >
         <h2 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3">
@@ -251,7 +258,7 @@ export default async function AdminPressPage() {
             Add Press Item
           </button>
         </div>
-      </form>
+      </SubmitForm>
 
       {/* Articles Table */}
       <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">

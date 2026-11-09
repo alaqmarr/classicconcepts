@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { FileUploader } from "@/components/admin/FileUploader";
+import { SubmitForm } from "@/components/admin/SubmitForm";
+import { requireAdminSession } from "@/lib/auth";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -13,10 +15,14 @@ interface Props {
 
 async function updateResource(id: string, formData: FormData) {
   "use server";
+  await requireAdminSession();
   
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string || null;
-  const fileUrl = formData.get("fileUrl") as string;
+  const title = (formData.get("title") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const fileUrl = (formData.get("fileUrl") as string)?.trim();
+  if (!title || !fileUrl) {
+    throw new Error("Title and Resource File/Link are required.");
+  }
   const type = formData.get("type") as string;
   const thumbnailUrl = formData.get("thumbnailUrl") as string || null;
   const sortOrder = parseInt(formData.get("sortOrder") as string) || 0;
@@ -56,7 +62,7 @@ export default async function EditResourcePage({ params }: Props) {
         </div>
       </div>
 
-      <form action={updateResource.bind(null, id)} className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6 max-w-2xl">
+      <SubmitForm action={updateResource.bind(null, id)} className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 space-y-6 max-w-2xl">
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Title</label>
           <input type="text" name="title" defaultValue={resource.title} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3]" />
@@ -96,7 +102,7 @@ export default async function EditResourcePage({ params }: Props) {
         <button type="submit" className="w-full py-4 bg-[#0c1a40] text-white rounded-xl font-bold hover:bg-[#1a295c] transition-colors">
           Update Resource
         </button>
-      </form>
+      </SubmitForm>
     </div>
   );
 }

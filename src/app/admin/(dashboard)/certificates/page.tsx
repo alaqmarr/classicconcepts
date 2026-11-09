@@ -5,9 +5,11 @@ import { Plus, Trash2, Edit, FileText, ExternalLink, Image as ImageIcon } from "
 import Link from "next/link";
 import { isPdfUrl } from "@/lib/media-utils";
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { requireAdminSession } from "@/lib/auth";
 
 async function deleteCertificate(formData: FormData) {
   "use server";
+  await requireAdminSession();
   try {
     const id = formData.get("id") as string;
     if (id) {

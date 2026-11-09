@@ -5,6 +5,7 @@ import { useDropzone, FileRejection } from "react-dropzone";
 import { UploadCloud, X, Loader2, FileText, ExternalLink, CheckCircle, Image as ImageIcon } from "lucide-react";
 import { isImageUrl, isPdfUrl } from "@/lib/media-utils";
 import { ImageCropperModal } from "./ImageCropperModal";
+import { compressRasterImageIfNeeded, uploadAdminFile } from "@/lib/client-upload";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
@@ -33,30 +34,21 @@ export function FileUploader({
   const [fileName, setFileName] = useState("");
   const [cropFile, setCropFile] = useState<File | null>(null);
 
-  const uploadFileToR2 = useCallback(async (fileToUpload: File) => {
+  const uploadFileToR2 = useCallback(async (fileToUpload: File, compressFirst = false) => {
     setCropFile(null);
     setIsUploading(true);
     setError("");
     setFileName(fileToUpload.name);
 
-    const formData = new FormData();
-    formData.append("file", fileToUpload);
-
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      setUploadedUrl(data.url);
+      const readyFile = compressFirst
+        ? await compressRasterImageIfNeeded(fileToUpload)
+        : fileToUpload;
+      const url = await uploadAdminFile(readyFile);
+      setUploadedUrl(url);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to upload file to storage. Please try again.");
+      setError(err?.message || "Failed to upload file to storage. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -86,7 +78,6 @@ export function FileUploader({
 
       setError("");
 
-      // If it's a raster image, open the inbuilt cropper
       if (
         file.type.startsWith("image/") &&
         file.type !== "image/svg+xml" &&
@@ -94,7 +85,7 @@ export function FileUploader({
       ) {
         setCropFile(file);
       } else {
-        uploadFileToR2(file);
+        uploadFileToR2(file, false);
       }
     },
     [uploadFileToR2]
@@ -108,7 +99,10 @@ export function FileUploader({
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
       "application/zip": [".zip"],
       "video/*": [".mp4", ".webm"],
-      "image/*": [".jpeg", ".jpg", ".png", ".webp", ".svg", ".gif"],
+      "image/jpeg": [".jpeg", ".jpg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+      "image/gif": [".gif"],
     },
     maxSize: MAX_FILE_SIZE,
     maxFiles: 1,
@@ -123,14 +117,17 @@ export function FileUploader({
   };
 
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3"
+      data-uploading={isUploading || !!cropFile ? "true" : undefined}
+    >
       {cropFile && (
         <ImageCropperModal
           file={cropFile}
           defaultAspectRatio={aspectRatio}
           aspectLabel={aspectLabel}
-          onComplete={(croppedFile) => uploadFileToR2(croppedFile)}
-          onSkipCrop={(originalFile) => uploadFileToR2(originalFile)}
+          onComplete={(croppedFile) => uploadFileToR2(croppedFile, false)}
+          onSkipCrop={(originalFile) => uploadFileToR2(originalFile, true)}
           onCancel={() => setCropFile(null)}
         />
       )}

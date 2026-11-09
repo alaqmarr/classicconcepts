@@ -123,12 +123,22 @@ const getEmailLayout = (preheader: string, content: string, settings: any) => `
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function escapeHtml(value: string | null | undefined): string {
+  if (!value) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function sectionHeading(text: string) {
   return `
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
       <tr>
         <td style="padding: 24px 0 12px 0;">
-          <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px;">${text}</h2>
+          <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px;">${escapeHtml(text)}</h2>
         </td>
       </tr>
     </table>
@@ -136,23 +146,28 @@ function sectionHeading(text: string) {
 }
 
 function infoRow(label: string, value: string, isLink = false) {
+  const safeVal = escapeHtml(value);
   const val = isLink
-    ? `<a href="${value.includes('@') ? 'mailto:' : 'tel:'}${value}" style="color: ${BRAND_BLUE}; text-decoration: none; font-weight: 600;">${value}</a>`
-    : `<span style="color: #1e293b;">${value}</span>`;
+    ? `<a href="${value.includes('@') ? 'mailto:' : 'tel:'}${encodeURI(value.trim())}" style="color: ${BRAND_BLUE}; text-decoration: none; font-weight: 600;">${safeVal}</a>`
+    : `<span style="color: #1e293b;">${safeVal}</span>`;
   return `
     <tr>
-      <td style="padding: 8px 0; font-size: 14px; color: #64748b; vertical-align: top; width: 100px; font-weight: 600;">${label}</td>
+      <td style="padding: 8px 0; font-size: 14px; color: #64748b; vertical-align: top; width: 100px; font-weight: 600;">${escapeHtml(label)}</td>
       <td style="padding: 8px 0; font-size: 14px; vertical-align: top;">${val}</td>
     </tr>
   `;
 }
 
 function productRow(item: { productName: string; productImage?: string; productSlug?: string; quantity: number; price?: number }) {
-  const imageUrl = item.productImage?.startsWith('/') ? `${SITE_URL}${item.productImage}` : item.productImage;
-  const imgHtml = imageUrl
+  const rawImg = item.productImage?.startsWith('/') ? `${SITE_URL}${item.productImage}` : item.productImage;
+  const safeImg = rawImg ? escapeHtml(rawImg) : '';
+  const safeName = escapeHtml(item.productName);
+  const safeSlug = encodeURIComponent(item.productSlug || '');
+  const productUrl = safeSlug ? `${SITE_URL}/shop/p/${safeSlug}` : `${SITE_URL}/shop`;
+  const imgHtml = safeImg
     ? `<td style="width: 80px; vertical-align: top; padding-right: 16px;">
-         <a href="${SITE_URL}/shop/p/${item.productSlug || '#'}" target="_blank" style="text-decoration: none;">
-           <img src="${imageUrl}" alt="${item.productName}" width="80" height="80" style="display: block; width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 1px solid #e2e8f0;" />
+         <a href="${productUrl}" target="_blank" style="text-decoration: none;">
+           <img src="${safeImg}" alt="${safeName}" width="80" height="80" style="display: block; width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 1px solid #e2e8f0;" />
          </a>
        </td>`
     : '';
@@ -168,17 +183,17 @@ function productRow(item: { productName: string; productImage?: string; productS
           <tr>
             ${imgHtml}
             <td style="vertical-align: top;">
-              <a href="${SITE_URL}/shop/p/${item.productSlug || '#'}" target="_blank" style="text-decoration: none; color: #0f172a; font-size: 15px; font-weight: 700; line-height: 1.4; display: block; margin-bottom: 6px;">${item.productName}</a>
+              <a href="${productUrl}" target="_blank" style="text-decoration: none; color: #0f172a; font-size: 15px; font-weight: 700; line-height: 1.4; display: block; margin-bottom: 6px;">${safeName}</a>
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="padding-right: 16px;">
                     <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Qty:</span>
-                    <span style="font-size: 14px; color: #1e293b; font-weight: 700; margin-left: 4px;">${item.quantity}</span>
+                    <span style="font-size: 14px; color: #1e293b; font-weight: 700; margin-left: 4px;">${Number(item.quantity) || 1}</span>
                   </td>
                   <td>${priceHtml}</td>
                 </tr>
               </table>
-              <a href="${SITE_URL}/shop/p/${item.productSlug || '#'}" target="_blank" style="display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; color: ${BRAND_BLUE}; text-decoration: none; letter-spacing: 0.3px;">VIEW PRODUCT &rarr;</a>
+              <a href="${productUrl}" target="_blank" style="display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; color: ${BRAND_BLUE}; text-decoration: none; letter-spacing: 0.3px;">VIEW PRODUCT &rarr;</a>
             </td>
           </tr>
         </table>
@@ -192,17 +207,17 @@ function ctaButton(text: string, href: string, color = BRAND_RED) {
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 28px auto 0 auto;">
       <tr>
         <td style="border-radius: 8px; background-color: ${color};">
-          <a href="${href}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; letter-spacing: 0.5px;">${text}</a>
+          <a href="${href}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; letter-spacing: 0.5px;">${escapeHtml(text)}</a>
         </td>
       </tr>
     </table>
   `;
 }
 
-function greetingBlock(name: string, message: string) {
+function greetingBlock(name: string, messageHtml: string) {
   return `
-    <h1 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; line-height: 1.3;">Hello ${name},</h1>
-    <p style="margin: 0 0 24px 0; font-size: 15px; color: #475569; line-height: 1.7;">${message}</p>
+    <h1 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; line-height: 1.3;">Hello ${escapeHtml(name)},</h1>
+    ${messageHtml ? `<p style="margin: 0 0 24px 0; font-size: 15px; color: #475569; line-height: 1.7;">${messageHtml}</p>` : ''}
   `;
 }
 
@@ -249,17 +264,21 @@ export async function sendAdminEnquiryNotification(data: { name: string; email: 
   const { transporter, settings } = await getTransporter();
   const adminEmail = settings.adminEmail || settings.email;
 
+  const safeName = escapeHtml(data.name);
+  const safeSource = escapeHtml(data.source);
+  const safeMessage = escapeHtml(data.message);
+
   const content = `
     <!-- Badge -->
     <table role="presentation" cellspacing="0" cellpadding="0" border="0">
       <tr>
         <td style="background-color: #dbeafe; color: ${BRAND_BLUE}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 6px 14px; border-radius: 20px;">
-          &#9993; New Enquiry &bull; ${data.source}
+          &#9993; New Enquiry &bull; ${safeSource}
         </td>
       </tr>
     </table>
 
-    <h1 style="margin: 20px 0 8px 0; font-size: 22px; font-weight: 800; color: #0f172a;">New Enquiry from ${data.name}</h1>
+    <h1 style="margin: 20px 0 8px 0; font-size: 22px; font-weight: 800; color: #0f172a;">New Enquiry from ${safeName}</h1>
     <p style="margin: 0 0 24px 0; font-size: 14px; color: #94a3b8;">Received on ${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
 
     <!-- Customer Details Card -->
@@ -276,7 +295,7 @@ export async function sendAdminEnquiryNotification(data: { name: string; email: 
     </table>
 
     ${sectionHeading('Message')}
-    ${highlightBox(`<p style="margin: 0; font-size: 15px; color: #334155; line-height: 1.7; white-space: pre-wrap;">${data.message}</p>`, '#f8fafc', '#94a3b8')}
+    ${highlightBox(`<p style="margin: 0; font-size: 15px; color: #334155; line-height: 1.7; white-space: pre-wrap;">${safeMessage}</p>`, '#f8fafc', '#94a3b8')}
 
     <p style="margin: 20px 0 0 0; font-size: 13px; color: #94a3b8;">You can reply to this enquiry from the Admin Dashboard.</p>
   `;
@@ -364,7 +383,7 @@ export async function sendAdminOrderNotification(data: { name: string; email: st
       </tr>
     </table>
 
-    <h1 style="margin: 20px 0 8px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Cart Request from ${data.name}</h1>
+    <h1 style="margin: 20px 0 8px 0; font-size: 22px; font-weight: 800; color: #0f172a;">Cart Request from ${escapeHtml(data.name)}</h1>
     <p style="margin: 0 0 24px 0; font-size: 14px; color: #94a3b8;">Received on ${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
 
     <!-- Customer Details Card -->
@@ -383,7 +402,7 @@ export async function sendAdminOrderNotification(data: { name: string; email: st
 
     ${data.message ? `
       ${sectionHeading('Customer Message')}
-      ${highlightBox(`<p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.7; white-space: pre-wrap;">${data.message}</p>`, '#f8fafc', '#94a3b8')}
+      ${highlightBox(`<p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.7; white-space: pre-wrap;">${escapeHtml(data.message)}</p>`, '#f8fafc', '#94a3b8')}
     ` : ''}
 
     ${sectionHeading(`Requested Products (${totalItems})`)}
@@ -480,14 +499,14 @@ export async function sendAdminReply(data: { name: string; email: string; replyM
   const content = `
     ${greetingBlock(data.name, '')}
 
-    <div style="font-size: 15px; line-height: 1.8; color: #334155; white-space: pre-wrap;">${data.replyMessage}</div>
+    <div style="font-size: 15px; line-height: 1.8; color: #334155; white-space: pre-wrap;">${escapeHtml(data.replyMessage)}</div>
 
     <!-- Original Message -->
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 32px 0 0 0;">
       <tr>
         <td style="background-color: #f8fafc; border-left: 4px solid #cbd5e1; border-radius: 0 8px 8px 0; padding: 20px 24px;">
           <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Your original message</p>
-          <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.7; white-space: pre-wrap;">${data.originalMessage}</p>
+          <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.7; white-space: pre-wrap;">${escapeHtml(data.originalMessage)}</p>
         </td>
       </tr>
     </table>

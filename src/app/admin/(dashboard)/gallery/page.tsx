@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { Image as ImageIcon, Trash2, Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { requireAdminSession } from "@/lib/auth";
 
 export default async function AdminGalleryPage() {
   const images = await prisma.galleryImage.findMany({
@@ -13,10 +14,11 @@ export default async function AdminGalleryPage() {
 
   async function addImage(formData: FormData) {
     "use server";
-    const url = formData.get("url") as string;
-    const altText = formData.get("altText") as string;
+    await requireAdminSession();
+    const url = (formData.get("url") as string)?.trim();
+    const altText = (formData.get("altText") as string)?.trim();
 
-    if (!url) return;
+    if (!url) return { error: "Please upload an image before adding to gallery." };
 
     // Get max sort order
     const maxSort = await prisma.galleryImage.aggregate({

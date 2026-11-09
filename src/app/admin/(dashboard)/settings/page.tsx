@@ -3,9 +3,11 @@ import { SubmitForm } from "@/components/admin/SubmitForm";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { Save } from "lucide-react";
+import { requireAdminSession } from "@/lib/auth";
 
 async function updateSettings(formData: FormData) {
   "use server";
+  await requireAdminSession();
   
   await prisma.siteSetting.upsert({
     where: { id: "default" },

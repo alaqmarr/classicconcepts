@@ -4,7 +4,13 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
-export function StatusUpdater({ orderId, currentStatus }: { orderId: string, currentStatus: string }) {
+export function StatusUpdater({
+  orderId,
+  currentStatus,
+}: {
+  orderId: string;
+  currentStatus: string;
+}) {
   const [status, setStatus] = useState(currentStatus);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -23,9 +29,10 @@ export function StatusUpdater({ orderId, currentStatus }: { orderId: string, cur
         toast.success(`Order status updated to ${newStatus}`);
         router.refresh();
       } else {
-        toast.error("Failed to update status");
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error || "Failed to update status");
       }
-    } catch (err) {
+    } catch {
       toast.error("An error occurred");
     } finally {
       setLoading(false);
@@ -41,6 +48,7 @@ export function StatusUpdater({ orderId, currentStatus }: { orderId: string, cur
         disabled={loading}
         className="bg-white border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-[#0056b3] focus:border-[#0056b3] block w-full p-2.5 outline-none font-medium disabled:opacity-50"
       >
+        <option value="Pending">Pending</option>
         <option value="New">New</option>
         <option value="Processing">Processing</option>
         <option value="Completed">Completed</option>

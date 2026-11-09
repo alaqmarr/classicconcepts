@@ -38,17 +38,17 @@ export function Header({
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
-    <header className="w-full font-sans relative z-50">
+    <header className="w-full font-sans sticky top-0 z-50">
       {/* Main Navbar - Dark Theme */}
       <div
         className={`w-full transition-all duration-300 ${
           scrolled
-            ? "fixed top-0 bg-[#05060A]/95 backdrop-blur-md shadow-soft py-5 border-b border-white/5"
+            ? "bg-[#05060A]/95 backdrop-blur-md shadow-soft py-4 border-b border-white/10"
             : "bg-[#05060A] py-5"
         }`}
       >

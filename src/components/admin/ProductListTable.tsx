@@ -2,7 +2,19 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Edit2, Trash2, CheckSquare, Square, Layers, Search, Loader2, ArrowRightLeft, FolderTree } from "lucide-react";
+import {
+  Edit2,
+  Trash2,
+  CheckSquare,
+  Square,
+  Layers,
+  Search,
+  Loader2,
+  ArrowRightLeft,
+  FolderTree,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import {
   bulkSetPodiumStatus,
@@ -16,6 +28,8 @@ interface ProductItem {
   name: string;
   sku?: string | null;
   basePrice?: number | null;
+  discountPrice?: number | null;
+  stockStatus?: string;
   isPodium: boolean;
   category: {
     name: string;
@@ -33,10 +47,12 @@ interface SubCategoryOption {
 
 interface ProductListTableProps {
   products: ProductItem[];
-  deleteAction: (formData: FormData) => Promise<void>;
+  deleteAction: (formData: FormData) => Promise<any>;
   currentType: "products" | "podiums";
   podiumSubCategories?: SubCategoryOption[];
 }
+
+const PAGE_SIZE = 50;
 
 export function ProductListTable({
   products,
@@ -48,6 +64,7 @@ export function ProductListTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSubCatId, setFilterSubCatId] = useState("");
   const [targetSubCatId, setTargetSubCatId] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isPending, startTransition] = useTransition();
 
   const filteredProducts = products.filter((p) => {
@@ -67,6 +84,13 @@ export function ProductListTable({
     }
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedProducts = filteredProducts.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
 
   const isAllSelected =
     filteredProducts.length > 0 && selectedIds.length === filteredProducts.length;
@@ -92,11 +116,13 @@ export function ProductListTable({
       try {
         const res = await bulkSetPodiumStatus(selectedIds, targetIsPodium);
         toast.success(
-          `Successfully marked ${res.count} items as ${targetIsPodium ? "Podiums" : "Standard Products"}!`
+          `Successfully marked ${res.count} items as ${
+            targetIsPodium ? "Podiums" : "Standard Products"
+          }!`
         );
         setSelectedIds([]);
       } catch (err: any) {
-        toast.error(`Bulk update failed: ${err.message}`);
+        toast.error(`Bulk update failed: ${err?.message || "Unknown error"}`);
       }
     });
   };
@@ -115,7 +141,7 @@ export function ProductListTable({
         toast.success(`Updated sub-category for ${res.count} podiums!`);
         setSelectedIds([]);
       } catch (err: any) {
-        toast.error(`Failed to update sub-category: ${err.message}`);
+        toast.error(`Failed to update sub-category: ${err?.message || "Unknown error"}`);
       }
     });
   };
@@ -132,7 +158,7 @@ export function ProductListTable({
         toast.success(`Successfully deleted ${res.count} items!`);
         setSelectedIds([]);
       } catch (err: any) {
-        toast.error(`Bulk deletion failed: ${err.message}`);
+        toast.error(`Bulk deletion failed: ${err?.message || "Unknown error"}`);
       }
     });
   };
@@ -143,12 +169,18 @@ export function ProductListTable({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+            />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${currentType} (A-Z)...`}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder={`Search ${currentType} (A-Z, SKU, category)...`}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0056b3]"
             />
           </div>
@@ -156,7 +188,10 @@ export function ProductListTable({
           {currentType === "podiums" && podiumSubCategories.length > 0 && (
             <select
               value={filterSubCatId}
-              onChange={(e) => setFilterSubCatId(e.target.value)}
+              onChange={(e) => {
+                setFilterSubCatId(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full sm:w-56 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0056b3]"
             >
               <option value="">All Sub-Categories</option>
@@ -176,7 +211,11 @@ export function ProductListTable({
             onClick={toggleSelectAll}
             className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
           >
-            {isAllSelected ? <CheckSquare size={14} className="text-[#0056b3]" /> : <Square size={14} />}
+            {isAllSelected ? (
+              <CheckSquare size={14} className="text-[#0056b3]" />
+            ) : (
+              <Square size={14} />
+            )}
             {isAllSelected ? "Deselect All" : `Select All (${filteredProducts.length})`}
           </button>
           <span className="text-xs text-slate-500 font-medium">
@@ -232,7 +271,11 @@ export function ProductListTable({
                 onClick={() => handleBulkSetPodium(true)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
               >
-                {isPending ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
+                {isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Layers size={14} />
+                )}
                 Mark as Podiums
               </button>
             ) : (
@@ -242,7 +285,11 @@ export function ProductListTable({
                 onClick={() => handleBulkSetPodium(false)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
               >
-                {isPending ? <Loader2 size={14} className="animate-spin" /> : <ArrowRightLeft size={14} />}
+                {isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <ArrowRightLeft size={14} />
+                )}
                 Move to Standard Products
               </button>
             )}
@@ -280,22 +327,32 @@ export function ProductListTable({
                     onClick={toggleSelectAll}
                     className="text-slate-400 hover:text-slate-700"
                   >
-                    {isAllSelected ? <CheckSquare size={16} className="text-[#0056b3]" /> : <Square size={16} />}
+                    {isAllSelected ? (
+                      <CheckSquare size={16} className="text-[#0056b3]" />
+                    ) : (
+                      <Square size={16} />
+                    )}
                   </button>
                 </th>
-                <th className="p-4">{currentType === "podiums" ? "Podium Name (A-Z)" : "Product Name (A-Z)"}</th>
-                <th className="p-4">{currentType === "podiums" ? "Category / Sub-Category" : "Category"}</th>
+                <th className="p-4">
+                  {currentType === "podiums" ? "Podium Name (A-Z)" : "Product Name (A-Z)"}
+                </th>
+                <th className="p-4">
+                  {currentType === "podiums" ? "Category / Sub-Category" : "Category"}
+                </th>
                 <th className="p-4">SKU / Price</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredProducts.map((product) => {
+              {paginatedProducts.map((product) => {
                 const isSelected = selectedIds.includes(product.id);
                 const editHref =
                   currentType === "podiums"
                     ? `/admin/podiums/${product.id}`
                     : `/admin/products/${product.id}`;
+
+                const displayPrice = product.discountPrice ?? product.basePrice;
 
                 return (
                   <tr
@@ -333,7 +390,9 @@ export function ProductListTable({
                     <td className="p-4 text-slate-500 text-sm">
                       <div>{product.sku || "No SKU"}</div>
                       <div className="font-bold text-slate-700">
-                        ₹{product.basePrice?.toLocaleString("en-IN") || "0"}
+                        {displayPrice != null
+                          ? `₹${displayPrice.toLocaleString("en-IN")}`
+                          : "Price on request"}
                       </div>
                     </td>
                     <td className="p-4 text-right">
@@ -344,15 +403,7 @@ export function ProductListTable({
                         >
                           <Edit2 size={18} />
                         </Link>
-                        <DeleteForm action={deleteAction}>
-                          <input type="hidden" name="id" value={product.id} />
-                          <button
-                            type="submit"
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </DeleteForm>
+                        <DeleteForm action={deleteAction} id={product.id} />
                       </div>
                     </td>
                   </tr>
@@ -368,6 +419,37 @@ export function ProductListTable({
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+            <span>
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–
+              {Math.min(safePage * PAGE_SIZE, filteredProducts.length)} of{" "}
+              {filteredProducts.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="font-bold px-2">
+                Page {safePage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

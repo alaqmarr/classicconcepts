@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
@@ -7,6 +8,12 @@ import { FolderTree, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { requireAdminSession } from "@/lib/auth";
+import {
+  generateUniqueCategorySlug,
+  revalidateCatalogPaths,
+  sanitizeRichHtml,
+} from "@/lib/product-mutations";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -15,7 +22,7 @@ interface Props {
 export default async function EditCategoryPage({ params }: Props) {
   const { id } = await params;
   const category = await prisma.category.findUnique({
-    where: { id }
+    where: { id },
   });
 
   if (!category) {
@@ -24,31 +31,44 @@ export default async function EditCategoryPage({ params }: Props) {
 
   async function updateCategory(formData: FormData) {
     "use server";
-    const name = formData.get("name") as string;
-    const slug = formData.get("slug") as string;
-    const imageUrl = formData.get("imageUrl") as string;
-    const bgClass = formData.get("bgClass") as string;
-    const descriptionHtml = formData.get("descriptionHtml") as string;
+    await requireAdminSession();
+
+    const name = ((formData.get("name") as string) || "").trim();
+    const rawSlug = ((formData.get("slug") as string) || "").trim();
+    if (!name) {
+      return { error: "Category name is required." };
+    }
+
+    const slug = await generateUniqueCategorySlug(rawSlug || name, id);
+    const imageUrl = ((formData.get("imageUrl") as string) || "").trim() || null;
+    const bgClass = ((formData.get("bgClass") as string) || "").trim() || null;
+    const descriptionHtml = sanitizeRichHtml(
+      formData.get("descriptionHtml") as string | null
+    );
 
     await prisma.category.update({
       where: { id },
-      data: { 
-        name, 
-        slug, 
-        imageUrl: imageUrl || null, 
-        bgClass: bgClass || null,
-        descriptionHtml: descriptionHtml || null
-      }
+      data: {
+        name,
+        slug,
+        imageUrl,
+        bgClass,
+        descriptionHtml,
+      },
     });
 
     revalidatePath("/admin/categories");
+    revalidateCatalogPaths();
     redirect("/admin/categories");
   }
 
   return (
     <div className="space-y-6 w-full">
       <div className="flex items-center gap-4">
-        <Link href="/admin/categories" className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 hover:text-[#0056b3] transition-colors">
+        <Link
+          href="/admin/categories"
+          className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 hover:text-[#0056b3] transition-colors"
+        >
           <ArrowLeft size={20} />
         </Link>
         <div>
@@ -64,39 +84,72 @@ export default async function EditCategoryPage({ params }: Props) {
         <SubmitForm action={updateCategory} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Category Name</label>
-              <input type="text" name="name" defaultValue={category.name} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm" />
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Category Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                defaultValue={category.name}
+                required
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Slug</label>
-              <input type="text" name="slug" defaultValue={category.slug} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm" />
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Slug
+              </label>
+              <input
+                type="text"
+                name="slug"
+                defaultValue={category.slug}
+                required
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm"
+              />
             </div>
           </div>
-          
+
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Image (Optional)</label>
-            <div className="mb-2">
-               {category.imageUrl && <p className="text-xs text-slate-500">Current image uploaded.</p>}
-            </div>
-            {/* ImageUploader now supports defaultValue! */}
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Image (Optional)
+            </label>
             <ImageUploader name="imageUrl" defaultValue={category.imageUrl || ""} />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Description (Optional)</label>
-            <RichTextEditor name="descriptionHtml" defaultValue={category.descriptionHtml || ""} placeholder="Write a description for this category..." />
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Description (Optional)
+            </label>
+            <RichTextEditor
+              name="descriptionHtml"
+              defaultValue={category.descriptionHtml || ""}
+              placeholder="Write a description for this category..."
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Background Color Class (Optional)</label>
-            <input type="text" name="bgClass" defaultValue={category.bgClass || ""} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm" />
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Background Color Class (Optional)
+            </label>
+            <input
+              type="text"
+              name="bgClass"
+              defaultValue={category.bgClass || ""}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm"
+            />
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex gap-4">
-            <button type="submit" className="px-8 py-3 bg-[#0056b3] text-white font-bold rounded-xl hover:bg-blue-800 transition-colors">
+            <button
+              type="submit"
+              className="px-8 py-3 bg-[#0056b3] text-white font-bold rounded-xl hover:bg-blue-800 transition-colors"
+            >
               Save Changes
             </button>
-            <Link href="/admin/categories" className="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+            <Link
+              href="/admin/categories"
+              className="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+            >
               Cancel
             </Link>
           </div>

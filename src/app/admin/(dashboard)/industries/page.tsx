@@ -1,21 +1,39 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { FolderTree, Trash2, Plus, Edit2 } from "lucide-react";
+import { FolderTree, Plus, Edit2 } from "lucide-react";
 import Link from "next/link";
+import { requireAdminSession } from "@/lib/auth";
+import { revalidateCatalogPaths } from "@/lib/product-mutations";
 
 export default async function AdminIndustriesPage() {
   const industries = await prisma.industry.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { products: true } } }
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      imageUrl: true,
+      _count: { select: { products: true } },
+    },
   });
 
   async function deleteIndustry(formData: FormData) {
     "use server";
-    const id = formData.get("id") as string;
-    await prisma.industry.delete({ where: { id } });
-    revalidatePath("/admin/industries");
+    try {
+      await requireAdminSession();
+      const id = (formData.get("id") as string)?.trim();
+      if (!id) return { error: "Missing industry ID." };
+
+      await prisma.industry.delete({ where: { id } });
+      revalidatePath("/admin/industries");
+      revalidateCatalogPaths();
+      return { success: true };
+    } catch (err: any) {
+      return { error: err?.message || "Failed to delete industry." };
+    }
   }
 
   return (
@@ -28,8 +46,8 @@ export default async function AdminIndustriesPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage product industries</p>
         </div>
-        <Link 
-          href="/admin/industries/new" 
+        <Link
+          href="/admin/industries/new"
           className="flex items-center gap-2 px-4 py-2 bg-[#0056b3] text-white font-bold rounded-xl hover:bg-blue-800 transition-colors"
         >
           <Plus size={18} />
@@ -49,14 +67,19 @@ export default async function AdminIndustriesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {industries.map(industry => (
+              {industries.map((industry) => (
                 <tr key={industry.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       {industry.imageUrl ? (
-                        <img src={industry.imageUrl} alt={industry.name} className="w-10 h-10 rounded-lg object-cover bg-slate-200" />
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={industry.imageUrl}
+                          alt={industry.name}
+                          className="w-10 h-10 rounded-lg object-cover bg-slate-200"
+                        />
                       ) : (
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold ${industry.description || 'bg-slate-300'}`}>
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold bg-[#0056b3]">
                           {industry.name.charAt(0)}
                         </div>
                       )}
@@ -64,20 +87,17 @@ export default async function AdminIndustriesPage() {
                     </div>
                   </td>
                   <td className="p-4 text-slate-500 text-sm">{industry.slug}</td>
-                  <td className="p-4 text-slate-500 text-sm font-medium">{industry._count.products}</td>
+                  <td className="p-4 text-slate-500 text-sm font-medium">
+                    {industry._count.products}
+                  </td>
                   <td className="p-4 text-right flex items-center justify-end gap-2">
-                    <Link 
+                    <Link
                       href={`/admin/industries/${industry.id}`}
                       className="p-2 text-slate-400 hover:text-[#0056b3] hover:bg-blue-50 rounded-lg transition-colors"
                     >
                       <Edit2 size={18} />
                     </Link>
-                    <DeleteForm action={deleteIndustry}>
-                      <input type="hidden" name="id" value={industry.id} />
-                      <button type="submit" className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 size={18} />
-                      </button>
-                    </DeleteForm>
+                    <DeleteForm action={deleteIndustry} id={industry.id} />
                   </td>
                 </tr>
               ))}
@@ -95,4 +115,3 @@ export default async function AdminIndustriesPage() {
     </div>
   );
 }
-

@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     // Limit build-time worker processes to prevent OOM (502) on VPS
     cpus: 2,
     workerThreads: false,
+    // Match proxy body buffer limit with serverActions & upload 25MB limit
+    proxyClientMaxBodySize: "25mb",
     serverActions: {
       bodySizeLimit: "25mb",
     },

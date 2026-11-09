@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
 import { UploadCloud, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { ImageCropperModal } from "./ImageCropperModal";
+import { compressRasterImageIfNeeded, uploadAdminFile } from "@/lib/client-upload";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
@@ -11,8 +12,8 @@ interface ImageUploaderProps {
   name: string;
   defaultValue?: string;
   required?: boolean;
-  aspectRatio?: number; // e.g., 1 for 1:1, 4/3 for 4:3, 16/9 for 16:9
-  aspectLabel?: string; // e.g., "1:1 Square" or "4:3 Standard"
+  aspectRatio?: number;
+  aspectLabel?: string;
 }
 
 export function ImageUploader({
@@ -27,29 +28,20 @@ export function ImageUploader({
   const [error, setError] = useState("");
   const [cropFile, setCropFile] = useState<File | null>(null);
 
-  const uploadFileToR2 = useCallback(async (fileToUpload: File) => {
+  const uploadFileToR2 = useCallback(async (fileToUpload: File, compressFirst = false) => {
     setCropFile(null);
     setIsUploading(true);
     setError("");
 
-    const formData = new FormData();
-    formData.append("file", fileToUpload);
-
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      setUploadedUrl(data.url);
+      const readyFile = compressFirst
+        ? await compressRasterImageIfNeeded(fileToUpload)
+        : fileToUpload;
+      const url = await uploadAdminFile(readyFile);
+      setUploadedUrl(url);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to upload image. Please try again.");
+      setError(err?.message || "Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -64,7 +56,7 @@ export function ImageUploader({
         setError(
           isTooLarge
             ? "Image exceeds the maximum size limit of 20 MB."
-            : "Unsupported file format. Please upload JPG, PNG, WEBP, SVG, or GIF."
+            : "Unsupported file format. Please upload JPG, PNG, WEBP, or GIF."
         );
         return;
       }
@@ -79,9 +71,8 @@ export function ImageUploader({
 
       setError("");
 
-      // SVGs and GIFs bypass canvas cropping
-      if (file.type === "image/svg+xml" || file.type === "image/gif") {
-        uploadFileToR2(file);
+      if (file.type === "image/gif") {
+        uploadFileToR2(file, false);
       } else {
         setCropFile(file);
       }
@@ -92,11 +83,15 @@ export function ImageUploader({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".webp", ".svg", ".gif"],
+      "image/jpeg": [".jpeg", ".jpg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+      "image/gif": [".gif"],
     },
     maxSize: MAX_FILE_SIZE,
     maxFiles: 1,
     multiple: false,
+    disabled: isUploading,
   });
 
   const clearImage = () => {
@@ -105,22 +100,30 @@ export function ImageUploader({
   };
 
   return (
-    <div className="w-full">
-      {/* Hidden input to pass the URL to Server Actions */}
-      <input
-        type="hidden"
-        name={name}
-        value={uploadedUrl}
-        required={required && !uploadedUrl}
-      />
+    <div
+      className="w-full relative"
+      data-uploading={isUploading || !!cropFile ? "true" : undefined}
+    >
+      <input type="hidden" name={name} value={uploadedUrl} />
+      {required && !uploadedUrl && (
+        <input
+          type="text"
+          tabIndex={-1}
+          aria-hidden="true"
+          required
+          value=""
+          onChange={() => {}}
+          className="sr-only"
+        />
+      )}
 
       {cropFile && (
         <ImageCropperModal
           file={cropFile}
           defaultAspectRatio={aspectRatio}
           aspectLabel={aspectLabel}
-          onComplete={(croppedFile) => uploadFileToR2(croppedFile)}
-          onSkipCrop={(originalFile) => uploadFileToR2(originalFile)}
+          onComplete={(croppedFile) => uploadFileToR2(croppedFile, false)}
+          onSkipCrop={(originalFile) => uploadFileToR2(originalFile, true)}
           onCancel={() => setCropFile(null)}
         />
       )}
@@ -177,7 +180,7 @@ export function ImageUploader({
                   : "Click or drag an image to crop & upload"}
               </p>
               <p className="text-xs text-slate-400 font-medium">
-                SVG, PNG, JPG, or WEBP (Max 20MB • Inbuilt Cropper)
+                PNG, JPG, WEBP, or GIF (Max 20MB • Inbuilt Cropper)
               </p>
               {error && (
                 <p className="text-xs text-red-500 font-bold mt-3">{error}</p>

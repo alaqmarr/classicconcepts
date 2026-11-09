@@ -10,17 +10,7 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  try {
-    const categories = await prisma.category.findMany({
-      select: { slug: true }
-    });
-    
-    return categories.map((category) => ({
-      slug: category.slug,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -113,7 +103,9 @@ export default async function CategoryShopPage({
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(collectionJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
       <PageHeader
         breadcrumbs={[

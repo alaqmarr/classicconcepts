@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/db";
 import { Metadata } from "next";
 import { BarChart3, TrendingUp, Eye } from "lucide-react";

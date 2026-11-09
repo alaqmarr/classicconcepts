@@ -37,7 +37,8 @@ async function flushVisitsToDb() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const rawPath = typeof body?.path === "string" ? body.path.trim() : "";
+    const rawInput = typeof body?.path === "string" ? body.path.trim() : "";
+    const rawPath = rawInput.split("?")[0].split("#")[0];
 
     if (!rawPath || rawPath.length > 200 || !rawPath.startsWith("/")) {
       return NextResponse.json({ error: "Invalid path" }, { status: 400 });

@@ -10,17 +10,7 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  try {
-    const industries = await prisma.industry.findMany({
-      select: { slug: true }
-    });
-    
-    return industries.map((industry) => ({
-      slug: industry.slug,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -107,7 +97,7 @@ export default async function IndustryShopPage({
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Shop", href: "/shop" },
-          { label: "Industries", href: "/shop/c" },
+          { label: "Industries", href: "/shop/industry" },
           { label: industry.name }
         ]}
         title={
