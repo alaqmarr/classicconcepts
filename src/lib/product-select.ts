@@ -17,6 +17,9 @@ export const PRODUCT_CARD_SELECT = {
   discountBadge: true,
   stockStatus: true,
   isPodium: true,
+  isRegisteredDesign: true,
+  designRegistrationNo: true,
+  ipProtectionText: true,
   images: {
     select: {
       url: true,
@@ -27,6 +30,13 @@ export const PRODUCT_CARD_SELECT = {
   },
   category: {
     select: {
+      name: true,
+      slug: true,
+    },
+  },
+  subCategory: {
+    select: {
+      id: true,
       name: true,
       slug: true,
     },

@@ -6,6 +6,7 @@ import { Settings, Save, Cog, Newspaper, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 async function updateSettings(formData: FormData) {
   "use server";
@@ -51,6 +52,7 @@ async function updateSettings(formData: FormData) {
     }
   });
 
+  await invalidateCacheTags(["settings", "brand", "ai-snapshot"]);
   revalidatePath("/about");
   revalidatePath("/about/infrastructure");
   revalidatePath("/about/press");

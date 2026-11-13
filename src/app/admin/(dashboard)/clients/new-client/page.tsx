@@ -8,6 +8,7 @@ import { Building2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewClientPage() {
   async function createClient(formData: FormData) {
@@ -25,6 +26,7 @@ export default function NewClientPage() {
       data: { name, logoUrl },
     });
 
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/");
     revalidatePath("/about");
     revalidatePath("/about/clients");

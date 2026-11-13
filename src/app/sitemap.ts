@@ -1,19 +1,14 @@
 import { MetadataRoute } from 'next';
-import { prisma } from '@/lib/db';
+import { getFullCatalogIndex } from '@/lib/public-data';
 
 export const revalidate = 60;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://classicconcepts.in';
 
-  // Fetch dynamic routes
-  const [products, categories, podiumSubCategories, industries, problems] = await Promise.all([
-    prisma.product.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.category.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.podiumSubCategory.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.industry.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.problemStatement.findMany({ select: { slug: true, updatedAt: true } })
-  ]);
+  // Fetch dynamic routes from 100MB Redis catalog index (0 SQLite queries)
+  const catalog = await getFullCatalogIndex();
+  const { products, categories, podiumSubCategories, industries, problemStatements: problems } = catalog;
 
   const productUrls = products.map((product) => ({
     url: `${baseUrl}/shop/p/${product.slug}`,

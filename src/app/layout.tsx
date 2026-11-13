@@ -1,12 +1,12 @@
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { PublicChrome } from "@/components/layout/PublicChrome";
 import { CustomAnalyticsInjector } from "@/components/layout/CustomAnalyticsInjector";
-import { prisma } from "@/lib/db";
 import { CartProvider } from "@/context/CartContext";
+import { getPublicChromeData } from "@/lib/public-data";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s | Classic Concepts",
   },
   description:
-    "With over two decades of experience, Classic Concepts is a market leader in acrylic manufacturing. Our 16,000 sq. ft. factory designs and crafts premium acrylic podiums, lecterns, displays, and custom acrylic products in India.",
+    "Manufacturing in India Since 2008, Classic Concepts crafts acrylic podiums, lecterns, retail displays, trophies, and custom acrylic products at our 16,000 sq. ft. ISO 9001:2015 factory in Secunderabad.",
   keywords: [
     "Classic Concepts",
     "Acrylic Podium",
@@ -78,37 +78,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [settings, usefulLinks, categories, podiumSubCategories] = await Promise.all([
-    prisma.siteSetting.findUnique({
-      where: { id: "default" },
-      select: {
-        address: true,
-        phone1: true,
-        phone2: true,
-        whatsappNumber: true,
-        email: true,
-        email2: true,
-        upiId: true,
-        upiName: true,
-        googleAnalyticsId: true,
-        headScripts: true,
-        bodyScripts: true,
-      },
-    }),
-    prisma.usefulLink.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true, title: true, url: true },
-    }),
-    prisma.category.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true },
-    }),
-    prisma.podiumSubCategory.findMany({
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, slug: true },
-    }),
-  ]);
+  const {
+    settings,
+    usefulLinks,
+    categories,
+    podiumSubCategories,
+    siteContent,
+  } = await getPublicChromeData();
 
   const organizationJsonLd = {
     "@context": "https://schema.org",
@@ -116,8 +92,9 @@ export default async function RootLayout({
     name: "Classic Concepts",
     url: "https://classicconcepts.in",
     logo: "https://classicconcepts.in/logo.png",
+    foundingDate: "2008",
     description:
-      "With over two decades of experience, Classic Concepts is a market leader in acrylic manufacturing with a 16,000 sq. ft. factory in India.",
+      "Manufacturing in India Since 2008, Classic Concepts crafts acrylic podiums, lecterns, displays, and custom acrylic products at its 16,000 sq. ft. ISO 9001:2015 factory.",
     contactPoint: {
       "@type": "ContactPoint",
       telephone: settings?.phone1 || "+917337222876",
@@ -131,6 +108,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${jakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
@@ -151,6 +129,7 @@ export default async function RootLayout({
             usefulLinks={usefulLinks}
             categories={categories}
             podiumSubCategories={podiumSubCategories}
+            siteContent={siteContent}
           >
             {children}
           </PublicChrome>

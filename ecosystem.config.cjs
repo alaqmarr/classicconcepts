@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 
-function readDotEnvPort() {
+function readDotEnvKey(keyName) {
+  const regex = new RegExp(`^(?:export\\s+)?${keyName}\\s*=\\s*["']?([^"'\\r\\n]+)["']?\\s*$`);
   for (const file of [".env.production.local", ".env.local", ".env.production", ".env"]) {
     try {
       const fullPath = path.join(__dirname, file);
@@ -10,9 +11,9 @@ function readDotEnvPort() {
       for (const rawLine of content.split(/\r?\n/)) {
         const line = rawLine.trim();
         if (!line || line.startsWith("#")) continue;
-        const match = line.match(/^(?:export\s+)?PORT\s*=\s*["']?(\d+)["']?\s*$/);
+        const match = line.match(regex);
         if (match) {
-          return Number(match[1]);
+          return match[1].trim();
         }
       }
     } catch {
@@ -22,7 +23,8 @@ function readDotEnvPort() {
   return null;
 }
 
-const port = readDotEnvPort() || Number(process.env.APP_PORT) || 3003;
+const port = Number(readDotEnvKey("PORT")) || Number(process.env.APP_PORT) || 3003;
+const redisUrl = readDotEnvKey("REDIS_URL") || process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
 module.exports = {
   apps: [
@@ -43,6 +45,8 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: port,
+        REDIS_URL: redisUrl,
+        REDIS_MAXMEMORY_BYTES: "104857600", // Strict 100MB in-memory cache ceiling
       },
     },
   ],

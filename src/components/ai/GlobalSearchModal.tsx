@@ -1,0 +1,552 @@
+"use client";
+
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  Search,
+  Sparkles,
+  X,
+  Loader2,
+  ArrowRight,
+  Tag,
+  CheckCircle2,
+  MessageCircle,
+  RotateCcw,
+} from "lucide-react";
+import { useInlineEdit } from "@/components/inline-edit/InlineEditProvider";
+import type { ConciergeProductCard, ConciergeResponse } from "@/lib/ai";
+
+const DISMISS_STORAGE_KEY = "cc_concierge_dismissed_until";
+
+export function openGlobalSearchModal(initialQuery?: string) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("cc:open-search", { detail: { query: initialQuery || "" } })
+    );
+  }
+}
+
+interface SearchApiResponse {
+  products: ConciergeProductCard[];
+  summary: string | null;
+  matchedCategories: { name: string; slug: string }[];
+  source: "ai" | "cache" | "smart-local";
+}
+
+const ACRIO_SEARCH_PROMPTS = [
+  {
+    label: "🎤 Stage or Hall Podium",
+    query: "We need a clear stage podium for speeches with our logo",
+  },
+  {
+    label: "🏨 Hotel & Banquet Stands",
+    query: "I run a hotel and need podiums, menu stands, and sign holders",
+  },
+  {
+    label: "🎓 School & College",
+    query: "School auditorium podium, notice frames, and student trophies",
+  },
+  {
+    label: "🛍️ Shop & Jewellery Display",
+    query: "Clear display stands and counter holders for a retail or jewellery shop",
+  },
+  {
+    label: "🏆 Trophies & Event Awards",
+    query: "We need custom acrylic trophies, mementos, or plaques for an event",
+  },
+  {
+    label: "🏢 Custom Sizes & Bulk Orders",
+    query: "We need custom-made acrylic boxes, stands, or bulk orders in our own size",
+  },
+];
+
+export function GlobalSearchModal() {
+  const { isAdmin, popupEnabled, popupDelaySeconds, statusLoaded } =
+    useInlineEdit();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [acrioLoading, setAcrioLoading] = useState(false);
+  const [data, setData] = useState<SearchApiResponse | null>(null);
+  const [acrioReply, setAcrioReply] = useState<ConciergeResponse | null>(null);
+  const debounceRef = useRef<number | null>(null);
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    try {
+      localStorage.setItem(
+        DISMISS_STORAGE_KEY,
+        String(Date.now() + 24 * 60 * 60 * 1000)
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const executeInstantSearch = useCallback(async (q: string) => {
+    const clean = q.trim();
+    if (!clean) {
+      setData(null);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const url = `/api/ai/search?q=${encodeURIComponent(clean)}&limit=10`;
+      const res = await fetch(url);
+      const json = (await res.json()) as SearchApiResponse;
+      setData(json);
+    } catch {
+      // Non-blocking fallback
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const talkToAcrioInSearch = useCallback(async (q: string) => {
+    const clean = q.trim();
+    if (!clean) return;
+    setQuery(clean);
+    setAcrioLoading(true);
+    try {
+      const [conciergeRes, searchRes] = await Promise.all([
+        fetch("/api/ai/concierge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: clean }),
+        }),
+        fetch(`/api/ai/search?q=${encodeURIComponent(clean)}&limit=10&ai=1`),
+      ]);
+      const conciergeJson = (await conciergeRes.json()) as ConciergeResponse;
+      const searchJson = (await searchRes.json()) as SearchApiResponse;
+      setAcrioReply(conciergeJson);
+      setData(searchJson);
+    } catch {
+      // Non-blocking fallback
+    } finally {
+      setAcrioLoading(false);
+    }
+  }, []);
+
+  // Global keyboard shortcut (Ctrl+K / Cmd+K) + unified open event listeners
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsOpen((prev) => !prev);
+      } else if (e.key === "Escape" && isOpen) {
+        handleClose();
+      }
+    };
+
+    const onOpenEvent = (e: Event) => {
+      const custom = e as CustomEvent<{ query?: string }>;
+      setIsOpen(true);
+      if (custom.detail?.query) {
+        setQuery(custom.detail.query);
+        void talkToAcrioInSearch(custom.detail.query);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("cc:open-search", onOpenEvent);
+    window.addEventListener("cc:open-concierge", onOpenEvent);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("cc:open-search", onOpenEvent);
+      window.removeEventListener("cc:open-concierge", onOpenEvent);
+    };
+  }, [talkToAcrioInSearch, handleClose, isOpen]);
+
+  // Gentle entrance auto-open for first-time visitors (uses this same clean modal!)
+  useEffect(() => {
+    if (!statusLoaded) return;
+    if (!popupEnabled || isAdmin) return;
+
+    try {
+      const dismissedUntil = Number(
+        localStorage.getItem(DISMISS_STORAGE_KEY) || "0"
+      );
+      if (dismissedUntil > Date.now()) return;
+    } catch {
+      // Ignore storage restrictions
+    }
+
+    const delayMs = Math.max(1500, (popupDelaySeconds || 3) * 1000);
+    const timer = window.setTimeout(() => {
+      setIsOpen(true);
+    }, delayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [statusLoaded, popupEnabled, popupDelaySeconds, isAdmin]);
+
+  // Instant debounced local/cached catalog search while typing
+  useEffect(() => {
+    if (!isOpen) return;
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+
+    if (!query.trim()) {
+      setData(null);
+      setAcrioReply(null);
+      return;
+    }
+
+    debounceRef.current = window.setTimeout(() => {
+      void executeInstantSearch(query);
+    }, 220);
+
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [query, isOpen, executeInstantSearch]);
+
+  const displayProducts =
+    acrioReply?.products && acrioReply.products.length > 0
+      ? acrioReply.products
+      : data?.products || [];
+
+  return (
+    <>
+      {/* Floating "Talk to ACRIO" button stacked cleanly above FloatingWhatsApp */}
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-24 right-5 z-40 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-slate-900 via-[#003d82] to-[#0056b3] text-white text-xs sm:text-sm font-bold shadow-xl hover:shadow-2xl hover:scale-105 transition-all border border-white/20 print:hidden cursor-pointer"
+          aria-label="Talk to ACRIO"
+        >
+          <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+          <span>Talk to ACRIO</span>
+        </button>
+      )}
+
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[110] bg-slate-950/60 backdrop-blur-xs flex items-start justify-center pt-10 sm:pt-16 px-3 sm:px-6 pb-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleClose();
+          }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Unified Search + ACRIO Input Header */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void talkToAcrioInSearch(query);
+              }}
+              className="p-3 sm:p-4 border-b border-slate-200 flex items-center gap-2 bg-gradient-to-r from-slate-50 via-white to-blue-50/40"
+            >
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-extrabold shrink-0">
+                <Sparkles className="w-3 h-3 text-indigo-600" />
+                <span>ACRIO</span>
+              </div>
+              <Search className="w-4 h-4 text-slate-400 shrink-0 hidden sm:block" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (acrioReply) setAcrioReply(null);
+                }}
+                placeholder="Search products, SKUs, or talk to ACRIO in plain words..."
+                className="flex-1 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none min-w-0"
+                autoFocus
+              />
+              {query.trim().length > 1 && (
+                <button
+                  type="submit"
+                  disabled={acrioLoading}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#0056b3] to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shrink-0 transition-all shadow-2xs cursor-pointer"
+                  title="Talk to ACRIO right inside search"
+                >
+                  {acrioLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  )}
+                  <span>{acrioLoading ? "Thinking..." : "Talk to ACRIO"}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleClose}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </form>
+
+            {/* Results & Direct ACRIO Conversation Area */}
+            <div className="max-h-[72vh] overflow-y-auto p-4 sm:p-5 space-y-4">
+              {!query.trim() && (
+                <div className="space-y-5 py-1">
+                  {/* Direct ACRIO Quick Starters inside Search */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-[#002b5e] to-[#0056b3] text-white space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-amber-300 text-[11px] font-bold">
+                        <Sparkles className="w-3 h-3" />
+                        Talk to ACRIO Directly in Search
+                      </span>
+                      <span className="text-[11px] text-blue-200 hidden sm:inline">
+                        Since 2008 • Factory Direct
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-blue-100 leading-relaxed">
+                      Type a product name, SKU, or simply tell ACRIO what work you do or what event you are planning:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {ACRIO_SEARCH_PROMPTS.map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => void talkToAcrioInSearch(item.query)}
+                          className="text-left px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                        >
+                          <span className="truncate">{item.label}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                      Popular Searches
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        "Clear Acrylic Podium",
+                        "LED Conference Lectern",
+                        "Wooden & Acrylic Podium",
+                        "Brochure & Menu Holders",
+                        "Acrylic Trophy",
+                        "Donation / Suggestion Box",
+                        "Cosmetic & Jewellery Stand",
+                      ].map((term) => (
+                        <button
+                          key={term}
+                          type="button"
+                          onClick={() => void talkToAcrioInSearch(term)}
+                          className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-[#0056b3] text-xs font-medium transition-colors cursor-pointer"
+                        >
+                          {term}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(loading || acrioLoading) && !data && !acrioReply && (
+                <div className="py-8 text-center text-sm text-slate-600 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#0056b3]" />
+                  <span>ACRIO is checking our catalog for you...</span>
+                </div>
+              )}
+
+              {/* Direct ACRIO Conversational Reply inside Search */}
+              {acrioReply && (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/80 border border-indigo-200 space-y-3 shadow-2xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 mt-0.5">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                        ACRIO
+                      </span>
+                      <p className="text-xs sm:text-sm font-medium text-slate-800 leading-relaxed">
+                        {acrioReply.message}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAcrioReply(null);
+                        setQuery("");
+                        setData(null);
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-700 shrink-0 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  </div>
+
+                  {acrioReply.highlights?.length > 0 && (
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
+                      {acrioReply.highlights.map((h, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-1.5 text-xs text-slate-600"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                          <span>{h}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {acrioReply.followUpChips?.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[11px] font-semibold text-slate-400">
+                        Ask ACRIO next:
+                      </span>
+                      {acrioReply.followUpChips.map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => void talkToAcrioInSearch(chip)}
+                          className="px-2.5 py-1 rounded-full bg-white hover:bg-indigo-50 border border-indigo-200 text-[11px] font-semibold text-indigo-800 transition-colors cursor-pointer"
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-indigo-100">
+                    <div className="flex flex-wrap gap-1.5">
+                      {acrioReply.suggestedLinks?.slice(0, 2).map((lnk) => (
+                        <Link
+                          key={lnk.href}
+                          href={lnk.href}
+                          onClick={handleClose}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors"
+                        >
+                          <span>{lnk.label}</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      ))}
+                    </div>
+                    <a
+                      href={`https://wa.me/${(
+                        acrioReply.whatsappNumber || "+917337222876"
+                      ).replace(/\D/g, "")}?text=${encodeURIComponent(
+                        acrioReply.whatsappPrefill ||
+                          `Hi Classic Concepts, I need help with: ${query}`
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Custom Size / Quote on WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Lightweight summary when typing before pressing Enter */}
+              {!acrioReply && data?.summary && (
+                <div className="p-3.5 rounded-2xl bg-indigo-50/80 border border-indigo-100 text-xs sm:text-sm text-indigo-950 flex items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                    <span>{data.summary}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void talkToAcrioInSearch(query)}
+                    className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold shrink-0 hover:bg-indigo-700 cursor-pointer"
+                  >
+                    Talk to ACRIO
+                  </button>
+                </div>
+              )}
+
+              {data?.matchedCategories && data.matchedCategories.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                    <Tag className="w-3 h-3" /> Categories:
+                  </span>
+                  {data.matchedCategories.map((c) => (
+                    <Link
+                      key={c.slug}
+                      href={`/shop/c/${c.slug}`}
+                      onClick={handleClose}
+                      className="px-2.5 py-1 rounded-full bg-blue-50 text-[#0056b3] text-xs font-bold hover:bg-[#0056b3] hover:text-white transition-colors"
+                    >
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {query.trim() && displayProducts.length > 0 && (
+                <div className="divide-y divide-slate-100">
+                  {displayProducts.map((prod) => (
+                    <Link
+                      key={prod.id}
+                      href={`/shop/p/${prod.slug}`}
+                      onClick={handleClose}
+                      className="flex items-center gap-3.5 py-3 px-2 rounded-xl hover:bg-slate-50 transition-colors group"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={prod.mainImage || "/short-logo.png"}
+                        alt={prod.name}
+                        className="w-14 h-14 rounded-xl object-contain bg-white border border-slate-200 p-1 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#0056b3]">
+                            {prod.subCategoryName || prod.categoryName}
+                          </span>
+                          {prod.sku && (
+                            <span className="text-[10px] text-slate-400">
+                              SKU: {prod.sku}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#0056b3] truncate">
+                          {prod.name}
+                        </h4>
+                        {prod.reason && (
+                          <p className="text-xs text-slate-500 truncate">
+                            {prod.reason}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {prod.effectivePrice ? (
+                          <span className="text-sm font-extrabold text-slate-900">
+                            ₹{prod.effectivePrice.toLocaleString("en-IN")}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-500">
+                            Enquire
+                          </span>
+                        )}
+                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#0056b3] ml-auto mt-1" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {query.trim() &&
+                !loading &&
+                !acrioLoading &&
+                data &&
+                displayProducts.length === 0 && (
+                  <div className="py-8 text-center space-y-3">
+                    <p className="text-sm text-slate-600">
+                      No exact catalog item matched &ldquo;{query}&rdquo; yet.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void talkToAcrioInSearch(query)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0056b3] text-white text-xs font-bold hover:bg-blue-700 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Talk to ACRIO for Closest Match or Custom Size</span>
+                    </button>
+                  </div>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

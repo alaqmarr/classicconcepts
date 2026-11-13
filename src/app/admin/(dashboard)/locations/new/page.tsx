@@ -8,6 +8,7 @@ import { MapPin, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewLocationPage() {
   async function createLocation(formData: FormData) {
@@ -33,6 +34,7 @@ export default function NewLocationPage() {
       },
     });
 
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/admin/locations");
     revalidatePath("/about/infrastructure");
     revalidatePath("/contact");

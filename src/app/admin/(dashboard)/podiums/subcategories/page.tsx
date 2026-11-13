@@ -6,8 +6,10 @@ import Link from "next/link";
 import slugify from "slugify";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
-function revalidateAllPodiumPaths(slug?: string) {
+async function revalidateAllPodiumPaths(slug?: string) {
+  await invalidateCacheTags(["taxonomy", "catalog", "ai-snapshot", "ai-responses"]);
   revalidatePath("/", "layout");
   revalidatePath("/podiums");
   if (slug) revalidatePath(`/podiums/${slug}`);
@@ -43,7 +45,7 @@ export default async function AdminPodiumSubCategoriesPage() {
       create: { name, slug, description, sortOrder }
     });
 
-    revalidateAllPodiumPaths(slug);
+    await revalidateAllPodiumPaths(slug);
   }
 
   async function updateSubCategoryRow(formData: FormData) {
@@ -60,7 +62,7 @@ export default async function AdminPodiumSubCategoriesPage() {
       data: { name, description, sortOrder }
     });
 
-    revalidateAllPodiumPaths(updated.slug);
+    await revalidateAllPodiumPaths(updated.slug);
   }
 
   async function moveSubCategory(formData: FormData) {
@@ -93,7 +95,7 @@ export default async function AdminPodiumSubCategoriesPage() {
       )
     );
 
-    revalidateAllPodiumPaths();
+    await revalidateAllPodiumPaths();
   }
 
   async function deleteSubCategory(formData: FormData) {
@@ -106,7 +108,7 @@ export default async function AdminPodiumSubCategoriesPage() {
     });
     await prisma.podiumSubCategory.delete({ where: { id } });
 
-    revalidateAllPodiumPaths();
+    await revalidateAllPodiumPaths();
   }
 
   return (

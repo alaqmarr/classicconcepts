@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Plus } from "lucide-react";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function AdminLocationsPage() {
   const locations = await prisma.infrastructureLocation.findMany({
@@ -19,6 +20,7 @@ export default async function AdminLocationsPage() {
     const id = formData.get("id") as string;
     if (!id) return { error: "Missing location ID." };
     await prisma.infrastructureLocation.delete({ where: { id } });
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/admin/locations");
     revalidatePath("/about/infrastructure");
     revalidatePath("/contact");

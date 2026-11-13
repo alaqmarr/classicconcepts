@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -41,6 +42,7 @@ async function updateMember(id: string, formData: FormData) {
     },
   });
 
+  await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
   revalidatePath("/admin/team");
   revalidatePath(`/admin/team/${id}`);
   revalidatePath("/about/team");

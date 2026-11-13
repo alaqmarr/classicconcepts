@@ -6,8 +6,10 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
-function revalidatePressPaths() {
+async function revalidatePressPaths() {
+  await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
   revalidatePath("/about/press");
   revalidatePath("/admin/press");
 }
@@ -49,7 +51,7 @@ export default async function AdminPressPage() {
       },
     });
 
-    revalidatePressPaths();
+    await revalidatePressPaths();
   }
 
   async function updatePressArticle(formData: FormData) {
@@ -79,7 +81,7 @@ export default async function AdminPressPage() {
       },
     });
 
-    revalidatePressPaths();
+    await revalidatePressPaths();
   }
 
   async function movePressArticle(formData: FormData) {
@@ -111,7 +113,7 @@ export default async function AdminPressPage() {
       )
     );
 
-    revalidatePressPaths();
+    await revalidatePressPaths();
   }
 
   async function deletePressArticle(formData: FormData) {
@@ -119,7 +121,7 @@ export default async function AdminPressPage() {
     await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.pressArticle.delete({ where: { id } });
-    revalidatePressPaths();
+    await revalidatePressPaths();
   }
 
   return (

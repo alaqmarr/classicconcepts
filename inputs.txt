@@ -1,0 +1,1928 @@
+I went through the current **Podiums** section. The basic structure is good because you already separate the 27 models into **Essential Podiums, Classic Signature Podiums, and Premium Podiums**, but the page is still functioning mainly like a price list. It is not yet communicating why Classic Concepts podiums are special, how the ranges differ, or why a buyer should trust your designs. [Classic Concepts](https://classicconcepts.in/podiums?utm_source=chatgpt.com)
+
+I would improve it in three layers: **the main Podiums page, the individual podium cards, and each individual podium detail page.**
+
+## 1. Main Podiums page — change the opening
+
+Currently the page starts essentially with **Premium Podiums**, subcategories, and then the 27-product grid. [Classic Concepts](https://classicconcepts.in/podiums?utm_source=chatgpt.com)
+
+I would instead make the opening much stronger:
+
+# Acrylic Podiums & Lecterns
+
+## Designed. Manufactured. Finished in India.
+
+Classic Concepts manufactures a wide range of premium acrylic podiums and lecterns for churches, educational institutions, corporate offices, hotels, auditoriums, events and public spaces.
+
+Each podium is manufactured in our own facility using precision acrylic fabrication processes, with special attention to stability, clarity, edge finishing, durability and presentation.
+
+With 27 distinctive podium models across Essential, Classic Signature and Premium ranges, customers can choose a design based on application, aesthetics and budget.
+
+**Custom branding, logos and selected modifications are available on request.**
+
+This gives a first-time visitor immediate context.
+
+---
+
+# 2. Explain the three podium ranges clearly
+
+At present the visitor sees:
+
+**Essential Podiums – 3**  
+**Classic Signature Podiums – 11**  
+**Premium Podiums – 13**. [Classic Concepts](https://classicconcepts.in/podiums?utm_source=chatgpt.com)
+
+But the website does not explain what makes one category different from another.
+
+Add a simple comparison directly below the introduction:
+
+| Range | Best For | Positioning |
+|---|---|---|
+| **Essential** | Schools, training centres, smaller institutions, value-conscious buyers | Functional & economical |
+| **Classic Signature** | Churches, colleges, corporate offices, events | Signature Classic Concepts designs |
+| **Premium** | Auditoriums, luxury hotels, high-end churches, corporate events | Premium design & finish |
+
+Then add:
+
+**Not sure which podium suits your requirement? Talk to our Podium Expert →**
+
+This will make selection much easier for a layman.
+
+---
+
+# 3. Your design protection should be prominently communicated
+
+This is important, but the terminology should be accurate.
+
+In India, the appearance of an industrial product—its shape, configuration, pattern or ornamentation—can be protected through **registered design rights** under the Designs Act. IP India describes registered design protection as giving the proprietor exclusive rights over the registered design and protection against unauthorized copying or imitation. [IP India](https://ipindia.gov.in/acts/designs-act-2000/section-2-4?utm_source=chatgpt.com)
+
+Therefore, I would **not casually write “all podiums are patented”** unless you actually hold patents covering them.
+
+If your 27 models have registered industrial designs, the stronger wording is:
+
+### Recommended wording
+
+## Original Classic Concepts Designs
+
+Our podium collection features original designs developed by Classic Concepts Acrylic Pvt. Ltd.
+
+Selected podium designs are protected through registered industrial design rights. Unauthorized copying, reproduction or commercial imitation of protected designs is prohibited.
+
+**©️ Classic Concepts Acrylic Pvt. Ltd. | Registered Designs / Design Rights Apply**
+
+However, if **all 27 models are individually registered**, then you can strengthen it to:
+
+> **All 27 Classic Concepts podium models are proprietary designs protected through registered industrial design rights.**
+
+I would only use that exact sentence after matching the current registration certificates/numbers to the 27 active models.
+
+This distinction matters because under the Designs Act, registered design protection relates specifically to the visual features of the article and has its own statutory framework. [IP India](https://www.ipindia.gov.in/the-designs-act-2000?utm_source=chatgpt.com)
+
+---
+
+# 4. Show protection visually on each podium
+
+Don't repeat a long legal paragraph 27 times.
+
+Use a small premium badge beside every protected podium:
+
+### REGISTERED DESIGN
+**Original Classic Concepts Design**
+
+or:
+
+**Design Protected**
+
+Then, on the product detail page, display:
+
+**Design Registration No.: XXXXXXX**
+
+if available.
+
+That looks far more credible than writing “Copyrighted” everywhere.
+
+IP India's Designs Act also specifically addresses marking articles to indicate that a design is registered, which makes correct marking worth discussing with your IP adviser when you finalise the wording and placement. [IP India](https://www.ipindia.gov.in/acts/designs-act-2000/section-15-4?utm_source=chatgpt.com)
+
+---
+
+# 5. I would change the podium product-card design
+
+At the moment cards mainly communicate:
+
+**Model → Price → Discount → In Stock → Add Enquire**. [Classic Concepts](https://classicconcepts.in/podiums?utm_source=chatgpt.com)
+
+That makes your flagship podium range look too e-commerce/discount-oriented.
+
+For podiums, I would use:
+
+### CCP053
+**Classic Signature Acrylic Podium**
+
+**₹23,100**
+
+Small icons:
+
+**Registered Design**  
+**Custom Logo Available**  
+**Made in India**
+
+Buttons:
+
+**View Details**
+
+**Get Quote**
+
+I would remove **“Add Enquire”** and use **“Enquire Now”** or **“Get Quote.”**
+
+---
+
+# 6. Reduce heavy discount messaging
+
+Currently the page shows messages such as:
+
+**Up to 50% discount**, **40% discount**, **45% discount** on podiums. [Classic Concepts](https://classicconcepts.in/podiums?utm_source=chatgpt.com)
+
+For ordinary retail, this is fine.
+
+For a product you want to position as:
+
+- proprietary design
+- premium
+- precision manufactured
+- institutional quality
+- 5-year warranty
+
+constant 40–50% discount labels can actually reduce the premium perception.
+
+I would show:
+
+**MRP ₹42,000**  
+**Special Price ₹23,100**
+
+or simply:
+
+**₹23,100 onwards**
+
+Reserve large red discount graphics for occasional campaigns.
+
+---
+
+# 7. “In Stock” is not the most useful information
+
+All the podiums currently display **In stock**. [Classic Concepts](https://classicconcepts.in/podiums?utm_source=chatgpt.com)
+
+Podium customers usually care more about:
+
+- dispatch time
+- customization
+- logo
+- dimensions
+- shipping
+- assembly
+- warranty
+
+So instead of:
+
+**In Stock**
+
+consider:
+
+**Ready / Made to Order**
+
+or:
+
+**Dispatch in X–Y Working Days**
+
+if your operations can reliably support that.
+
+---
+
+# 8. Every podium detail page should use one standard structure
+
+This is where I would make the biggest content upgrade.
+
+## Recommended layout
+
+### Acrylic Podium CCP053
+
+**Classic Signature Series**
+
+Then:
+
+> A refined transparent acrylic podium designed for churches, educational institutions, corporate presentations and event venues. Manufactured with precision-finished acrylic components for a clean contemporary appearance, comfortable speaking position and professional presentation.
+
+Then badges:
+
+**Original Classic Concepts Design**  
+**Made in India**  
+**5-Year Warranty**  
+**Custom Branding Available**
+
+---
+
+## Key Features
+
+Keep this very easy to scan:
+
+- Premium clear acrylic construction
+- Precision laser/CNC-cut components
+- Diamond-polished exposed edges
+- Strong, stable base
+- Comfortable reading surface
+- Professional transparent appearance
+- Custom logo / branding available
+- Suitable for regular institutional use
+
+Only use features that actually apply to that model.
+
+---
+
+# 9. Add proper technical specifications
+
+Each podium page should have a clean table:
+
+| Specification | Details |
+|---|---|
+| Model | CCP053 |
+| Overall Height | ___ |
+| Overall Width | ___ |
+| Overall Depth | ___ |
+| Reading Top Size | ___ |
+| Acrylic Thickness | ___ |
+| Material | Premium Clear Acrylic |
+| Base | ___ |
+| Wheels | Yes / No |
+| Logo Customisation | Available |
+| UV Printing | Available |
+| Lighting | Optional / NA |
+| Weight | ___ |
+| Assembly | Fully assembled / partial |
+| Warranty | 5 Years |
+| Manufacturing Location | Hyderabad, India |
+
+Right now a customer comparing 27 models needs objective information to understand why one costs ₹23,100 and another ₹90,000. The current listing does not provide that comparison on the main podium page. [Classic Concepts](https://classicconcepts.in/podiums?utm_source=chatgpt.com)
+
+---
+
+# 10. Add “Best Suited For”
+
+This is extremely important.
+
+Example for CCP053:
+
+### Ideal For
+
+**Churches**  
+**Schools & Colleges**  
+**Corporate Offices**  
+**Conference Rooms**  
+**Events**
+
+For CCP104 or CCP105 perhaps:
+
+**Auditoriums**  
+**Premium Churches**  
+**Luxury Hotels**  
+**Corporate Events**
+
+This will also connect perfectly with the **Industry tags** we discussed earlier.
+
+---
+
+# 11. Explain what makes Classic Concepts podiums different
+
+You should create one common section, perhaps below the product grid:
+
+## Why Classic Concepts Podiums?
+
+I would use genuine manufacturing USPs rather than generic claims.
+
+### Original Designs
+Distinctive podium designs developed by Classic Concepts.
+
+### Precision Manufacturing
+Manufactured using CNC, laser cutting, professional bending and precision fabrication processes.
+
+### Diamond-Polished Edges
+High-quality edge finish for clarity and premium presentation.
+
+### Professional Acrylic Bonding
+Use of suitable industrial acrylic fabrication techniques rather than low-grade assembly methods.
+
+### Custom Branding
+Logos, names and selected branding can be integrated.
+
+### Manufacturing Since 2008
+Backed by extensive acrylic fabrication experience.
+
+### 5-Year Warranty
+If this warranty applies to all podium models, make it highly visible.
+
+### Nationwide Supply
+Designed for safe transportation to customers across India.
+
+---
+
+# 12. “India's largest manufacturer” claim
+
+If you want to use your positioning:
+
+> **India's Largest Manufacturer of Acrylic Podiums**
+
+I recommend supporting it with objective proof or qualifying it, because a strong superlative claim should be defensible.
+
+A safer premium headline is:
+
+### One of India's Leading Acrylic Podium Manufacturers
+
+or:
+
+### Specialists in Acrylic Podium Design & Manufacturing
+
+If you have documentary evidence supporting “India's largest,” then use it confidently.
+
+---
+
+# 13. Add actual podium applications
+
+Instead of showing only isolated podium pictures, add a section:
+
+## Classic Concepts Podiums in Use
+
+Use 6 strong images:
+
+- Church
+- College auditorium
+- Corporate presentation
+- Hotel conference
+- Event stage
+- Government/institution
+
+This immediately gives scale and credibility.
+
+---
+
+# 14. Create a podium comparison tool
+
+With 27 models, this can be extremely useful.
+
+Allow user to compare 3 models:
+
+**CCP053 vs CCP063 vs CCP107**
+
+Compare:
+
+- Range
+- Price
+- Height
+- Width
+- Acrylic thickness
+- Weight
+- Wheels
+- Logo option
+- Lighting
+- Best suited for
+
+This helps eliminate the biggest problem with having 27 visually similar choices.
+
+---
+
+# 15. Add “Help Me Choose”
+
+At the top of the podium page:
+
+### Which Podium Is Right for You?
+
+Choose:
+
+**Usage**
+Church / Education / Corporate / Hotel / Event
+
+**Budget**
+Under ₹25k / ₹25–50k / ₹50–75k / ₹75k+
+
+**Style**
+Minimal / Contemporary / Premium Statement
+
+Then suggest 3 models.
+
+Even a simple manual filtering system would work.
+
+---
+
+# 16. Model naming can be improved without changing your codes
+
+Keep **CCP053**, **CCP054**, etc. because they are established model numbers.
+
+But add a descriptive line.
+
+Instead of only:
+
+### Acrylic Podium CCP053
+
+Use:
+
+### CCP053 – Classic Clear Acrylic Podium
+
+or:
+
+### Acrylic Podium CCP053
+**Classic Signature Series**
+
+This gives the model more personality.
+
+You could eventually give your best-selling podiums distinctive product names, but that is optional.
+
+---
+
+# 17. Separate the podium-logo accessory
+
+The website currently has **Podium Logos** as a separate product/category. [Classic Concepts](https://classicconcepts.in/shop?utm_source=chatgpt.com)
+
+I would instead integrate this into every podium page:
+
+### Custom Branding Options
+
+**Company Logo**
+
+**Church Logo / Cross**
+
+**College / University Crest**
+
+**Event Branding**
+
+**UV Printed Logo**
+
+**3D Acrylic Logo**
+
+Then:
+
+**Upload Your Logo →**
+
+Much more natural.
+
+---
+
+# 18. Add warranty explanation
+
+Don't just say “5-Year Warranty.”
+
+Create a short:
+
+### 5-Year Podium Warranty
+
+Explain what is covered:
+
+- manufacturing workmanship?
+- structural joints?
+- acrylic material?
+- wheels/hardware?
+- electrical/LED parts?
+
+And what isn't:
+
+- physical impact
+- scratches
+- misuse
+- transportation after delivery
+- unauthorized modifications
+
+This will prevent confusion later.
+
+---
+
+# 19. Add packaging and delivery confidence
+
+Because acrylic podiums are fragile, this is a genuine buying concern.
+
+Add:
+
+## Safe Packaging & Nationwide Delivery
+
+> Every podium is professionally packed using protective packaging designed for acrylic products to reduce the risk of damage during transportation.
+
+If you use special wooden/crate/foam packaging, show one photo.
+
+This can materially improve conversion from customers outside Hyderabad.
+
+---
+
+# 20. The page should tell a story before showing 27 products
+
+My ideal podium page would run:
+
+**1. Hero**  
+“Premium Acrylic Podiums Designed & Manufactured in India”
+
+**2. Trust strip**  
+Since 2008 | 27 Designs | 5-Year Warranty | Made in India | Custom Branding
+
+**3. IP / design protection strip**  
+“Original Classic Concepts Designs — Registered Design Rights Apply”
+
+**4. Choose Your Range**  
+Essential | Classic Signature | Premium
+
+**5. 27 Podium Models**
+
+**6. Help Me Choose**
+
+**7. Why Classic Concepts Podiums**
+
+**8. Podiums in Real Installations**
+
+**9. Custom Branding**
+
+**10. Packaging & Delivery**
+
+**11. Warranty**
+
+**12. FAQ**
+
+**13. Final CTA**  
+“Need Help Selecting a Podium? Talk to Our Team”
+
+That turns the page from a **product listing** into a **category-selling page**.
+
+## One important correction regarding “copyright and patent”
+
+For the website, I strongly recommend using **“Registered Design” / “Design Protected”** where that is what your certificates actually show. Under Indian law, industrial design registration protects visual features such as shape, configuration, pattern and ornamentation; it is legally distinct from a patent, while the Designs Act itself refers to “copyright” in a registered design. [IP India](https://ipindia.gov.in/acts/designs-act-2000/section-2-4?utm_source=chatgpt.com)
+
+So rather than writing:
+
+> ❌ Copyrighted & Patented Podium
+
+I would write:
+
+> **Original Classic Concepts Design | Registered Design**
+
+and, where applicable:
+
+> **Registered Design No. ______**
+
+That is cleaner, more credible, and legally more precise.
+
+If you want, the next useful step is for me to prepare the **exact final content template for one podium—for example CCP053—from top to bottom**, which you can approve and then your developer can use the same format across all 27 models.
+
+
+
+
+# CLASSIC CONCEPTS WEBSITE – PRODUCT & INDUSTRY STRUCTURE
+
+## Objective
+
+We want the website to be very simple for a layman to understand.
+
+The website should allow customers to browse in two ways:
+
+1. **Product Wise** – for customers who already know what they need.
+2. **Industry Wise** – for customers who know their industry/application but may not know which product they require.
+
+The website should NOT have deep multi-level navigation or duplicate products.
+
+---
+
+# 1. PRODUCT-WISE STRUCTURE
+
+Main menu:
+
+**PRODUCTS**
+
+Under Products, show only the following main categories:
+
+1. Acrylic Podiums
+2. Display Solutions
+3. Signage & Branding
+4. Boxes & Enclosures
+5. Awards & Mementos
+6. Retail & Visual Merchandising
+7. Furniture & Interiors
+8. Food & Beverage Products
+9. Office & Utility Products
+10. Industrial Acrylic Products
+11. Religious & Institutional Products
+12. Custom Acrylic Fabrication
+
+### Important
+
+Do NOT create separate subcategory pages.
+
+Example:
+
+Do NOT make:
+
+Products  
+→ Display Solutions  
+→ Retail Display  
+→ Counter Display  
+→ Product
+
+Instead:
+
+Products  
+→ Display Solutions  
+→ Product
+
+---
+
+# 2. PRODUCT CATEGORY PAGE FORMAT
+
+When the customer clicks any main product category, open one category page containing:
+
+### A. Category Heading
+
+Example:
+
+**Display Solutions**
+
+### B. Short Description
+
+One or two lines explaining the category.
+
+### C. Filter Tabs
+
+Example:
+
+**All | Counter Displays | Floor Displays | Jewellery | Cosmetic | Brochure Holders | Electronics | Custom**
+
+These filters must work on the SAME PAGE.
+
+Do not create another page for each filter.
+
+### D. Product Grid
+
+Show all relevant products below.
+
+Each product card should contain:
+
+- Product image
+- Product name
+- Model/code if applicable
+- Short key information
+- View Details
+- Enquire Now / Get Quote
+
+---
+
+# 3. PRODUCT DATABASE
+
+There should be only ONE master product database.
+
+Every product should have the following fields:
+
+### Basic Details
+
+- Product Name
+- Product Code / Model
+- Main Product Category
+- Filter/Sub-Type
+- Description
+- Images
+- Specifications
+- Price / Price on Request
+- Availability
+- Customisation Options
+
+### Industry Tags
+
+A single product should be capable of being linked to multiple industries.
+
+Example:
+
+**Acrylic Podium CCP-053**
+
+Product Category:
+
+Acrylic Podiums
+
+Industry Tags:
+
+- Education
+- Churches
+- Corporate
+- Hotels
+- Events
+
+This should remain ONE product only.
+
+Do NOT create duplicate copies of the same product for each industry.
+
+---
+
+# 4. INDUSTRY-WISE STRUCTURE
+
+Main menu:
+
+**INDUSTRIES**
+
+Initially create these industries:
+
+1. Corporate & Offices
+2. Education – Schools, Colleges & Universities
+3. Hospitals & Healthcare
+4. Hotels & Hospitality
+5. Retail & Visual Merchandising
+6. Restaurants & Food Service
+7. Pharmaceutical
+8. Aerospace, Defence & Engineering
+9. Churches & Religious Institutions
+10. Events, Exhibitions & Advertising
+
+An **Other Industries** option may be added later.
+
+---
+
+# 5. INDUSTRY PAGE FORMAT
+
+Industry pages should NOT look like another product catalogue.
+
+Every industry page should have the following structure:
+
+### A. Industry Hero Image
+
+Use an application/environment image.
+
+Example:
+
+Healthcare:
+
+Hospital environment with signage, displays or acrylic products being used.
+
+Education:
+
+College/school environment with podium, signage, awards, etc.
+
+Do not use only isolated catalogue product images.
+
+---
+
+### B. Industry Heading
+
+Example:
+
+**Acrylic Solutions for Hospitals & Healthcare**
+
+---
+
+### C. Short Introduction
+
+Explain what Classic Concepts can provide to that industry.
+
+Keep it simple.
+
+---
+
+### D. Solution Groups
+
+Show the types of solutions available.
+
+Example for Healthcare:
+
+**Wayfinding & Signage**
+
+Directional signage  
+Room signage  
+Department signage
+
+**Reception & Administration**
+
+Displays  
+Name boards  
+Document holders
+
+**Patient Areas**
+
+Charging stations  
+Information stands  
+Utility products
+
+**Industrial / Equipment Areas**
+
+Protective covers  
+Enclosures  
+Custom acrylic components
+
+---
+
+# 6. RECOMMENDED PRODUCTS ON INDUSTRY PAGE
+
+At the bottom of each industry page, show only:
+
+**6–8 Recommended Products**
+
+These products must be pulled automatically from the master product database using Industry Tags.
+
+Example:
+
+If Acrylic Podium is tagged:
+
+Education  
+Church  
+Corporate
+
+then the same master product should automatically appear on all three industry pages.
+
+There must NOT be three separate product entries.
+
+---
+
+# 7. VIEW ALL INDUSTRY PRODUCTS
+
+Each Industry page should have:
+
+**View All Products for This Industry**
+
+When clicked, open the normal product listing page with the relevant Industry Filter already selected.
+
+Example:
+
+Industries  
+→ Healthcare  
+→ View All Healthcare Products
+
+should show relevant products from different product categories:
+
+Signage  
+Displays  
+Boxes  
+Charging Stations  
+Industrial Covers etc.
+
+---
+
+# 8. INDUSTRY IMAGES VS PRODUCT IMAGES
+
+Use different visual treatment.
+
+### Product Pages
+
+Use:
+
+- Clean product photos
+- White/neutral backgrounds
+- Product details
+- Specifications
+
+### Industry Pages
+
+Use:
+
+- Application photos
+- Project photos
+- Environmental images
+- Installed products
+- Industry-related environments
+
+This will avoid visual repetition.
+
+---
+
+# 9. PROJECT / APPLICATION IMAGES
+
+Wherever possible, industry pages should use actual Classic Concepts project photos.
+
+Examples:
+
+Healthcare:
+Hospital signage, charging stations, displays.
+
+Corporate:
+Reception signage, podiums, awards, branded displays.
+
+Hospitality:
+Valet podiums, menu stands, signage.
+
+Education:
+Podiums, honour boards, awards, signage.
+
+Aerospace / Engineering:
+Protective covers, machine guards, enclosures, technical acrylic parts.
+
+These images should support the Industry page but should NOT be created as duplicate products.
+
+---
+
+# 10. NAVIGATION RULE
+
+Maximum navigation depth should be:
+
+### Product Route
+
+Products  
+→ Main Category  
+→ Product
+
+Maximum 2 clicks to reach products.
+
+### Industry Route
+
+Industries  
+→ Industry  
+→ Product
+
+Avoid deep navigation.
+
+---
+
+# 11. PRODUCT FILTERS
+
+Product category pages should support filters such as:
+
+- Product Type
+- Application
+- Industry
+- Size
+- Custom / Standard
+
+Use filters only where relevant.
+
+Do not overload the customer with too many filter options.
+
+---
+
+# 12. SEARCH
+
+Add a strong search function.
+
+Customer should be able to search:
+
+- Podium
+- Hospital
+- Church
+- Donation Box
+- Jewellery Display
+- QR Stand
+- Machine Cover
+- College
+- Retail Display
+
+Search results should understand:
+
+**Product Names + Product Categories + Industry Tags + Applications**
+
+---
+
+# 13. ALL PRODUCT CATEGORIES BUTTON
+
+On every product/category page, provide:
+
+**All Product Categories**
+
+This can open:
+
+- dropdown
+- side panel
+- mega menu
+
+The customer should be able to move from one main category to another without using the browser Back button repeatedly.
+
+---
+
+# 14. BREADCRUMBS
+
+Use simple breadcrumbs.
+
+Example:
+
+**Home > Products > Display Solutions**
+
+or:
+
+**Home > Industries > Healthcare**
+
+Keep breadcrumbs small and clean.
+
+---
+
+# 15. MOBILE REQUIREMENT
+
+The complete structure must work smoothly on mobile.
+
+### Product categories:
+
+Use 2-column cards.
+
+### Filters:
+
+Use horizontally scrollable filter buttons.
+
+Example:
+
+All | Counter | Floor | Jewellery | Cosmetic
+
+### Menu:
+
+No complicated nested menus.
+
+---
+
+# 16. PRODUCT CATEGORY CARD DESIGN
+
+Each main category card should contain:
+
+- Good representative image
+- Category name
+- One-line description
+- View Products
+
+Example:
+
+### Display Solutions
+Retail, promotional and custom acrylic display systems.
+
+**View Products →**
+
+---
+
+# 17. INDUSTRY CARD DESIGN
+
+Industry cards should use application images.
+
+Example:
+
+### Healthcare
+Acrylic solutions for hospitals, clinics and healthcare facilities.
+
+**Explore Solutions →**
+
+Do not use the exact same category/product image used in the Products section.
+
+---
+
+# 18. BACKEND TAGGING SYSTEM
+
+Developer must create relationships like:
+
+### PRODUCT
+One product
+
+↓
+
+### MAIN PRODUCT CATEGORY
+One category
+
+↓
+
+### PRODUCT FILTER / TYPE
+One or multiple
+
+↓
+
+### INDUSTRY TAGS
+Multiple industries
+
+↓
+
+### APPLICATION TAGS
+Multiple applications
+
+Example:
+
+Product:
+
+**Acrylic QR Stand**
+
+Main Category:
+
+Signage & Branding
+
+Product Type:
+
+QR Stand
+
+Industry Tags:
+
+- Restaurants
+- Hotels
+- Retail
+- Hospitals
+- Corporate
+- Events
+
+Applications:
+
+- Payment
+- Feedback
+- Menu
+- Information
+
+The same product should automatically appear wherever relevant.
+
+---
+
+# 19. IMPORTANT DEVELOPMENT RULE
+
+**Never manually copy or duplicate a product into different sections.**
+
+Industry pages must dynamically reference the same master product.
+
+If we change:
+
+- Product image
+- Product name
+- Price
+- Specification
+- Status
+
+the change must automatically reflect everywhere on the website.
+
+---
+
+# 20. HOMEPAGE PRODUCT SECTION
+
+Homepage should display only approximately:
+
+**8–12 main Product Categories**
+
+Do not display 40–50 small product categories.
+
+Button:
+
+**View All Products**
+
+---
+
+# 21. HOMEPAGE INDUSTRIES SECTION
+
+Homepage should display approximately:
+
+**6–8 major industries**
+
+Example:
+
+Healthcare  
+Education  
+Corporate  
+Retail  
+Hospitality  
+Aerospace & Engineering  
+Churches  
+Events
+
+Button:
+
+**View All Industries**
+
+---
+
+# 22. CUSTOM REQUIREMENT
+
+On both Product and Industry pages, add a strong CTA:
+
+### Cannot Find What You Need?
+
+**Share Your Requirement**
+
+Buttons:
+
+**WhatsApp Us**
+
+**Send Drawing / Photo**
+
+**Request Quote**
+
+This is important because Classic Concepts manufactures custom acrylic products.
+
+---
+
+# 23. FINAL CUSTOMER EXPERIENCE
+
+The customer should experience the website like this:
+
+### Customer knows the product:
+
+“I need a podium.”
+
+Products  
+→ Acrylic Podiums  
+→ Choose Product
+
+### Customer knows only the industry:
+
+“I am setting up a hospital.”
+
+Industries  
+→ Healthcare  
+→ See Solutions  
+→ Recommended Products
+
+### Customer has a custom requirement:
+
+“I have a drawing.”
+
+Custom Acrylic Fabrication  
+→ Upload Drawing / WhatsApp  
+→ Request Quote
+
+---
+
+# 24. MOST IMPORTANT PRINCIPLE
+
+The website must have:
+
+**ONE PRODUCT DATABASE**
+
+but customers should be able to discover those products through:
+
+**PRODUCTS – What we manufacture**
+
+and
+
+**INDUSTRIES – Where our products are used**
+
+These are two different browsing routes leading to the same master products.
+
+Do not duplicate data.
+
+Do not create deep subcategory pages.
+
+Keep the website simple, visual and easy to understand.
+
+
+
+
+
+# CLASSIC CONCEPTS WEBSITE – PRODUCT & INDUSTRY STRUCTURE
+
+## Objective
+
+We want the website to be very simple for a layman to understand.
+
+The website should allow customers to browse in two ways:
+
+1. **Product Wise** – for customers who already know what they need.
+2. **Industry Wise** – for customers who know their industry/application but may not know which product they require.
+
+The website should NOT have deep multi-level navigation or duplicate products.
+
+---
+
+# 1. PRODUCT-WISE STRUCTURE
+
+Main menu:
+
+**PRODUCTS**
+
+Under Products, show only the following main categories:
+
+1. Acrylic Podiums
+2. Display Solutions
+3. Signage & Branding
+4. Boxes & Enclosures
+5. Awards & Mementos
+6. Retail & Visual Merchandising
+7. Furniture & Interiors
+8. Food & Beverage Products
+9. Office & Utility Products
+10. Industrial Acrylic Products
+11. Religious & Institutional Products
+12. Custom Acrylic Fabrication
+
+### Important
+
+Do NOT create separate subcategory pages.
+
+Example:
+
+Do NOT make:
+
+Products  
+→ Display Solutions  
+→ Retail Display  
+→ Counter Display  
+→ Product
+
+Instead:
+
+Products  
+→ Display Solutions  
+→ Product
+
+---
+
+# 2. PRODUCT CATEGORY PAGE FORMAT
+
+When the customer clicks any main product category, open one category page containing:
+
+### A. Category Heading
+
+Example:
+
+**Display Solutions**
+
+### B. Short Description
+
+One or two lines explaining the category.
+
+### C. Filter Tabs
+
+Example:
+
+**All | Counter Displays | Floor Displays | Jewellery | Cosmetic | Brochure Holders | Electronics | Custom**
+
+These filters must work on the SAME PAGE.
+
+Do not create another page for each filter.
+
+### D. Product Grid
+
+Show all relevant products below.
+
+Each product card should contain:
+
+- Product image
+- Product name
+- Model/code if applicable
+- Short key information
+- View Details
+- Enquire Now / Get Quote
+
+---
+
+# 3. PRODUCT DATABASE
+
+There should be only ONE master product database.
+
+Every product should have the following fields:
+
+### Basic Details
+
+- Product Name
+- Product Code / Model
+- Main Product Category
+- Filter/Sub-Type
+- Description
+- Images
+- Specifications
+- Price / Price on Request
+- Availability
+- Customisation Options
+
+### Industry Tags
+
+A single product should be capable of being linked to multiple industries.
+
+Example:
+
+**Acrylic Podium CCP-053**
+
+Product Category:
+
+Acrylic Podiums
+
+Industry Tags:
+
+- Education
+- Churches
+- Corporate
+- Hotels
+- Events
+
+This should remain ONE product only.
+
+Do NOT create duplicate copies of the same product for each industry.
+
+---
+
+# 4. INDUSTRY-WISE STRUCTURE
+
+Main menu:
+
+**INDUSTRIES**
+
+Initially create these industries:
+
+1. Corporate & Offices
+2. Education – Schools, Colleges & Universities
+3. Hospitals & Healthcare
+4. Hotels & Hospitality
+5. Retail & Visual Merchandising
+6. Restaurants & Food Service
+7. Pharmaceutical
+8. Aerospace, Defence & Engineering
+9. Churches & Religious Institutions
+10. Events, Exhibitions & Advertising
+
+An **Other Industries** option may be added later.
+
+---
+
+# 5. INDUSTRY PAGE FORMAT
+
+Industry pages should NOT look like another product catalogue.
+
+Every industry page should have the following structure:
+
+### A. Industry Hero Image
+
+Use an application/environment image.
+
+Example:
+
+Healthcare:
+
+Hospital environment with signage, displays or acrylic products being used.
+
+Education:
+
+College/school environment with podium, signage, awards, etc.
+
+Do not use only isolated catalogue product images.
+
+---
+
+### B. Industry Heading
+
+Example:
+
+**Acrylic Solutions for Hospitals & Healthcare**
+
+---
+
+### C. Short Introduction
+
+Explain what Classic Concepts can provide to that industry.
+
+Keep it simple.
+
+---
+
+### D. Solution Groups
+
+Show the types of solutions available.
+
+Example for Healthcare:
+
+**Wayfinding & Signage**
+
+Directional signage  
+Room signage  
+Department signage
+
+**Reception & Administration**
+
+Displays  
+Name boards  
+Document holders
+
+**Patient Areas**
+
+Charging stations  
+Information stands  
+Utility products
+
+**Industrial / Equipment Areas**
+
+Protective covers  
+Enclosures  
+Custom acrylic components
+
+---
+
+# 6. RECOMMENDED PRODUCTS ON INDUSTRY PAGE
+
+At the bottom of each industry page, show only:
+
+**6–8 Recommended Products**
+
+These products must be pulled automatically from the master product database using Industry Tags.
+
+Example:
+
+If Acrylic Podium is tagged:
+
+Education  
+Church  
+Corporate
+
+then the same master product should automatically appear on all three industry pages.
+
+There must NOT be three separate product entries.
+
+---
+
+# 7. VIEW ALL INDUSTRY PRODUCTS
+
+Each Industry page should have:
+
+**View All Products for This Industry**
+
+When clicked, open the normal product listing page with the relevant Industry Filter already selected.
+
+Example:
+
+Industries  
+→ Healthcare  
+→ View All Healthcare Products
+
+should show relevant products from different product categories:
+
+Signage  
+Displays  
+Boxes  
+Charging Stations  
+Industrial Covers etc.
+
+---
+
+# 8. INDUSTRY IMAGES VS PRODUCT IMAGES
+
+Use different visual treatment.
+
+### Product Pages
+
+Use:
+
+- Clean product photos
+- White/neutral backgrounds
+- Product details
+- Specifications
+
+### Industry Pages
+
+Use:
+
+- Application photos
+- Project photos
+- Environmental images
+- Installed products
+- Industry-related environments
+
+This will avoid visual repetition.
+
+---
+
+# 9. PROJECT / APPLICATION IMAGES
+
+Wherever possible, industry pages should use actual Classic Concepts project photos.
+
+Examples:
+
+Healthcare:
+Hospital signage, charging stations, displays.
+
+Corporate:
+Reception signage, podiums, awards, branded displays.
+
+Hospitality:
+Valet podiums, menu stands, signage.
+
+Education:
+Podiums, honour boards, awards, signage.
+
+Aerospace / Engineering:
+Protective covers, machine guards, enclosures, technical acrylic parts.
+
+These images should support the Industry page but should NOT be created as duplicate products.
+
+---
+
+# 10. NAVIGATION RULE
+
+Maximum navigation depth should be:
+
+### Product Route
+
+Products  
+→ Main Category  
+→ Product
+
+Maximum 2 clicks to reach products.
+
+### Industry Route
+
+Industries  
+→ Industry  
+→ Product
+
+Avoid deep navigation.
+
+---
+
+# 11. PRODUCT FILTERS
+
+Product category pages should support filters such as:
+
+- Product Type
+- Application
+- Industry
+- Size
+- Custom / Standard
+
+Use filters only where relevant.
+
+Do not overload the customer with too many filter options.
+
+---
+
+# 12. SEARCH
+
+Add a strong search function.
+
+Customer should be able to search:
+
+- Podium
+- Hospital
+- Church
+- Donation Box
+- Jewellery Display
+- QR Stand
+- Machine Cover
+- College
+- Retail Display
+
+Search results should understand:
+
+**Product Names + Product Categories + Industry Tags + Applications**
+
+---
+
+# 13. ALL PRODUCT CATEGORIES BUTTON
+
+On every product/category page, provide:
+
+**All Product Categories**
+
+This can open:
+
+- dropdown
+- side panel
+- mega menu
+
+The customer should be able to move from one main category to another without using the browser Back button repeatedly.
+
+---
+
+# 14. BREADCRUMBS
+
+Use simple breadcrumbs.
+
+Example:
+
+**Home > Products > Display Solutions**
+
+or:
+
+**Home > Industries > Healthcare**
+
+Keep breadcrumbs small and clean.
+
+---
+
+# 15. MOBILE REQUIREMENT
+
+The complete structure must work smoothly on mobile.
+
+### Product categories:
+
+Use 2-column cards.
+
+### Filters:
+
+Use horizontally scrollable filter buttons.
+
+Example:
+
+All | Counter | Floor | Jewellery | Cosmetic
+
+### Menu:
+
+No complicated nested menus.
+
+---
+
+# 16. PRODUCT CATEGORY CARD DESIGN
+
+Each main category card should contain:
+
+- Good representative image
+- Category name
+- One-line description
+- View Products
+
+Example:
+
+### Display Solutions
+Retail, promotional and custom acrylic display systems.
+
+**View Products →**
+
+---
+
+# 17. INDUSTRY CARD DESIGN
+
+Industry cards should use application images.
+
+Example:
+
+### Healthcare
+Acrylic solutions for hospitals, clinics and healthcare facilities.
+
+**Explore Solutions →**
+
+Do not use the exact same category/product image used in the Products section.
+
+---
+
+# 18. BACKEND TAGGING SYSTEM
+
+Developer must create relationships like:
+
+### PRODUCT
+One product
+
+↓
+
+### MAIN PRODUCT CATEGORY
+One category
+
+↓
+
+### PRODUCT FILTER / TYPE
+One or multiple
+
+↓
+
+### INDUSTRY TAGS
+Multiple industries
+
+↓
+
+### APPLICATION TAGS
+Multiple applications
+
+Example:
+
+Product:
+
+**Acrylic QR Stand**
+
+Main Category:
+
+Signage & Branding
+
+Product Type:
+
+QR Stand
+
+Industry Tags:
+
+- Restaurants
+- Hotels
+- Retail
+- Hospitals
+- Corporate
+- Events
+
+Applications:
+
+- Payment
+- Feedback
+- Menu
+- Information
+
+The same product should automatically appear wherever relevant.
+
+---
+
+# 19. IMPORTANT DEVELOPMENT RULE
+
+**Never manually copy or duplicate a product into different sections.**
+
+Industry pages must dynamically reference the same master product.
+
+If we change:
+
+- Product image
+- Product name
+- Price
+- Specification
+- Status
+
+the change must automatically reflect everywhere on the website.
+
+---
+
+# 20. HOMEPAGE PRODUCT SECTION
+
+Homepage should display only approximately:
+
+**8–12 main Product Categories**
+
+Do not display 40–50 small product categories.
+
+Button:
+
+**View All Products**
+
+---
+
+# 21. HOMEPAGE INDUSTRIES SECTION
+
+Homepage should display approximately:
+
+**6–8 major industries**
+
+Example:
+
+Healthcare  
+Education  
+Corporate  
+Retail  
+Hospitality  
+Aerospace & Engineering  
+Churches  
+Events
+
+Button:
+
+**View All Industries**
+
+---
+
+# 22. CUSTOM REQUIREMENT
+
+On both Product and Industry pages, add a strong CTA:
+
+### Cannot Find What You Need?
+
+**Share Your Requirement**
+
+Buttons:
+
+**WhatsApp Us**
+
+**Send Drawing / Photo**
+
+**Request Quote**
+
+This is important because Classic Concepts manufactures custom acrylic products.
+
+---
+
+# 23. FINAL CUSTOMER EXPERIENCE
+
+The customer should experience the website like this:
+
+### Customer knows the product:
+
+“I need a podium.”
+
+Products  
+→ Acrylic Podiums  
+→ Choose Product
+
+### Customer knows only the industry:
+
+“I am setting up a hospital.”
+
+Industries  
+→ Healthcare  
+→ See Solutions  
+→ Recommended Products
+
+### Customer has a custom requirement:
+
+“I have a drawing.”
+
+Custom Acrylic Fabrication  
+→ Upload Drawing / WhatsApp  
+→ Request Quote
+
+---
+
+# 24. MOST IMPORTANT PRINCIPLE
+
+The website must have:
+
+**ONE PRODUCT DATABASE**
+
+but customers should be able to discover those products through:
+
+**PRODUCTS – What we manufacture**
+
+and
+
+**INDUSTRIES – Where our products are used**
+
+These are two different browsing routes leading to the same master products.
+
+Do not duplicate data.
+
+Do not create deep subcategory pages.
+
+Keep the website simple, visual and easy to understand.
+
+
+
+Industries We Serve
+1. Corporate & Offices
+2. Education
+3. Healthcare
+4. Hotels & Hospitality
+5. Retail & Visual Merchandising
+6. Restaurants & Food Service
+7. Pharmaceutical
+8. Aerospace, Defence & Engineering
+9. Churches & Religious Institutions
+10. Events, Exhibitions & Advertising

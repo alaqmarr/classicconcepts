@@ -1,23 +1,17 @@
-import { prisma } from "@/lib/db";
-import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
+import { getFullCatalogIndex, getPublicSiteSettings } from "@/lib/public-data";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
 import Link from "next/link";
 import { Filter } from "lucide-react";
 import { notFound } from "next/navigation";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  return [];
-}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const industry = await prisma.industry.findUnique({
-    where: { slug }
-  });
+  const catalog = await getFullCatalogIndex();
+  const industry = catalog.industries.find((i) => i.slug === slug) || null;
 
   if (!industry) return { title: "Industry Not Found - Classic Concepts" };
 
@@ -64,32 +58,22 @@ export default async function IndustryShopPage({
 }) {
   const { slug } = await params;
 
-  const industry = await prisma.industry.findUnique({
-    where: { slug }
-  });
+  const [catalog, settings] = await Promise.all([
+    getFullCatalogIndex(),
+    getPublicSiteSettings(),
+  ]);
+
+  const industry = catalog.industries.find((i) => i.slug === slug) || null;
 
   if (!industry) {
     notFound();
   }
 
-  const [products, allIndustries, totalProductsOverall, settings] = await Promise.all([
-    prisma.product.findMany({
-      where: {
-        industries: { some: { id: industry.id } },
-      },
-      select: PRODUCT_CARD_SELECT,
-      orderBy: { name: 'asc' }
-    }),
-    prisma.industry.findMany({
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true, slug: true },
-    }),
-    prisma.product.count(),
-    prisma.siteSetting.findUnique({
-      where: { id: "default" },
-      select: { whatsappNumber: true },
-    }),
-  ]);
+  const products = catalog.products.filter((p) =>
+    p.industryIds.includes(industry.id)
+  );
+  const allIndustries = catalog.industries;
+  const totalProductsOverall = catalog.totalProductsOverall;
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">

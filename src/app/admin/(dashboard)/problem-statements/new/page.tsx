@@ -14,6 +14,7 @@ import {
   revalidateCatalogPaths,
   sanitizeRichHtml,
 } from "@/lib/product-mutations";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewProblemStatementPage() {
   async function createProblemStatement(formData: FormData) {
@@ -38,6 +39,7 @@ export default function NewProblemStatementPage() {
       },
     });
 
+    await invalidateCacheTags(["catalog", "taxonomy", "ai-snapshot", "ai-responses"]);
     revalidatePath("/admin/problem-statements");
     revalidateCatalogPaths();
     redirect("/admin/problem-statements");

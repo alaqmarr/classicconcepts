@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewTeamMemberPage() {
   async function createMember(formData: FormData) {
@@ -38,6 +39,7 @@ export default function NewTeamMemberPage() {
       },
     });
 
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/admin/team");
     revalidatePath("/about/team");
     revalidatePath("/contact");

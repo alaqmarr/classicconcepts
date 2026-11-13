@@ -1,58 +1,89 @@
-import { prisma } from '../src/lib/db';
+import { prisma } from "../src/lib/db";
 
+/**
+ * Safe One-Time Database Seed
+ * - Never overwrites existing SiteSetting values (`update: {}`).
+ * - Never touches `SiteContent` (inline-edited page texts & image overrides).
+ * - Only inserts starter Categories / Clients / Online Platforms on a brand-new empty database
+ *   so running `prisma db seed` on production NEVER re-adds merged categories or placeholder logos.
+ */
 async function main() {
-  // Site Settings
   await prisma.siteSetting.upsert({
-    where: { id: 'default' },
+    where: { id: "default" },
     update: {},
     create: {
-      id: 'default',
-      address: 'M/s. Classic Concepts Acrylic Private Limited,\\n1-6-44/2, Muthiyam Reddy Estate,\\nYadamma Nagarm Alwal,\\nSecunderabad - 500 015,\\nTelangana, India.',
-      phone1: '+91 7901 650 662',
-      phone2: '+91 7901 650 663',
-      email: 'info@classicconcepts.in',
-      upiId: 'classicconcepts@upi',
-      upiName: 'Classic Concepts',
+      id: "default",
+      address:
+        "M/s. Classic Concepts Acrylic Private Limited,\n1-6-44/2, Muthiyam Reddy Estate,\nYadamma Nagar, Alwal,\nSecunderabad - 500 015,\nTelangana, India.",
+      phone1: "+917337222876",
+      whatsappNumber: "+917337222876",
+      email: "sales@classicconcepts.in",
+      upiId: "classicconcepts@upi",
+      upiName: "Classic Concepts",
+      aiModel: "claude-haiku-5-5",
+      aiEnabled: true,
+      aiPopupEnabled: true,
+      aiPopupDelaySeconds: 3,
     },
   });
 
-  // Clients
-  const clientNames = ["AVASA", "GMR", "facebook", "Google", "GreenPark", "ICICI Bank", "INDIAN"];
-  for (const name of clientNames) {
-    const exists = await prisma.client.findFirst({ where: { name } });
-    if (!exists) {
-      await prisma.client.create({
-        data: { name, logoUrl: `https://via.placeholder.com/150x80?text=${name}` }
-      });
-    }
+  const [existingProductCount, existingCategoryCount] = await Promise.all([
+    prisma.product.count(),
+    prisma.category.count(),
+  ]);
+
+  if (existingProductCount > 0 || existingCategoryCount > 0) {
+    console.log(
+      `Database already contains ${existingCategoryCount} categories and ${existingProductCount} products. Skipping starter seed to preserve live data.`
+    );
+    return;
   }
 
-  // Platforms
   const platforms = [
-    { name: 'Amazon', storeUrl: '#', storeRegion: 'US Store', iconName: 'FaAmazon', colorClass: 'text-black' },
-    { name: 'Amazon', storeUrl: '#', storeRegion: 'IN Store', iconName: 'FaAmazon', colorClass: 'text-black' },
-    { name: 'Walmart', storeUrl: '#', storeRegion: 'US Store', iconName: 'SiWalmart', colorClass: 'text-[#0071ce]' },
-    { name: 'Flipkart', storeUrl: '#', storeRegion: 'IN Store', iconName: 'SiFlipkart', colorClass: 'text-[#2874f0]' },
+    {
+      name: "Amazon",
+      storeUrl: "#",
+      storeRegion: "US Store",
+      iconName: "FaAmazon",
+      colorClass: "text-black",
+    },
+    {
+      name: "Amazon",
+      storeUrl: "#",
+      storeRegion: "IN Store",
+      iconName: "FaAmazon",
+      colorClass: "text-black",
+    },
+    {
+      name: "Walmart",
+      storeUrl: "#",
+      storeRegion: "US Store",
+      iconName: "SiWalmart",
+      colorClass: "text-[#0071ce]",
+    },
+    {
+      name: "Flipkart",
+      storeUrl: "#",
+      storeRegion: "IN Store",
+      iconName: "SiFlipkart",
+      colorClass: "text-[#2874f0]",
+    },
   ];
 
-  for (const p of platforms) {
-    const exists = await prisma.onlinePlatform.findFirst({ where: { storeRegion: p.storeRegion, name: p.name } });
-    if (!exists) {
+  const existingPlatformCount = await prisma.onlinePlatform.count();
+  if (existingPlatformCount === 0) {
+    for (const p of platforms) {
       await prisma.onlinePlatform.create({ data: p });
     }
   }
 
-  // Categories
-  const categories = [
-    { name: 'Acrylic Podiums', slug: 'acrylic-podiums' },
-    { name: 'Acrylic Furniture', slug: 'acrylic-furniture' },
-    { name: 'Acrylic Interiors', slug: 'acrylic-interiors' },
-    { name: 'Display Units', slug: 'display-units' },
-    { name: 'Acrylic Lighting', slug: 'acrylic-lighting' },
-    { name: 'Brochure Holder', slug: 'brochure-holder' },
+  const starterCategories = [
+    { name: "Acrylic Podiums", slug: "acrylic-podiums", sortOrder: 1 },
+    { name: "Display Stands & Holders", slug: "display-units", sortOrder: 2 },
+    { name: "Acrylic Furniture", slug: "acrylic-furniture", sortOrder: 3 },
   ];
 
-  for (const cat of categories) {
+  for (const cat of starterCategories) {
     await prisma.category.upsert({
       where: { slug: cat.slug },
       update: {},
@@ -60,7 +91,7 @@ async function main() {
     });
   }
 
-  console.log('Seeding complete.');
+  console.log("Initial empty-database bootstrap complete.");
 }
 
 main()

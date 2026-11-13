@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { Image as ImageIcon, Trash2, Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function AdminGalleryPage() {
   const images = await prisma.galleryImage.findMany({
@@ -34,15 +35,18 @@ export default async function AdminGalleryPage() {
       }
     });
 
+    await invalidateCacheTags(["brand", "settings"]);
     revalidatePath("/admin/gallery");
     revalidatePath("/");
   }
 
   async function deleteImage(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     if (!id) return;
     await prisma.galleryImage.delete({ where: { id } });
+    await invalidateCacheTags(["brand", "settings"]);
     revalidatePath("/admin/gallery");
     revalidatePath("/");
   }

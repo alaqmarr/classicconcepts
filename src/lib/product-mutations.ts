@@ -2,6 +2,17 @@ import slugify from "slugify";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateAiCatalogCache } from "@/lib/ai-context";
+import { invalidateCacheTags } from "@/lib/redis-cache";
+import {
+  bulletsToCleanHtml,
+  bulletsToPlainSummary,
+  ensureBulletHtml,
+} from "@/lib/bullet-formatter";
+import {
+  parseVideoUrlEntries,
+  serializeVideoUrlEntries,
+} from "@/lib/youtube";
 
 export function normalizeSlug(raw: string, fallbackPrefix = "item"): string {
   const base = slugify(raw || "", { lower: true, strict: true }).trim();
@@ -68,6 +79,27 @@ export async function generateUniqueCategorySlug(
   }
 }
 
+export async function generateUniqueSubCategorySlug(
+  rawName: string,
+  excludeId?: string
+): Promise<string> {
+  const base = normalizeSlug(rawName, "sub");
+  let candidate = base;
+  let counter = 2;
+
+  while (true) {
+    const existing = await prisma.subCategory.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+    if (!existing || (excludeId && existing.id === excludeId)) {
+      return candidate;
+    }
+    candidate = `${base}-${counter}`;
+    counter++;
+  }
+}
+
 export async function generateUniqueIndustrySlug(
   rawName: string,
   excludeId?: string
@@ -111,32 +143,45 @@ export async function generateUniqueProblemSlug(
 }
 
 export function revalidateCatalogPaths(slug?: string) {
-  revalidatePath("/");
-  revalidatePath("/shop");
-  revalidatePath("/shop/c");
-  revalidatePath("/shop/c/[slug]", "page");
-  revalidatePath("/shop/industry");
-  revalidatePath("/shop/industry/[slug]", "page");
-  revalidatePath("/shop/problem");
-  revalidatePath("/shop/problem/[slug]", "page");
-  revalidatePath("/podiums");
-  revalidatePath("/podiums/[slug]", "page");
-  if (slug) {
-    revalidatePath(`/shop/p/${slug}`);
-  } else {
-    revalidatePath("/shop/p/[slug]", "page");
+  invalidateAiCatalogCache();
+  void invalidateCacheTags(
+    ["catalog", "taxonomy", "ai-snapshot", "ai-responses"],
+    { paths: slug ? [`/shop/p/${slug}`] : undefined }
+  );
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/shop");
+    revalidatePath("/shop/c");
+    revalidatePath("/shop/c/[slug]", "page");
+    revalidatePath("/shop/industry");
+    revalidatePath("/shop/industry/[slug]", "page");
+    revalidatePath("/shop/problem");
+    revalidatePath("/shop/problem/[slug]", "page");
+    revalidatePath("/podiums");
+    revalidatePath("/podiums/[slug]", "page");
+    if (slug) {
+      revalidatePath(`/shop/p/${slug}`);
+    } else {
+      revalidatePath("/shop/p/[slug]", "page");
+    }
+    revalidatePath("/sitemap.xml");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/podiums");
+  } catch {
+    // Safe fallback when invoked from CLI scripts outside Next.js request context
   }
-  revalidatePath("/sitemap.xml");
-  revalidatePath("/admin/products");
-  revalidatePath("/admin/podiums");
 }
 
 interface ParsedProductPayload {
   name: string;
   categoryId: string;
+  subCategoryIds: string[];
+  newSubCategories: string[];
   sku: string | null;
-  podiumSubCategoryId: string | null;
-  newPodiumSubCategory: string | null;
+  podiumSubCategoryIds: string[];
+  newPodiumSubCategories: string[];
+  designRegistrationNo: string | null;
+  ipProtectionText: string | null;
   basePrice: number | null;
   discountPrice: number | null;
   stockStatus: string;
@@ -155,10 +200,24 @@ interface ParsedProductPayload {
     images?: { create: { url: string }[] };
   }[];
   problemStatementIds: string[];
+  newProblemStatements: string[];
   industryIds: string[];
+  newIndustries: string[];
 }
 
-function parseProductFormData(formData: FormData): {
+function splitCommaNames(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return Array.from(
+    new Set(
+      raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+export function parseProductFormData(formData: FormData): {
   data?: ParsedProductPayload;
   error?: string;
 } {
@@ -175,10 +234,43 @@ function parseProductFormData(formData: FormData): {
   const rawSku = ((formData.get("sku") as string) || "").trim();
   const sku = rawSku.length > 0 ? rawSku : null;
 
-  const podiumSubCategoryId =
+  const singleSubId =
+    ((formData.get("subCategoryId") as string) || "").trim() || null;
+  const multiSubIds = [
+    ...(formData.getAll("subCategoryIds[]") as string[]),
+    ...(formData.getAll("subCategoryIds") as string[]),
+  ]
+    .map((id) => (id || "").trim())
+    .filter(Boolean);
+  const subCategoryIds = Array.from(
+    new Set([...(multiSubIds.length > 0 ? multiSubIds : singleSubId ? [singleSubId] : [])])
+  );
+  const newSubCategories = splitCommaNames(
+    formData.get("newSubCategory") as string | null
+  );
+
+  const singlePodiumSubId =
     ((formData.get("podiumSubCategoryId") as string) || "").trim() || null;
-  const newPodiumSubCategory =
-    ((formData.get("newPodiumSubCategory") as string) || "").trim() || null;
+  const multiPodiumSubIds = (formData.getAll("podiumSubCategoryIds[]") as string[])
+    .map((id) => (id || "").trim())
+    .filter(Boolean);
+  const podiumSubCategoryIds = Array.from(
+    new Set([
+      ...(multiPodiumSubIds.length > 0
+        ? multiPodiumSubIds
+        : singlePodiumSubId
+        ? [singlePodiumSubId]
+        : []),
+    ])
+  );
+  const newPodiumSubCategories = splitCommaNames(
+    formData.get("newPodiumSubCategory") as string | null
+  );
+
+  const designRegistrationNo =
+    ((formData.get("designRegistrationNo") as string) || "").trim() || null;
+  const ipProtectionText =
+    ((formData.get("ipProtectionText") as string) || "").trim() || null;
 
   const bpRaw = ((formData.get("basePrice") as string) || "").trim();
   const bpParsed = bpRaw ? parseFloat(bpRaw) : NaN;
@@ -192,12 +284,36 @@ function parseProductFormData(formData: FormData): {
     ((formData.get("stockStatus") as string) || "").trim() || "In stock";
   const discountBadge =
     ((formData.get("discountBadge") as string) || "").trim() || null;
-  const videoUrl = ((formData.get("videoUrl") as string) || "").trim() || null;
-  const description =
-    ((formData.get("description") as string) || "").trim() || null;
-  const descriptionHtml = sanitizeRichHtml(
+  const rawVideoUrl = (formData.get("videoUrl") as string) || "";
+  const videoUrl = serializeVideoUrlEntries(parseVideoUrlEntries(rawVideoUrl));
+
+  // Support structured bullet-point description inputs alongside HTML/summary
+  const descriptionBullets = (formData.getAll("descriptionBullet[]") as string[])
+    .map((b) => (b || "").trim())
+    .filter(Boolean);
+
+  const rawDescription = ((formData.get("description") as string) || "").trim() || null;
+  const rawDescriptionHtml = sanitizeRichHtml(
     formData.get("descriptionHtml") as string | null
   );
+
+  let descriptionHtml: string | null = null;
+  let description: string | null = rawDescription;
+
+  if (descriptionBullets.length > 0) {
+    descriptionHtml = bulletsToCleanHtml(descriptionBullets);
+    description = rawDescription || bulletsToPlainSummary(descriptionBullets, 4);
+    if (formData.get("syncDescriptionFromBullets") === "true") {
+      description = bulletsToPlainSummary(descriptionBullets, 4);
+    }
+  } else if (rawDescriptionHtml) {
+    descriptionHtml = /<(ul|ol)\b/i.test(rawDescriptionHtml)
+      ? rawDescriptionHtml
+      : ensureBulletHtml(rawDescriptionHtml) || rawDescriptionHtml;
+  } else if (rawDescription) {
+    descriptionHtml = ensureBulletHtml(rawDescription);
+  }
+
   const importantNoteHtml = sanitizeRichHtml(
     formData.get("importantNoteHtml") as string | null
   );
@@ -278,26 +394,43 @@ function parseProductFormData(formData: FormData): {
 
   const problemStatementIds = Array.from(
     new Set(
-      (formData.getAll("problemStatements[]") as string[])
+      [
+        ...(formData.getAll("problemStatements[]") as string[]),
+        ...(formData.getAll("problemStatements") as string[]),
+      ]
         .map((id) => (id || "").trim())
         .filter(Boolean)
     )
   );
+  const newProblemStatements = splitCommaNames(
+    formData.get("newProblemStatements") as string | null
+  );
+
   const industryIds = Array.from(
     new Set(
-      (formData.getAll("industries[]") as string[])
+      [
+        ...(formData.getAll("industries[]") as string[]),
+        ...(formData.getAll("industries") as string[]),
+      ]
         .map((id) => (id || "").trim())
         .filter(Boolean)
     )
+  );
+  const newIndustries = splitCommaNames(
+    formData.get("newIndustries") as string | null
   );
 
   return {
     data: {
       name,
       categoryId,
+      subCategoryIds,
+      newSubCategories,
       sku,
-      podiumSubCategoryId,
-      newPodiumSubCategory,
+      podiumSubCategoryIds,
+      newPodiumSubCategories,
+      designRegistrationNo,
+      ipProtectionText,
       basePrice,
       discountPrice,
       stockStatus,
@@ -311,8 +444,104 @@ function parseProductFormData(formData: FormData): {
       specCreates,
       variantCreates,
       problemStatementIds,
+      newProblemStatements,
       industryIds,
+      newIndustries,
     },
+  };
+}
+
+async function resolveMultiRelationsInTx(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  d: ParsedProductPayload
+) {
+  // 1. SubCategories (must belong to d.categoryId)
+  const validSubs =
+    d.subCategoryIds.length > 0
+      ? await tx.subCategory.findMany({
+          where: { id: { in: d.subCategoryIds }, categoryId: d.categoryId },
+          select: { id: true },
+        })
+      : [];
+  const subIds = validSubs.map((s) => s.id);
+  for (const newName of d.newSubCategories) {
+    const genSubSlug = normalizeSlug(newName, "sub");
+    const genSub = await tx.subCategory.upsert({
+      where: { slug: genSubSlug },
+      update: { name: newName, categoryId: d.categoryId },
+      create: {
+        name: newName,
+        slug: genSubSlug,
+        categoryId: d.categoryId,
+      },
+    });
+    if (!subIds.includes(genSub.id)) subIds.push(genSub.id);
+  }
+
+  // 2. Podium Sub-Categories
+  const validPodiumSubs =
+    d.podiumSubCategoryIds.length > 0
+      ? await tx.podiumSubCategory.findMany({
+          where: { id: { in: d.podiumSubCategoryIds } },
+          select: { id: true },
+        })
+      : [];
+  const podiumSubIds = validPodiumSubs.map((s) => s.id);
+  for (const newPodiumSubName of d.newPodiumSubCategories) {
+    const subSlug = normalizeSlug(newPodiumSubName, "podium-sub");
+    const sub = await tx.podiumSubCategory.upsert({
+      where: { slug: subSlug },
+      update: { name: newPodiumSubName },
+      create: { name: newPodiumSubName, slug: subSlug },
+    });
+    if (!podiumSubIds.includes(sub.id)) podiumSubIds.push(sub.id);
+  }
+
+  // 3. Problem Statements (Product Use Cases & Applications)
+  const validProblems =
+    d.problemStatementIds.length > 0
+      ? await tx.problemStatement.findMany({
+          where: { id: { in: d.problemStatementIds } },
+          select: { id: true },
+        })
+      : [];
+  const problemIds = validProblems.map((p) => p.id);
+  for (const newUseCase of d.newProblemStatements) {
+    const psSlug = normalizeSlug(newUseCase, "use-case");
+    const ps = await tx.problemStatement.upsert({
+      where: { slug: psSlug },
+      update: { name: newUseCase },
+      create: { name: newUseCase, slug: psSlug },
+    });
+    if (!problemIds.includes(ps.id)) problemIds.push(ps.id);
+  }
+
+  // 4. Industries & Venues
+  const validIndustries =
+    d.industryIds.length > 0
+      ? await tx.industry.findMany({
+          where: { id: { in: d.industryIds } },
+          select: { id: true },
+        })
+      : [];
+  const industryIds = validIndustries.map((i) => i.id);
+  for (const newIndName of d.newIndustries) {
+    const indSlug = normalizeSlug(newIndName, "industry");
+    const ind = await tx.industry.upsert({
+      where: { slug: indSlug },
+      update: { name: newIndName },
+      create: { name: newIndName, slug: indSlug },
+    });
+    if (!industryIds.includes(ind.id)) industryIds.push(ind.id);
+  }
+
+  return {
+    subIds,
+    primarySubId: subIds[0] || null,
+    podiumSubIds,
+    primaryPodiumSubId: podiumSubIds[0] || null,
+    problemIds,
+    industryIds,
   };
 }
 
@@ -354,16 +583,7 @@ export async function createCatalogItem(
     const slug = await generateUniqueProductSlug(d.name);
 
     const created = await prisma.$transaction(async (tx) => {
-      let resolvedSubCatId = d.podiumSubCategoryId;
-      if (d.newPodiumSubCategory) {
-        const subSlug = normalizeSlug(d.newPodiumSubCategory, "podium-sub");
-        const sub = await tx.podiumSubCategory.upsert({
-          where: { slug: subSlug },
-          update: { name: d.newPodiumSubCategory },
-          create: { name: d.newPodiumSubCategory, slug: subSlug },
-        });
-        resolvedSubCatId = sub.id;
-      }
+      const rels = await resolveMultiRelationsInTx(tx, d);
 
       const rawIsPodium = formData.get("isPodium");
       const finalIsPodium =
@@ -377,8 +597,19 @@ export async function createCatalogItem(
           slug,
           sku: d.sku,
           categoryId: d.categoryId,
+          subCategoryId: rels.primarySubId,
+          subCategories:
+            rels.subIds.length > 0
+              ? { connect: rels.subIds.map((id) => ({ id })) }
+              : undefined,
           isPodium: finalIsPodium,
-          podiumSubCategoryId: resolvedSubCatId,
+          podiumSubCategoryId: rels.primaryPodiumSubId,
+          podiumSubCategories:
+            rels.podiumSubIds.length > 0
+              ? { connect: rels.podiumSubIds.map((id) => ({ id })) }
+              : undefined,
+          designRegistrationNo: d.designRegistrationNo,
+          ipProtectionText: d.ipProtectionText,
           basePrice: d.basePrice,
           discountPrice: d.discountPrice,
           stockStatus: d.stockStatus,
@@ -392,18 +623,22 @@ export async function createCatalogItem(
           specifications: d.specCreates.length > 0 ? { create: d.specCreates } : undefined,
           variants: d.variantCreates.length > 0 ? { create: d.variantCreates } : undefined,
           problemStatements:
-            d.problemStatementIds.length > 0
-              ? { connect: d.problemStatementIds.map((id) => ({ id })) }
+            rels.problemIds.length > 0
+              ? { connect: rels.problemIds.map((id) => ({ id })) }
               : undefined,
           industries:
-            d.industryIds.length > 0
-              ? { connect: d.industryIds.map((id) => ({ id })) }
+            rels.industryIds.length > 0
+              ? { connect: rels.industryIds.map((id) => ({ id })) }
               : undefined,
         },
         select: { id: true, slug: true },
       });
     });
 
+    await invalidateCacheTags(
+      ["catalog", "taxonomy", "ai-snapshot", "ai-responses"],
+      { paths: [`/shop/p/${created.slug}`] }
+    );
     revalidateCatalogPaths(created.slug);
     return { success: true, id: created.id, slug: created.slug };
   } catch (err: any) {
@@ -464,16 +699,7 @@ export async function updateCatalogItem(
 
     // SINGLE ATOMIC TRANSACTION: If anything fails, existing images/variants/specs are NEVER lost!
     const updated = await prisma.$transaction(async (tx) => {
-      let resolvedSubCatId = d.podiumSubCategoryId;
-      if (d.newPodiumSubCategory) {
-        const subSlug = normalizeSlug(d.newPodiumSubCategory, "podium-sub");
-        const sub = await tx.podiumSubCategory.upsert({
-          where: { slug: subSlug },
-          update: { name: d.newPodiumSubCategory },
-          create: { name: d.newPodiumSubCategory, slug: subSlug },
-        });
-        resolvedSubCatId = sub.id;
-      }
+      const rels = await resolveMultiRelationsInTx(tx, d);
 
       await tx.productFeature.deleteMany({ where: { productId: id } });
       await tx.productSpecification.deleteMany({ where: { productId: id } });
@@ -485,8 +711,17 @@ export async function updateCatalogItem(
         data: {
           name: d.name,
           categoryId: d.categoryId,
+          subCategoryId: rels.primarySubId,
+          subCategories: {
+            set: rels.subIds.map((subId) => ({ id: subId })),
+          },
           isPodium: options?.forceIsPodium ?? existingProduct.isPodium,
-          podiumSubCategoryId: resolvedSubCatId,
+          podiumSubCategoryId: rels.primaryPodiumSubId,
+          podiumSubCategories: {
+            set: rels.podiumSubIds.map((psubId) => ({ id: psubId })),
+          },
+          designRegistrationNo: d.designRegistrationNo,
+          ipProtectionText: d.ipProtectionText,
           sku: d.sku,
           basePrice: d.basePrice,
           discountPrice: d.discountPrice,
@@ -501,19 +736,27 @@ export async function updateCatalogItem(
           specifications: d.specCreates.length > 0 ? { create: d.specCreates } : undefined,
           variants: d.variantCreates.length > 0 ? { create: d.variantCreates } : undefined,
           problemStatements: {
-            set: d.problemStatementIds.map((psId) => ({ id: psId })),
+            set: rels.problemIds.map((psId) => ({ id: psId })),
           },
           industries: {
-            set: d.industryIds.map((indId) => ({ id: indId })),
+            set: rels.industryIds.map((indId) => ({ id: indId })),
           },
         },
         select: { id: true, slug: true },
       });
     });
 
+    await invalidateCacheTags(
+      ["catalog", "taxonomy", "ai-snapshot", "ai-responses"],
+      { paths: [`/shop/p/${updated.slug}`] }
+    );
     revalidateCatalogPaths(updated.slug);
-    revalidatePath(`/admin/products/${id}`);
-    revalidatePath(`/admin/podiums/${id}`);
+    try {
+      revalidatePath(`/admin/products/${id}`);
+      revalidatePath(`/admin/podiums/${id}`);
+    } catch {
+      // Safe fallback outside Next.js request context
+    }
 
     return { success: true, slug: updated.slug };
   } catch (err: any) {

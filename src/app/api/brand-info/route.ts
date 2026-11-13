@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getCachedBrandAssets, getPublicSiteSettings } from "@/lib/public-data";
 
 export const dynamic = "force-dynamic";
 
@@ -27,26 +27,15 @@ export async function GET(req: NextRequest) {
       req.nextUrl.origin ||
       "https://classicconcepts.in";
 
-    const [settings, branches, clients, platforms, certificates, team] =
-      await Promise.all([
-        prisma.siteSetting.findUnique({ where: { id: "default" } }),
-        prisma.infrastructureLocation.findMany({
-          orderBy: { sortOrder: "asc" },
-        }),
-        prisma.client.findMany({
-          orderBy: { createdAt: "desc" },
-        }),
-        prisma.onlinePlatform.findMany({
-          orderBy: { createdAt: "asc" },
-        }),
-        prisma.certificate.findMany({
-          orderBy: { sortOrder: "asc" },
-        }),
-        prisma.teamMember.findMany({
-          where: { isActive: true },
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        }),
-      ]);
+    const [settings, brandAssets] = await Promise.all([
+      getPublicSiteSettings(),
+      getCachedBrandAssets(),
+    ]);
+    const branches = brandAssets.locations;
+    const clients = brandAssets.clients;
+    const platforms = brandAssets.onlinePlatforms;
+    const certificates = brandAssets.certificates;
+    const team = brandAssets.teamMembers;
 
     const whatsappNumber = settings?.whatsappNumber || "+917337222876";
     const whatsappClean = whatsappNumber.replace(/\D/g, "");

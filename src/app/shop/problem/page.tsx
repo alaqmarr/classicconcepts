@@ -1,5 +1,5 @@
-export const revalidate = 60;
-import { prisma } from "@/lib/db";
+export const dynamic = "force-dynamic";
+import { getFullCatalogIndex } from "@/lib/public-data";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProblemStatementCard } from "@/components/shop/ProblemStatementCard";
 import { FolderTree } from "lucide-react";
@@ -11,14 +11,7 @@ export const metadata = {
 };
 
 export default async function ShopProblemStatementsPage() {
-  const problemStatements = await prisma.problemStatement.findMany({
-    orderBy: { name: "asc" },
-    include: {
-      _count: {
-        select: { products: true },
-      },
-    },
-  });
+  const { problemStatements } = await getFullCatalogIndex();
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">

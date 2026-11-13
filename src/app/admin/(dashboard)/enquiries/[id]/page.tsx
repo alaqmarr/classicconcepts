@@ -112,6 +112,7 @@ export default async function AdminEnquiryDetailPage({ params }: { params: Promi
             email={enquiry.email}
             phone={enquiry.phone}
             originalMessage={enquiry.message}
+            source={enquiry.source}
           />
         </div>
 

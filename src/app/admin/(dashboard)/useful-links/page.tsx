@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Edit, Trash2, Link2, ExternalLink } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function UsefulLinksPage() {
   const links = await prisma.usefulLink.findMany({
@@ -16,6 +17,7 @@ export default async function UsefulLinksPage() {
     await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.usefulLink.delete({ where: { id } });
+    await invalidateCacheTags(["brand", "settings"]);
     revalidatePath("/admin/useful-links");
     revalidatePath("/", "layout");
   }

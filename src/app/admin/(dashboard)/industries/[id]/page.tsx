@@ -14,6 +14,7 @@ import {
   revalidateCatalogPaths,
   sanitizeRichHtml,
 } from "@/lib/product-mutations";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -53,6 +54,7 @@ export default async function EditIndustryPage({ params }: Props) {
       },
     });
 
+    await invalidateCacheTags(["catalog", "taxonomy", "ai-snapshot", "ai-responses"]);
     revalidatePath("/admin/industries");
     revalidateCatalogPaths();
     redirect("/admin/industries");

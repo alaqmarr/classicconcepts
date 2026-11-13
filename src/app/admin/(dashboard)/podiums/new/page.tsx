@@ -10,8 +10,15 @@ export default async function NewPodiumPage() {
   const [categories, podiumSubCategories, problemStatements, industries] =
     await Promise.all([
       prisma.category.findMany({
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          subCategories: {
+            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+            select: { id: true, name: true },
+          },
+        },
       }),
       prisma.podiumSubCategory.findMany({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],

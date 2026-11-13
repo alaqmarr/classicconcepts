@@ -7,6 +7,7 @@ import { requireAdminSession } from "@/lib/auth";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -35,6 +36,7 @@ async function updateCertificate(id: string, formData: FormData) {
     }
   });
 
+  await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
   revalidatePath("/admin/certificates");
   revalidatePath("/about/certificates");
   redirect("/admin/certificates");

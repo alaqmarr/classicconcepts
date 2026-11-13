@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewUsefulLinkPage() {
   async function createLink(formData: FormData) {
@@ -30,6 +31,7 @@ export default function NewUsefulLinkPage() {
       }
     });
 
+    await invalidateCacheTags(["brand", "settings"]);
     revalidatePath("/admin/useful-links");
     revalidatePath("/", "layout");
     redirect("/admin/useful-links");

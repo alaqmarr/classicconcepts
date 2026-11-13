@@ -1,30 +1,36 @@
-import { prisma } from "@/lib/db";
-import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
+import { getFullCatalogIndex, getPublicSiteSettings } from "@/lib/public-data";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
+import {
+  getSiteContentMap,
+  getContentValue,
+  hasContentOverride,
+} from "@/lib/site-content";
+import { EditableText } from "@/components/inline-edit/EditableText";
 import Link from "next/link";
 import { Layers } from "lucide-react";
 import { notFound } from "next/navigation";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 
-export async function generateStaticParams() {
-  return [];
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
-  const subCategory = await prisma.podiumSubCategory.findUnique({
-    where: { slug },
-  });
+  const catalog = await getFullCatalogIndex();
+  const subCategory =
+    catalog.podiumSubCategories.find((s) => s.slug === slug) || null;
 
-  if (!subCategory) return { title: "Podium Sub-Category Not Found - Classic Concepts" };
+  if (!subCategory)
+    return { title: "Podium Sub-Category Not Found - Classic Concepts" };
 
   const title = `${subCategory.name} - Buy Premium Acrylic Podiums | Classic Concepts`;
   const description =
     subCategory.description ||
-    `Explore our premium collection of ${subCategory.name.toLowerCase()} crafted by Classic Concepts — India's leading acrylic podium manufacturer.`;
+    `Explore our collection of ${subCategory.name.toLowerCase()} made Since 2008 by Classic Concepts, India's leading acrylic podium manufacturer.`;
   const mainImage = subCategory.imageUrl || "/logo.png";
   const canonicalUrl = `https://classicconcepts.in/podiums/${subCategory.slug}`;
 
@@ -72,40 +78,24 @@ export default async function PodiumSubCategoryPage({
 }) {
   const { slug } = await params;
 
-  const subCategory = await prisma.podiumSubCategory.findUnique({
-    where: { slug },
-  });
+  const [catalog, settings, content] = await Promise.all([
+    getFullCatalogIndex(),
+    getPublicSiteSettings(),
+    getSiteContentMap(),
+  ]);
+
+  const subCategory =
+    catalog.podiumSubCategories.find((s) => s.slug === slug) || null;
 
   if (!subCategory) {
     notFound();
   }
 
-  const [allSubCategories, allPodiumsCount, products, settings] = await Promise.all([
-    prisma.podiumSubCategory.findMany({
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        _count: {
-          select: { products: true },
-        },
-      },
-    }),
-    prisma.product.count({ where: { isPodium: true } }),
-    prisma.product.findMany({
-      where: {
-        isPodium: true,
-        podiumSubCategoryId: subCategory.id,
-      },
-      select: PRODUCT_CARD_SELECT,
-      orderBy: { name: "asc" },
-    }),
-    prisma.siteSetting.findUnique({
-      where: { id: "default" },
-      select: { whatsappNumber: true },
-    }),
-  ]);
+  const allSubCategories = catalog.podiumSubCategories;
+  const allPodiumsCount = catalog.allPodiumsCount;
+  const products = catalog.products.filter(
+    (p) => p.isPodium && p.podiumSubCategoryIds.includes(subCategory.id)
+  );
 
   const collectionJsonLd = {
     "@context": "https://schema.org",
@@ -142,6 +132,10 @@ export default async function PodiumSubCategoryPage({
     ],
   };
 
+  const defaultDesc =
+    subCategory.description ||
+    `Explore our precision-engineered collection of ${subCategory.name.toLowerCase()} with custom branding, mic provisions, and pan-India delivery.`;
+
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col relative">
       <script
@@ -157,10 +151,10 @@ export default async function PodiumSubCategoryPage({
         }}
       />
 
-      {/* Subtle Radial Gradient Pattern */}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_right,rgba(227,24,55,0.03)_0%,rgba(255,223,0,0.02)_40%,rgba(59,130,246,0.02)_80%,transparent_100%)] pointer-events-none"></div>
 
       <PageHeader
+        contentKeyPrefix={`podiums.sub.${subCategory.slug}`}
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Podiums", href: "/podiums" },
@@ -171,6 +165,7 @@ export default async function PodiumSubCategoryPage({
             {subCategory.name}
           </span>
         }
+        description={defaultDesc}
       />
 
       <section className="py-12 container mx-auto px-6 relative z-20 flex flex-col md:flex-row gap-8">
@@ -179,7 +174,19 @@ export default async function PodiumSubCategoryPage({
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
             <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
               <Layers size={18} className="text-[#0056b3]" />
-              Podium Sub-Categories
+              <EditableText
+                contentKey="podiums.sidebar.subcategories_title"
+                value={getContentValue(
+                  content,
+                  "podiums.sidebar.subcategories_title",
+                  "Podium Sub-Categories"
+                )}
+                hasCustomValue={hasContentOverride(
+                  content,
+                  "podiums.sidebar.subcategories_title"
+                )}
+                label="Podium Sub-Categories Heading"
+              />
             </h3>
             <ul className="space-y-2.5">
               <li>
@@ -203,11 +210,19 @@ export default async function PodiumSubCategoryPage({
                         isActive
                           ? "text-[#0056b3] font-bold bg-blue-50/70"
                           : "text-slate-600 hover:text-[#0056b3] font-medium"
-                      } px-3 py-2 rounded-xl text-sm flex items-center justify-between transition-colors`}
+                      } px-3 py-2 rounded-xl text-sm flex items-center justify-between transition-colors gap-2`}
                     >
-                      <span>{sub.name}</span>
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
-                        {sub._count.products}
+                      <EditableText
+                        entity={{
+                          model: "podiumSubCategory",
+                          id: sub.id,
+                          field: "name",
+                        }}
+                        value={sub.name}
+                        label={`Sub-Category Name: ${sub.name}`}
+                      />
+                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs shrink-0">
+                        {Math.max(sub._count.products, sub._count.multiProducts)}
                       </span>
                     </Link>
                   </li>
@@ -219,6 +234,33 @@ export default async function PodiumSubCategoryPage({
 
         {/* Main Content */}
         <div className="flex-1 space-y-6">
+          {/* Editable Sub-Category Overview Card */}
+          <div className="bg-white rounded-2xl p-5 shadow-2xs border border-slate-200/80">
+            <EditableText
+              as="h2"
+              entity={{
+                model: "podiumSubCategory",
+                id: subCategory.id,
+                field: "name",
+              }}
+              value={subCategory.name}
+              label={`Sub-Category Name — ${subCategory.name}`}
+              className="text-lg font-bold text-slate-900 mb-1 block"
+            />
+            <EditableText
+              as="p"
+              mode="multiline"
+              entity={{
+                model: "podiumSubCategory",
+                id: subCategory.id,
+                field: "description",
+              }}
+              value={defaultDesc}
+              label={`Sub-Category Description — ${subCategory.name}`}
+              className="text-sm text-slate-600 leading-relaxed block"
+            />
+          </div>
+
           {/* Quick Sub-Category Pills */}
           {allSubCategories.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">

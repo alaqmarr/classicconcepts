@@ -7,6 +7,7 @@ import { FolderTree, Plus, Edit2 } from "lucide-react";
 import Link from "next/link";
 import { requireAdminSession } from "@/lib/auth";
 import { revalidateCatalogPaths } from "@/lib/product-mutations";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function AdminProblemStatementsPage() {
   const problemStatements = await prisma.problemStatement.findMany({
@@ -28,6 +29,7 @@ export default async function AdminProblemStatementsPage() {
       if (!id) return { error: "Missing problem statement ID." };
 
       await prisma.problemStatement.delete({ where: { id } });
+      await invalidateCacheTags(["catalog", "taxonomy", "ai-snapshot", "ai-responses"]);
       revalidatePath("/admin/problem-statements");
       revalidateCatalogPaths();
       return { success: true };

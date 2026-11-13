@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { Building2, Globe, Trash2, Plus, Gauge, Save } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function AdminClientsPage() {
   const [clients, platforms, settings] = await Promise.all([
@@ -34,6 +35,7 @@ export default async function AdminClientsPage() {
       },
     });
 
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/", "layout");
     revalidatePath("/");
     revalidatePath("/about");
@@ -46,6 +48,7 @@ export default async function AdminClientsPage() {
     await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.client.delete({ where: { id } });
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/");
     revalidatePath("/about");
     revalidatePath("/about/clients");
@@ -57,6 +60,7 @@ export default async function AdminClientsPage() {
     await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.onlinePlatform.delete({ where: { id } });
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/");
     revalidatePath("/admin/clients");
   }

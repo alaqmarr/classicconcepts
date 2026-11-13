@@ -21,8 +21,15 @@ export default async function EditProductPage({ params }: Props) {
   const [categories, podiumSubCategories, problemStatements, industries, product] =
     await Promise.all([
       prisma.category.findMany({
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          subCategories: {
+            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+            select: { id: true, name: true },
+          },
+        },
       }),
       prisma.podiumSubCategory.findMany({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -49,6 +56,8 @@ export default async function EditProductPage({ params }: Props) {
           },
           problemStatements: { select: { id: true } },
           industries: { select: { id: true } },
+          subCategories: { select: { id: true } },
+          podiumSubCategories: { select: { id: true } },
         },
       }),
     ]);

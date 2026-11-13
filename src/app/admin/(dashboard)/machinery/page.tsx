@@ -6,8 +6,10 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
-function revalidateInfraPaths() {
+async function revalidateInfraPaths() {
+  await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
   revalidatePath("/about/infrastructure");
   revalidatePath("/admin/machinery");
 }
@@ -43,11 +45,12 @@ export default async function AdminMachineryPage() {
       },
     });
 
-    revalidateInfraPaths();
+    await revalidateInfraPaths();
   }
 
   async function updateMachinery(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     const name = (formData.get("name") as string)?.trim();
     const description = (formData.get("description") as string)?.trim() || null;
@@ -59,11 +62,12 @@ export default async function AdminMachineryPage() {
       data: { name, description, sortOrder },
     });
 
-    revalidateInfraPaths();
+    await revalidateInfraPaths();
   }
 
   async function moveMachinery(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     const direction = formData.get("direction") as "up" | "down";
 
@@ -90,14 +94,15 @@ export default async function AdminMachineryPage() {
       )
     );
 
-    revalidateInfraPaths();
+    await revalidateInfraPaths();
   }
 
   async function deleteMachinery(formData: FormData) {
     "use server";
+    await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.machinery.delete({ where: { id } });
-    revalidateInfraPaths();
+    await revalidateInfraPaths();
   }
 
   return (

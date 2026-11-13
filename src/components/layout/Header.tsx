@@ -2,10 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, ChevronDown, ShoppingCart } from "lucide-react";
+import { Menu, X, ChevronDown, ShoppingCart, Search, Sparkles } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { openGlobalSearchModal } from "@/components/ai/GlobalSearchModal";
+import {
+  getContentValue,
+  hasContentOverride,
+  type SiteContentMap,
+} from "@/lib/site-content-shared";
+import { EditableText } from "@/components/inline-edit/EditableText";
+import { EditableImage } from "@/components/inline-edit/EditableImage";
 
 interface CategoryItem {
   id: string;
@@ -17,11 +24,13 @@ export function Header({
   usefulLinks = [],
   categories = [],
   podiumSubCategories = [],
+  siteContent,
 }: {
   settings?: any;
   usefulLinks?: any[];
   categories?: CategoryItem[];
   podiumSubCategories?: CategoryItem[];
+  siteContent?: SiteContentMap;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [aboutDropdownOpen, setAboutDropdownOpen] = useState(false);
@@ -55,13 +64,12 @@ export function Header({
         <div className="container mx-auto px-4 md:px-8 flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0 px-2 py-1 rounded-xl transition-all">
-            <Image
-              src="/logo.png"
+            <EditableImage
+              contentKey="header.logo"
+              src={getContentValue(siteContent, "header.logo", "/logo.png")}
               alt="Classic Concepts"
-              width={350}
-              height={95}
+              label="Navbar Brand Logo"
               className="object-contain h-[50px] md:h-[65px] lg:h-[72px] w-auto transition-transform duration-300 hover:scale-[1.02]"
-              priority
             />
           </Link>
 
@@ -73,7 +81,12 @@ export function Header({
                 pathname === "/" ? "text-white" : "text-white/70 hover:text-white"
               } transition-colors relative group`}
             >
-              HOME
+              <EditableText
+                contentKey="header.nav.home"
+                value={getContentValue(siteContent, "header.nav.home", "HOME")}
+                hasCustomValue={hasContentOverride(siteContent, "header.nav.home")}
+                label="Navbar Link — Home"
+              />
               <span
                 className={`absolute -bottom-2 left-0 w-full h-0.5 ${
                   pathname === "/"
@@ -96,7 +109,12 @@ export function Header({
                     : "text-white/70 hover:text-white"
                 }`}
               >
-                ABOUT US
+                <EditableText
+                  contentKey="header.nav.about"
+                  value={getContentValue(siteContent, "header.nav.about", "ABOUT US")}
+                  hasCustomValue={hasContentOverride(siteContent, "header.nav.about")}
+                  label="Navbar Link — About Us"
+                />
                 <ChevronDown
                   size={14}
                   className={`transition-transform duration-200 ${
@@ -175,7 +193,12 @@ export function Header({
                     : "text-white/70 hover:text-white"
                 }`}
               >
-                PRODUCTS
+                <EditableText
+                  contentKey="header.nav.products"
+                  value={getContentValue(siteContent, "header.nav.products", "PRODUCTS")}
+                  hasCustomValue={hasContentOverride(siteContent, "header.nav.products")}
+                  label="Navbar Link — Products"
+                />
                 <ChevronDown
                   size={14}
                   className={`transition-transform duration-200 ${
@@ -227,7 +250,12 @@ export function Header({
                     : "text-white/70 hover:text-white"
                 }`}
               >
-                ACRYLIC PODIUM
+                <EditableText
+                  contentKey="header.nav.podiums"
+                  value={getContentValue(siteContent, "header.nav.podiums", "ACRYLIC PODIUM")}
+                  hasCustomValue={hasContentOverride(siteContent, "header.nav.podiums")}
+                  label="Navbar Link — Acrylic Podium"
+                />
                 {podiumSubCategories.length > 0 && (
                   <ChevronDown
                     size={14}
@@ -275,7 +303,19 @@ export function Header({
                   : "text-white/70 hover:text-white"
               } transition-colors relative group`}
             >
-              CERTIFICATES
+              <EditableText
+                contentKey="header.nav.certificates"
+                value={getContentValue(
+                  siteContent,
+                  "header.nav.certificates",
+                  "CERTIFICATES"
+                )}
+                hasCustomValue={hasContentOverride(
+                  siteContent,
+                  "header.nav.certificates"
+                )}
+                label="Navbar Link — Certificates"
+              />
               <span
                 className={`absolute -bottom-2 left-0 w-full h-0.5 bg-white transform origin-left ${
                   pathname.startsWith("/about/certificates")
@@ -292,7 +332,19 @@ export function Header({
                   : "text-white/70 hover:text-white"
               } transition-colors relative group`}
             >
-              RESOURCES
+              <EditableText
+                contentKey="header.nav.resources"
+                value={getContentValue(
+                  siteContent,
+                  "header.nav.resources",
+                  "RESOURCES"
+                )}
+                hasCustomValue={hasContentOverride(
+                  siteContent,
+                  "header.nav.resources"
+                )}
+                label="Navbar Link — Resources"
+              />
               <span
                 className={`absolute -bottom-2 left-0 w-full h-0.5 bg-white transform origin-left ${
                   pathname.startsWith("/resources")
@@ -305,7 +357,19 @@ export function Header({
               href="/classicedge53"
               className="text-white/70 hover:text-white transition-colors relative group"
             >
-              MACHINES
+              <EditableText
+                contentKey="header.nav.machines"
+                value={getContentValue(
+                  siteContent,
+                  "header.nav.machines",
+                  "MACHINES"
+                )}
+                hasCustomValue={hasContentOverride(
+                  siteContent,
+                  "header.nav.machines"
+                )}
+                label="Navbar Link — Machines"
+              />
               <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-white transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
             </Link>
 
@@ -351,7 +415,19 @@ export function Header({
                   : "text-white/70 hover:text-white"
               } transition-colors relative group`}
             >
-              CONTACT US
+              <EditableText
+                contentKey="header.nav.contact"
+                value={getContentValue(
+                  siteContent,
+                  "header.nav.contact",
+                  "CONTACT US"
+                )}
+                hasCustomValue={hasContentOverride(
+                  siteContent,
+                  "header.nav.contact"
+                )}
+                label="Navbar Link — Contact Us"
+              />
               <span
                 className={`absolute -bottom-2 left-0 w-full h-0.5 bg-white transform origin-left ${
                   pathname.startsWith("/contact")
@@ -362,8 +438,22 @@ export function Header({
             </Link>
           </nav>
 
-          {/* Right Action */}
-          <div className="hidden lg:flex items-center gap-6">
+          {/* Right Action - Unified Search + Talk to ACRIO trigger */}
+          <div className="hidden lg:flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => openGlobalSearchModal()}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              title="Search or Talk to ACRIO (Ctrl+K)"
+            >
+              <Search size={15} className="text-white/85" />
+              <span>Talk to ACRIO</span>
+              <Sparkles size={13} className="text-amber-300" />
+              <kbd className="hidden 2xl:inline-block px-1.5 py-0.5 text-[10px] rounded bg-white/10 text-white/60 font-mono">
+                ⌘K
+              </kbd>
+            </button>
+
             <Link
               href="/cart"
               className="relative p-2 text-white/80 hover:text-white transition-colors"
@@ -377,19 +467,44 @@ export function Header({
             </Link>
             <Link
               href="/contact"
-              className="bg-[#0047e1] text-white px-6 py-2.5 rounded-full font-bold text-[13px] hover:bg-blue-600 transition-all duration-300 tracking-wide flex items-center gap-2"
+              className="bg-[#0047e1] text-white px-5 py-2.5 rounded-full font-bold text-[13px] hover:bg-blue-600 transition-all duration-300 tracking-wide flex items-center gap-2"
             >
-              Quick Enquiry &rarr;
+              <EditableText
+                contentKey="header.cta.quick_enquiry"
+                value={getContentValue(
+                  siteContent,
+                  "header.cta.quick_enquiry",
+                  "Quick Enquiry →"
+                )}
+                hasCustomValue={hasContentOverride(
+                  siteContent,
+                  "header.cta.quick_enquiry"
+                )}
+                label="Navbar CTA Button"
+              />
             </Link>
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <button
-            className="lg:hidden text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* Mobile Search / ACRIO + Menu Controls */}
+          <div className="flex lg:hidden items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => openGlobalSearchModal()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white text-xs font-bold hover:bg-white/15 transition-colors"
+              aria-label="Search or Talk to ACRIO"
+            >
+              <Search size={15} />
+              <Sparkles size={13} className="text-amber-300" />
+              <span>ACRIO</span>
+            </button>
+            <button
+              className="text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label="Toggle menu"
+            >
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
 

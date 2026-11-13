@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ProductListTable } from "@/components/admin/ProductListTable";
 import { requireAdminSession } from "@/lib/auth";
 import { revalidateCatalogPaths } from "@/lib/product-mutations";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function AdminPodiumsPage() {
   const [products, podiumSubCategories] = await Promise.all([
@@ -14,6 +15,7 @@ export default async function AdminPodiumsPage() {
       orderBy: { name: "asc" },
       select: {
         id: true,
+        slug: true,
         name: true,
         sku: true,
         basePrice: true,
@@ -42,6 +44,7 @@ export default async function AdminPodiumsPage() {
         select: { slug: true },
       });
       await prisma.product.delete({ where: { id } });
+      await invalidateCacheTags(["catalog", "taxonomy", "ai-snapshot", "ai-responses"]);
       revalidateCatalogPaths(existing?.slug);
       return { success: true };
     } catch (err: any) {

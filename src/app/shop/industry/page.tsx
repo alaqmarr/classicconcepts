@@ -1,5 +1,5 @@
-export const revalidate = 60;
-import { prisma } from "@/lib/db";
+export const dynamic = "force-dynamic";
+import { getFullCatalogIndex } from "@/lib/public-data";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { IndustryCard } from "@/components/shop/IndustryCard";
 import { FolderTree } from "lucide-react";
@@ -10,14 +10,7 @@ export const metadata = {
 };
 
 export default async function ShopIndustriesPage() {
-  const industries = await prisma.industry.findMany({
-    orderBy: { name: 'asc' },
-    include: {
-      _count: {
-        select: { products: true }
-      }
-    }
-  });
+  const { industries } = await getFullCatalogIndex();
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">

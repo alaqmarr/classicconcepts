@@ -14,6 +14,7 @@ import {
   revalidateCatalogPaths,
   sanitizeRichHtml,
 } from "@/lib/product-mutations";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewIndustryPage() {
   async function createIndustry(formData: FormData) {
@@ -38,6 +39,7 @@ export default function NewIndustryPage() {
       },
     });
 
+    await invalidateCacheTags(["catalog", "taxonomy", "ai-snapshot", "ai-responses"]);
     revalidatePath("/admin/industries");
     revalidateCatalogPaths();
     redirect("/admin/industries");

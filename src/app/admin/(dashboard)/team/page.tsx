@@ -5,6 +5,7 @@ import { Users, Plus, Edit, Phone, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function AdminTeamPage() {
   const members = await prisma.teamMember.findMany({
@@ -16,6 +17,7 @@ export default async function AdminTeamPage() {
     await requireAdminSession();
     const id = formData.get("id") as string;
     await prisma.teamMember.delete({ where: { id } });
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/admin/team");
     revalidatePath("/about/team");
     revalidatePath("/contact");

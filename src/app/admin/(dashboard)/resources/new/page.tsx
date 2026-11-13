@@ -8,6 +8,7 @@ import { requireAdminSession } from "@/lib/auth";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 async function createResource(formData: FormData) {
   "use server";
@@ -35,6 +36,7 @@ async function createResource(formData: FormData) {
     }
   });
 
+  await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
   revalidatePath("/admin/resources");
   revalidatePath("/resources");
   redirect("/admin/resources");

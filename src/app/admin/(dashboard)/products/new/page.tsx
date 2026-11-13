@@ -9,8 +9,15 @@ import { createCatalogItem } from "@/lib/product-mutations";
 export default async function NewProductPage() {
   const [categories, problemStatements, industries] = await Promise.all([
     prisma.category.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        subCategories: {
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+          select: { id: true, name: true },
+        },
+      },
     }),
     prisma.problemStatement.findMany({
       orderBy: { name: "asc" },

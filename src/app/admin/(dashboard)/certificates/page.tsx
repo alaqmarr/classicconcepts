@@ -6,6 +6,7 @@ import Link from "next/link";
 import { isPdfUrl } from "@/lib/media-utils";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 async function deleteCertificate(formData: FormData) {
   "use server";
@@ -14,6 +15,7 @@ async function deleteCertificate(formData: FormData) {
     const id = formData.get("id") as string;
     if (id) {
       await prisma.certificate.delete({ where: { id } });
+      await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
       revalidatePath("/admin/certificates");
       revalidatePath("/about/certificates");
     }

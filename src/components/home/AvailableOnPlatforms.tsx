@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getCachedBrandAssets } from "@/lib/public-data";
 import type { IconType } from "react-icons";
 import {
   FaAmazon,
@@ -19,6 +19,12 @@ import {
   SiShopify,
   SiTarget,
 } from "react-icons/si";
+import {
+  getContentValue,
+  hasContentOverride,
+  type SiteContentMap,
+} from "@/lib/site-content";
+import { EditableText } from "@/components/inline-edit/EditableText";
 
 const PLATFORM_ICONS: Record<string, IconType> = {
   FaAmazon,
@@ -43,28 +49,26 @@ function renderPlatformIcon(iconName: string, size: number) {
   if (IconComp) {
     return <IconComp size={size} />;
   }
-
   if (iconName === "SiFlipkart") {
     return <FaShoppingBag size={size} />;
   }
-
   if (iconName === "SiWalmart") {
     return <FaStore size={size} />;
   }
-
   return null;
 }
 
-export async function AvailableOnPlatforms() {
-  const platforms = await prisma.onlinePlatform.findMany({
-    orderBy: { createdAt: "asc" },
-  });
+export async function AvailableOnPlatforms({
+  content,
+}: {
+  content?: SiteContentMap;
+}) {
+  const { onlinePlatforms: platforms } = await getCachedBrandAssets();
 
   if (!platforms || platforms.length === 0) return null;
 
   return (
     <section className="relative bg-gradient-to-b from-white via-slate-50/50 to-white py-24 overflow-hidden border-t border-slate-100">
-      {/* Intersecting Diagonal Blocks Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
         <div className="absolute -top-[20%] left-[0%] w-[150%] h-[50%] bg-gradient-to-r from-red-100/30 to-transparent -rotate-12 transform origin-top-left"></div>
         <div className="absolute top-[20%] left-[0%] w-[150%] h-[40%] bg-gradient-to-r from-yellow-100/30 to-transparent -rotate-12 transform origin-top-left"></div>
@@ -73,18 +77,49 @@ export async function AvailableOnPlatforms() {
 
       <div className="container mx-auto px-4 md:px-8 relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-[#3b82f6] text-[10px] font-bold uppercase tracking-widest mb-3 block">
-            Available On
-          </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 tracking-tight mb-4">
+          <EditableText
+            as="span"
+            mode="plain"
+            contentKey="home.platforms.eyebrow"
+            label="Platforms Eyebrow"
+            value={getContentValue(
+              content,
+              "home.platforms.eyebrow",
+              "Available On"
+            )}
+            className="text-[#3b82f6] text-[10px] font-bold uppercase tracking-widest mb-3 block"
+          />
+          <EditableText
+            as="h2"
+            mode="plain"
+            contentKey="home.platforms.title"
+            label="Platforms Heading"
+            value={getContentValue(
+              content,
+              "home.platforms.title",
+              "Shop our premium products directly from"
+            )}
+            hasCustomValue={hasContentOverride(
+              content,
+              "home.platforms.title"
+            )}
+            className="text-3xl md:text-4xl font-extrabold text-slate-800 tracking-tight mb-4 block"
+          >
             Shop our premium products{" "}
             <span className="text-[#3b82f6]">directly from</span>
-          </h2>
-          <p className="text-slate-500 font-medium text-sm md:text-base">
-            Experience the convenience of shopping for Classic Concepts acrylic
-            products on your favorite e-commerce platforms with trusted
-            delivery.
-          </p>
+          </EditableText>
+          <EditableText
+            as="p"
+            mode="multiline"
+            contentKey="home.platforms.subtitle"
+            label="Platforms Subtitle"
+            value={getContentValue(
+              content,
+              "home.platforms.subtitle",
+              "Experience the convenience of shopping for Classic Concepts acrylic products on your favorite e-commerce platforms with trusted delivery."
+            )}
+            className="text-slate-500 font-medium text-sm md:text-base block"
+          />
         </div>
 
         <div className="flex flex-wrap justify-center gap-6 md:gap-8 w-full mx-auto">
@@ -116,12 +151,34 @@ export async function AvailableOnPlatforms() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                     Buy on
                   </span>
-                  <span className="text-base font-extrabold leading-tight">
-                    {platform.name}
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1">
-                    {platform.storeRegion}
-                  </span>
+                  <EditableText
+                    as="span"
+                    mode="plain"
+                    allowSwitchToHtml={false}
+                    entity={{
+                      model: "onlinePlatform",
+                      id: platform.id,
+                      field: "name",
+                    }}
+                    label={`Platform Name — ${platform.name}`}
+                    value={platform.name}
+                    className="text-base font-extrabold leading-tight block"
+                  />
+                  {platform.storeRegion && (
+                    <EditableText
+                      as="span"
+                      mode="plain"
+                      allowSwitchToHtml={false}
+                      entity={{
+                        model: "onlinePlatform",
+                        id: platform.id,
+                        field: "storeRegion",
+                      }}
+                      label={`Platform Region — ${platform.name}`}
+                      value={platform.storeRegion}
+                      className="text-[11px] font-semibold text-slate-400 mt-1 block"
+                    />
+                  )}
                 </div>
               </a>
             );

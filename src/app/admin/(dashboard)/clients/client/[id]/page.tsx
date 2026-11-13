@@ -8,6 +8,7 @@ import { Building2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -39,6 +40,7 @@ export default async function EditClientPage({ params }: Props) {
       data: { name, logoUrl },
     });
 
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/");
     revalidatePath("/about");
     revalidatePath("/about/clients");

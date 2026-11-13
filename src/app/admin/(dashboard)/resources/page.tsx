@@ -6,6 +6,7 @@ import Link from "next/link";
 import { isImageUrl } from "@/lib/media-utils";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 async function deleteResource(formData: FormData) {
   "use server";
@@ -14,6 +15,7 @@ async function deleteResource(formData: FormData) {
     const id = formData.get("id") as string;
     if (id) {
       await prisma.resource.delete({ where: { id } });
+      await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
       revalidatePath("/admin/resources");
       revalidatePath("/resources");
     }

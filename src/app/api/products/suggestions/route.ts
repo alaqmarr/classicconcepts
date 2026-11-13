@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
+import { getFullCatalogIndex } from "@/lib/public-data";
 
 export const dynamic = "force-dynamic";
 
@@ -8,50 +7,46 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const excludeParam = searchParams.get("exclude") || "";
-    const excludeSlugs = excludeParam
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const excludeSlugs = new Set(
+      excludeParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
 
-    // Find categories of products currently in cart
-    let preferredCategoryIds: string[] = [];
-    if (excludeSlugs.length > 0) {
-      const cartProducts = await prisma.product.findMany({
-        where: { slug: { in: excludeSlugs } },
-        select: { categoryId: true },
-      });
-      preferredCategoryIds = Array.from(
-        new Set(cartProducts.map((p) => p.categoryId).filter(Boolean))
-      );
+    const catalog = await getFullCatalogIndex();
+
+    // Find categories of products currently in cart directly from 100MB Redis index
+    const preferredCategoryIds = new Set<string>();
+    if (excludeSlugs.size > 0) {
+      for (const p of catalog.products) {
+        if (excludeSlugs.has(p.slug) && p.categoryId) {
+          preferredCategoryIds.add(p.categoryId);
+        }
+      }
     }
 
-    // Fetch related products in same categories first
-    let relatedProducts: any[] = [];
-    if (preferredCategoryIds.length > 0) {
-      relatedProducts = await prisma.product.findMany({
-        where: {
-          categoryId: { in: preferredCategoryIds },
-          slug: { notIn: excludeSlugs },
-        },
-        select: PRODUCT_CARD_SELECT,
-        orderBy: { name: "asc" },
-        take: 8,
-      });
+    const relatedProducts = [];
+    const seenIds = new Set<string>();
+
+    if (preferredCategoryIds.size > 0) {
+      for (const p of catalog.products) {
+        if (excludeSlugs.has(p.slug)) continue;
+        if (preferredCategoryIds.has(p.categoryId)) {
+          relatedProducts.push(p);
+          seenIds.add(p.id);
+          if (relatedProducts.length >= 8) break;
+        }
+      }
     }
 
-    // If fewer than 8, fill with other products sorted A-Z
     if (relatedProducts.length < 8) {
-      const existingIds = relatedProducts.map((p) => p.id);
-      const additionalProducts = await prisma.product.findMany({
-        where: {
-          id: { notIn: existingIds },
-          slug: { notIn: excludeSlugs },
-        },
-        select: PRODUCT_CARD_SELECT,
-        orderBy: { name: "asc" },
-        take: 8 - relatedProducts.length,
-      });
-      relatedProducts = [...relatedProducts, ...additionalProducts];
+      for (const p of catalog.products) {
+        if (excludeSlugs.has(p.slug) || seenIds.has(p.id)) continue;
+        relatedProducts.push(p);
+        seenIds.add(p.id);
+        if (relatedProducts.length >= 8) break;
+      }
     }
 
     return NextResponse.json({ products: relatedProducts });

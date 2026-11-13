@@ -1,9 +1,12 @@
-export const revalidate = 60;
-import { prisma } from "@/lib/db";
+export const dynamic = "force-dynamic";
+import { getCachedBrandAssets } from "@/lib/public-data";
 import { Metadata } from "next";
 import { FileText, ExternalLink, ArrowUpRight, Award, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { isPdfUrl } from "@/lib/media-utils";
+import { getSiteContentMap, getContentValue } from "@/lib/site-content";
+import { EditableText } from "@/components/inline-edit/EditableText";
+import { EditableImage } from "@/components/inline-edit/EditableImage";
 
 export const metadata: Metadata = {
   title: "Certificates & Awards - Classic Concepts",
@@ -11,9 +14,11 @@ export const metadata: Metadata = {
 };
 
 export default async function CertificatesPage() {
-  const certificates = await prisma.certificate.findMany({
-    orderBy: { sortOrder: 'asc' }
-  });
+  const [brandAssets, contentMap] = await Promise.all([
+    getCachedBrandAssets(),
+    getSiteContentMap(),
+  ]);
+  const certificates = brandAssets.certificates;
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">
@@ -21,11 +26,14 @@ export default async function CertificatesPage() {
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "About Us", href: "/about" },
-          { label: "Certificates & Awards" }
+          { label: "Certificates & Awards" },
         ]}
         title={
           <>
-            Our Accreditations &amp; <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Certifications</span>
+            Our Accreditations &amp;{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
+              Certifications
+            </span>
           </>
         }
         description="We take immense pride in our commitment to quality, engineering excellence, and international compliance."
@@ -33,7 +41,6 @@ export default async function CertificatesPage() {
 
       <section className="py-16 md:py-20">
         <div className="container mx-auto px-4 md:px-8 w-full">
-          
           {/* Trust Banner */}
           <div className="mb-12 bg-white rounded-3xl p-6 md:p-8 border border-slate-200/80 shadow-soft flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
@@ -41,8 +48,24 @@ export default async function CertificatesPage() {
                 <ShieldCheck size={32} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-800">Certified Excellence</h2>
-                <p className="text-slate-500 text-sm">Every certification reflects our stringent adherence to global manufacturing standards.</p>
+                <EditableText
+                  as="h2"
+                  contentKey="certificates.banner.heading"
+                  value={getContentValue(contentMap, "certificates.banner.heading", "Certified Excellence")}
+                  label="Certificates Banner Heading"
+                  className="text-xl font-bold text-slate-800"
+                />
+                <EditableText
+                  as="p"
+                  contentKey="certificates.banner.subheading"
+                  value={getContentValue(
+                    contentMap,
+                    "certificates.banner.subheading",
+                    "Every certification reflects our stringent adherence to global manufacturing standards."
+                  )}
+                  label="Certificates Banner Subheading"
+                  className="text-slate-500 text-sm"
+                />
               </div>
             </div>
             <div className="flex items-center gap-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -63,7 +86,7 @@ export default async function CertificatesPage() {
               const isPdf = isPdfUrl(cert.imageUrl);
 
               return (
-                <a 
+                <a
                   key={cert.id}
                   href={cert.imageUrl}
                   target="_blank"
@@ -82,15 +105,14 @@ export default async function CertificatesPage() {
                         </span>
                       </div>
                     ) : cert.imageUrl ? (
-                      <div className="relative w-full h-full p-4 flex items-center justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img 
-                          src={cert.imageUrl} 
-                          alt={cert.title} 
-                          className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" 
-                          loading="lazy" 
-                        />
-                      </div>
+                      <EditableImage
+                        entity={{ model: "certificate", id: cert.id, field: "imageUrl" }}
+                        src={cert.imageUrl}
+                        alt={cert.title}
+                        label={`Certificate Image: ${cert.title}`}
+                        wrapperClassName="relative w-full h-full p-4 flex items-center justify-center"
+                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-300">
                         <Award size={48} />
@@ -102,14 +124,27 @@ export default async function CertificatesPage() {
                   <div className="p-6 flex flex-col flex-grow justify-between bg-white">
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="text-base font-bold text-slate-800 group-hover:text-[#0056b3] transition-colors leading-snug line-clamp-2">
-                          {cert.title}
-                        </h3>
-                        <ArrowUpRight size={18} className="text-slate-400 group-hover:text-[#0056b3] shrink-0 transition-colors transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                        <EditableText
+                          as="h3"
+                          entity={{ model: "certificate", id: cert.id, field: "title" }}
+                          value={cert.title}
+                          label="Certificate Title"
+                          className="text-base font-bold text-slate-800 group-hover:text-[#0056b3] transition-colors leading-snug line-clamp-2"
+                        />
+                        <ArrowUpRight
+                          size={18}
+                          className="text-slate-400 group-hover:text-[#0056b3] shrink-0 transition-colors transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                        />
                       </div>
                       {cert.issuedBy && (
                         <p className="text-xs text-slate-500 mt-1 font-medium">
-                          Issued by: <span className="text-slate-700">{cert.issuedBy}</span>
+                          Issued by:{" "}
+                          <EditableText
+                            entity={{ model: "certificate", id: cert.id, field: "issuedBy" }}
+                            value={cert.issuedBy}
+                            label="Issued By"
+                            className="text-slate-700"
+                          />
                         </p>
                       )}
                     </div>
@@ -133,12 +168,14 @@ export default async function CertificatesPage() {
                 </a>
               );
             })}
-            
+
             {certificates.length === 0 && (
               <div className="col-span-full py-16 text-center text-slate-500 bg-white rounded-3xl border border-slate-200/80 shadow-soft">
                 <Award size={48} className="mx-auto text-slate-300 mb-3" />
                 <h3 className="text-lg font-bold text-slate-700 mb-1">Certificates being updated</h3>
-                <p className="text-sm text-slate-400">Please check back shortly or contact our team for official accreditations.</p>
+                <p className="text-sm text-slate-400">
+                  Please check back shortly or contact our team for official accreditations.
+                </p>
               </div>
             )}
           </div>

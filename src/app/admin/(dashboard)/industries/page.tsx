@@ -7,6 +7,7 @@ import { FolderTree, Plus, Edit2 } from "lucide-react";
 import Link from "next/link";
 import { requireAdminSession } from "@/lib/auth";
 import { revalidateCatalogPaths } from "@/lib/product-mutations";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default async function AdminIndustriesPage() {
   const industries = await prisma.industry.findMany({
@@ -28,6 +29,7 @@ export default async function AdminIndustriesPage() {
       if (!id) return { error: "Missing industry ID." };
 
       await prisma.industry.delete({ where: { id } });
+      await invalidateCacheTags(["catalog", "taxonomy", "ai-snapshot", "ai-responses"]);
       revalidatePath("/admin/industries");
       revalidateCatalogPaths();
       return { success: true };

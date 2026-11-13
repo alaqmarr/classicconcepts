@@ -11,16 +11,39 @@ datasource db {
 }
 
 model Category {
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  imageUrl        String?
+  bgClass         String?
+  description     String?       // Plain-language short summary for cards & headers
+  descriptionHtml String?       // Added for rich text description
+  sortOrder       Int           @default(0)
+  subCategories   SubCategory[]
+  products        Product[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([sortOrder, name])
+  @@index([name])
+}
+
+model SubCategory {
   id              String    @id @default(cuid())
   name            String
   slug            String    @unique
+  description     String?   // Plain-language short summary
+  descriptionHtml String?   // Rich HTML description
   imageUrl        String?
-  bgClass         String?
-  descriptionHtml String?   // Added for rich text description
+  sortOrder       Int       @default(0)
+  categoryId      String
+  category        Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   products        Product[]
+  multiProducts   Product[] @relation("ProductMultipleSubCategories")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  @@index([categoryId, sortOrder, name])
   @@index([name])
 }
 
@@ -38,14 +61,15 @@ model ProblemStatement {
 }
 
 model Industry {
-  id          String    @id @default(cuid())
-  name        String
-  slug        String    @unique
-  imageUrl    String?
-  description String?
-  products    Product[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  name               String
+  slug               String    @unique
+  imageUrl           String?
+  description        String?
+  solutionGroupsJson String?   // Optional JSON list of solution groups for this environment
+  products           Product[]
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([name])
 }
@@ -66,11 +90,18 @@ model Product {
   descriptionHtml   String?  // HTML description for Description Tab
   importantNoteHtml String?  // HTML description for Important Note Tab
 
-  categoryId          String
-  category            Category           @relation(fields: [categoryId], references: [id])
-  isPodium            Boolean            @default(false)
-  podiumSubCategoryId String?
-  podiumSubCategory   PodiumSubCategory? @relation(fields: [podiumSubCategoryId], references: [id], onDelete: SetNull)
+  categoryId            String
+  category              Category            @relation(fields: [categoryId], references: [id])
+  subCategoryId         String?
+  subCategory           SubCategory?        @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  subCategories         SubCategory[]       @relation("ProductMultipleSubCategories")
+  isPodium              Boolean             @default(false)
+  podiumSubCategoryId   String?
+  podiumSubCategory     PodiumSubCategory?  @relation(fields: [podiumSubCategoryId], references: [id], onDelete: SetNull)
+  podiumSubCategories   PodiumSubCategory[] @relation("ProductMultiplePodiumSubCategories")
+  isRegisteredDesign    Boolean             @default(true)
+  designRegistrationNo  String?
+  ipProtectionText      String?
 
   // Advanced Relations
   images            ProductImage[]
@@ -85,6 +116,7 @@ model Product {
 
   @@index([isPodium, name])
   @@index([categoryId, name])
+  @@index([subCategoryId])
   @@index([podiumSubCategoryId])
   @@index([name])
 }
@@ -146,12 +178,15 @@ model ProductVariantImage {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  logoUrl   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  logoUrl    String?
+  sector     String?
+  isFeatured Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
+  @@index([isFeatured, createdAt])
   @@index([createdAt])
 }
 
@@ -203,8 +238,38 @@ model SiteSetting {
   bodyScripts         String?
   clientCarouselSpeed Int      @default(25)
 
+  // AI & Smart Concierge Configuration (Claude Haiku 5.5 — Dual Key Support)
+  anthropicApiKey       String?  // Shared / fallback API key
+  anthropicClientApiKey String?  // Dedicated Client-side API key (Concierge & Smart Search)
+  anthropicAdminApiKey  String?  // Dedicated Admin-side API key (Inline Editor, Autofill & Enquiry Co-Pilot)
+  aiModel               String   @default("claude-haiku-5-5")
+  aiEnabled             Boolean  @default(true)
+  aiPopupEnabled        Boolean  @default(true)
+  aiPopupDelaySeconds   Int      @default(3)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model SiteContent {
+  key       String   @id
+  value     String
+  type      String   @default("text") // "text" | "html" | "image" | "json"
+  updatedAt DateTime @updatedAt
+}
+
+model AiResponseCache {
+  cacheKey     String   @id
+  endpoint     String
+  queryText    String
+  catalogHash  String
+  responseJson String
+  hits         Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([endpoint, updatedAt])
+  @@index([catalogHash])
 }
 
 model Admin {
@@ -306,10 +371,12 @@ model Certificate {
   title     String
   imageUrl  String
   issuedBy  String?
+  docType   String   @default("certification") // "certification" | "registration"
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([docType, sortOrder])
   @@index([sortOrder])
 }
 
@@ -319,6 +386,8 @@ model Resource {
   description  String?
   fileUrl      String
   type         String   @default("PDF") // PDF, Link, Video
+  fileSize     String?
+  updatedLabel String?
   thumbnailUrl String?
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
@@ -338,15 +407,17 @@ model PageVisit {
 }
 
 model PodiumSubCategory {
-  id          String    @id @default(cuid())
-  name        String
-  slug        String    @unique
-  description String?
-  imageUrl    String?
-  sortOrder   Int       @default(0)
-  products    Product[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  description     String?
+  descriptionHtml String?
+  imageUrl        String?
+  sortOrder       Int       @default(0)
+  products        Product[]
+  multiProducts   Product[] @relation("ProductMultiplePodiumSubCategories")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([sortOrder, name])
 }

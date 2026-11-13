@@ -7,13 +7,14 @@ import { redirect } from "next/navigation";
 import { FolderTree, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUploader } from "@/components/admin/ImageUploader";
-import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { CategoryDescriptionFields } from "@/components/admin/CategoryDescriptionFields";
 import { requireAdminSession } from "@/lib/auth";
 import {
   generateUniqueCategorySlug,
   revalidateCatalogPaths,
   sanitizeRichHtml,
 } from "@/lib/product-mutations";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewCategoryPage() {
   async function createCategory(formData: FormData) {
@@ -28,6 +29,13 @@ export default function NewCategoryPage() {
     const slug = await generateUniqueCategorySlug(name);
     const imageUrl = ((formData.get("imageUrl") as string) || "").trim() || null;
     const bgClass = ((formData.get("bgClass") as string) || "").trim() || null;
+    const description =
+      ((formData.get("description") as string) || "").trim() || null;
+    const rawSortOrder = parseInt(
+      ((formData.get("sortOrder") as string) || "").trim(),
+      10
+    );
+    const sortOrder = Number.isFinite(rawSortOrder) ? rawSortOrder : 0;
     const descriptionHtml = sanitizeRichHtml(
       formData.get("descriptionHtml") as string | null
     );
@@ -38,10 +46,13 @@ export default function NewCategoryPage() {
         slug,
         imageUrl,
         bgClass,
+        description,
+        sortOrder,
         descriptionHtml,
       },
     });
 
+    await invalidateCacheTags(["catalog", "taxonomy", "ai-snapshot", "ai-responses"]);
     revalidatePath("/admin/categories");
     revalidateCatalogPaths();
     redirect("/admin/categories");
@@ -61,14 +72,14 @@ export default function NewCategoryPage() {
             <FolderTree className="text-[#0056b3]" />
             Add New Category
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Create a new product category</p>
+          <p className="text-sm text-slate-500 mt-1">Create a new main product category</p>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-soft border border-slate-100 p-6">
         <SubmitForm action={createCategory} className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Category Name
               </label>
@@ -77,7 +88,18 @@ export default function NewCategoryPage() {
                 name="name"
                 required
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm"
-                placeholder="e.g. Acrylic Podiums"
+                placeholder="e.g. Retail & Counter Displays"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Display Sort Order
+              </label>
+              <input
+                type="number"
+                name="sortOrder"
+                defaultValue={0}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0056b3] focus:bg-white transition-all text-sm"
               />
             </div>
           </div>
@@ -89,15 +111,7 @@ export default function NewCategoryPage() {
             <ImageUploader name="imageUrl" />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Description (Optional)
-            </label>
-            <RichTextEditor
-              name="descriptionHtml"
-              placeholder="Write a description for this category..."
-            />
-          </div>
+          <CategoryDescriptionFields />
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">

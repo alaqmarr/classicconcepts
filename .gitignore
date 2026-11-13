@@ -28,6 +28,8 @@
 *.db-wal
 *.db-journal
 *.db.backup.*
+/backups/
+/public/uploads/
 *.env
 # debug
 npm-debug.log*
@@ -37,6 +39,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

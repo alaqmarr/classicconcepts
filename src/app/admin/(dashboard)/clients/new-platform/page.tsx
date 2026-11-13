@@ -7,6 +7,7 @@ import { Globe, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { SubmitForm } from "@/components/admin/SubmitForm";
 import { requireAdminSession } from "@/lib/auth";
+import { invalidateCacheTags } from "@/lib/redis-cache";
 
 export default function NewPlatformPage() {
   async function createPlatform(formData: FormData) {
@@ -27,6 +28,7 @@ export default function NewPlatformPage() {
       data: { name, storeUrl, storeRegion, iconName, colorClass },
     });
 
+    await invalidateCacheTags(["brand", "settings", "ai-snapshot"]);
     revalidatePath("/");
     revalidatePath("/admin/clients");
     redirect("/admin/clients");

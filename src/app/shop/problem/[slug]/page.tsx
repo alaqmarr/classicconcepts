@@ -1,23 +1,18 @@
-import { prisma } from "@/lib/db";
-import { PRODUCT_CARD_SELECT } from "@/lib/product-select";
+import { getFullCatalogIndex, getPublicSiteSettings } from "@/lib/public-data";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
 import Link from "next/link";
 import { Filter } from "lucide-react";
 import { notFound } from "next/navigation";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  return [];
-}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const problemStatement = await prisma.problemStatement.findUnique({
-    where: { slug }
-  });
+  const catalog = await getFullCatalogIndex();
+  const problemStatement =
+    catalog.problemStatements.find((ps) => ps.slug === slug) || null;
 
   if (!problemStatement) return { title: "Problem Statement Not Found - Classic Concepts" };
 
@@ -64,32 +59,23 @@ export default async function ProblemStatementShopPage({
 }) {
   const { slug } = await params;
 
-  const problemStatement = await prisma.problemStatement.findUnique({
-    where: { slug }
-  });
+  const [catalog, settings] = await Promise.all([
+    getFullCatalogIndex(),
+    getPublicSiteSettings(),
+  ]);
+
+  const problemStatement =
+    catalog.problemStatements.find((ps) => ps.slug === slug) || null;
 
   if (!problemStatement) {
     notFound();
   }
 
-  const [products, allProblemStatements, totalProductsOverall, settings] = await Promise.all([
-    prisma.product.findMany({
-      where: {
-        problemStatements: { some: { id: problemStatement.id } },
-      },
-      select: PRODUCT_CARD_SELECT,
-      orderBy: { name: 'asc' }
-    }),
-    prisma.problemStatement.findMany({
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true, slug: true },
-    }),
-    prisma.product.count(),
-    prisma.siteSetting.findUnique({
-      where: { id: "default" },
-      select: { whatsappNumber: true },
-    }),
-  ]);
+  const products = catalog.products.filter((p) =>
+    p.problemStatementIds.includes(problemStatement.id)
+  );
+  const allProblemStatements = catalog.problemStatements;
+  const totalProductsOverall = catalog.totalProductsOverall;
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">
