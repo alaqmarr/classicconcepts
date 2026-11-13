@@ -688,19 +688,145 @@ export function checkPublicAiRateLimit(
   return true;
 }
 
+export type LocalQueryIntent =
+  | "product_match"
+  | "role_clarify"
+  | "greeting"
+  | "off_topic"
+  | "no_match"
+  | "browse";
+
+export interface LocalSmartMatchResult {
+  intent: LocalQueryIntent;
+  products: CachedProductSummary[];
+  matchedCategories: { name: string; slug: string; href: string }[];
+  advisoryMessage: string;
+  highlights: string[];
+  followUpChips: string[];
+  suggestedLinks: { label: string; href: string }[];
+  whatsappPrefill: string;
+}
+
+const QUERY_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "am",
+  "are",
+  "as",
+  "at",
+  "be",
+  "been",
+  "being",
+  "but",
+  "by",
+  "can",
+  "could",
+  "did",
+  "do",
+  "does",
+  "doing",
+  "for",
+  "from",
+  "get",
+  "give",
+  "got",
+  "had",
+  "has",
+  "have",
+  "having",
+  "he",
+  "her",
+  "here",
+  "him",
+  "his",
+  "how",
+  "i",
+  "if",
+  "im",
+  "in",
+  "into",
+  "is",
+  "it",
+  "its",
+  "ive",
+  "just",
+  "like",
+  "looking",
+  "make",
+  "me",
+  "more",
+  "my",
+  "need",
+  "needs",
+  "of",
+  "on",
+  "one",
+  "only",
+  "or",
+  "our",
+  "out",
+  "please",
+  "plz",
+  "require",
+  "required",
+  "search",
+  "she",
+  "should",
+  "show",
+  "so",
+  "some",
+  "something",
+  "tell",
+  "than",
+  "that",
+  "the",
+  "their",
+  "them",
+  "then",
+  "there",
+  "these",
+  "they",
+  "this",
+  "those",
+  "to",
+  "too",
+  "up",
+  "us",
+  "very",
+  "want",
+  "wants",
+  "was",
+  "we",
+  "were",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "whom",
+  "why",
+  "will",
+  "with",
+  "work",
+  "working",
+  "would",
+  "you",
+  "your",
+]);
+
 const DOMAIN_SYNONYMS: Record<string, string[]> = {
   podium: [
     "podium",
+    "podiums",
     "lectern",
+    "lecterns",
     "pulpit",
     "rostrum",
     "speech",
     "stage",
-    "speaker",
     "auditorium",
     "conference",
     "seminar",
-    "mic",
   ],
   hotel: [
     "hotel",
@@ -708,24 +834,18 @@ const DOMAIN_SYNONYMS: Record<string, string[]> = {
     "banquet",
     "resort",
     "reception",
-    "convention",
     "menu",
     "tent",
-    "podium",
     "signage",
+    "podium",
   ],
-  school: [
-    "school",
-    "college",
-    "university",
-    "education",
-    "institute",
-    "academy",
+  school_venue: [
     "auditorium",
+    "assembly",
+    "convocation",
     "podium",
     "lectern",
     "notice",
-    "trophy",
   ],
   church: [
     "church",
@@ -736,7 +856,6 @@ const DOMAIN_SYNONYMS: Record<string, string[]> = {
     "podium",
     "lectern",
     "donation",
-    "box",
   ],
   retail: [
     "retail",
@@ -745,41 +864,54 @@ const DOMAIN_SYNONYMS: Record<string, string[]> = {
     "store",
     "display",
     "stand",
+    "stands",
     "riser",
     "counter",
     "jewellery",
     "jewelry",
     "cosmetic",
+    "saree",
     "holder",
     "rack",
   ],
   award: [
     "award",
+    "awards",
     "trophy",
     "trophies",
     "memento",
+    "mementos",
     "plaque",
     "shield",
     "ceremony",
-    "corporate",
     "gift",
+    "gifts",
+    "souvenir",
+    "prize",
+    "student",
+    "students",
+    "graduation",
+    "farewell",
     "recognition",
+    "appreciation",
   ],
   office: [
     "office",
-    "corporate",
     "signage",
     "nameplate",
     "brochure",
     "leaflet",
     "magazine",
     "holder",
-    "box",
     "reception",
     "desk",
+    "pen",
+    "organizer",
+    "organiser",
   ],
   box: [
     "box",
+    "boxes",
     "donation",
     "suggestion",
     "ballot",
@@ -797,10 +929,345 @@ const DOMAIN_SYNONYMS: Record<string, string[]> = {
     "console",
     "pedestal",
     "coffee",
-    "interior",
     "decor",
   ],
 };
+
+const EXPLICIT_PRODUCT_TERMS = new Set([
+  "acrylic",
+  "podium",
+  "podiums",
+  "lectern",
+  "lecterns",
+  "pulpit",
+  "rostrum",
+  "stand",
+  "stands",
+  "holder",
+  "holders",
+  "display",
+  "riser",
+  "risers",
+  "rack",
+  "saree",
+  "box",
+  "boxes",
+  "donation",
+  "suggestion",
+  "ballot",
+  "enclosure",
+  "cover",
+  "case",
+  "trophy",
+  "trophies",
+  "award",
+  "awards",
+  "memento",
+  "mementos",
+  "plaque",
+  "shield",
+  "gift",
+  "gifts",
+  "prize",
+  "souvenir",
+  "sign",
+  "signage",
+  "nameplate",
+  "frame",
+  "frames",
+  "menu",
+  "brochure",
+  "leaflet",
+  "magazine",
+  "table",
+  "chair",
+  "stool",
+  "console",
+  "pedestal",
+  "furniture",
+  "tray",
+  "organizer",
+  "organiser",
+  "sheet",
+  "sheets",
+  "stage",
+  "auditorium",
+  "jewellery",
+  "jewelry",
+  "cosmetic",
+]);
+
+interface RoleClarifyProfile {
+  keywords: string[];
+  message: string;
+  chips: string[];
+  links: { label: string; href: string }[];
+  whatsappPrefill: string;
+}
+
+const ROLE_PROFILES: RoleClarifyProfile[] = [
+  {
+    keywords: [
+      "engineer",
+      "engineers",
+      "engineering",
+      "engg",
+      "mechanical",
+      "electrical",
+      "civil",
+      "industrial",
+      "technician",
+    ],
+    message:
+      "Nice to meet you! Since you work in engineering, what kind of acrylic item do you need? We make clear machine safety covers, cut-to-size enclosures, office sign holders, and team awards.",
+    chips: [
+      "Custom acrylic covers & enclosures",
+      "Office sign holders & nameplates",
+      "Team awards & mementos",
+    ],
+    links: [
+      { label: "Request Custom Fabrication", href: "/contact" },
+      { label: "Browse All Products", href: "/shop" },
+    ],
+    whatsappPrefill:
+      "Hi Classic Concepts! I am an engineer and want to enquire about custom acrylic enclosures, safety covers, or office products.",
+  },
+  {
+    keywords: [
+      "doctor",
+      "doctors",
+      "dentist",
+      "surgeon",
+      "physician",
+      "clinic",
+      "hospital",
+      "medical",
+      "pharma",
+    ],
+    message:
+      "Hello! For your clinic or hospital, are you looking for desk sign holders, brochure stands, suggestion or drop boxes, or a conference podium?",
+    chips: [
+      "Clinic desk sign & brochure holders",
+      "Acrylic suggestion & drop boxes",
+      "Conference hall podiums",
+    ],
+    links: [
+      { label: "Browse Office & Utility", href: "/shop" },
+      { label: "Explore Podiums", href: "/podiums" },
+    ],
+    whatsappPrefill:
+      "Hi Classic Concepts! I am looking for acrylic stands, boxes, or signage for our clinic/hospital.",
+  },
+  {
+    keywords: [
+      "architect",
+      "architects",
+      "architecture",
+      "interior",
+      "designer",
+      "designers",
+      "builder",
+      "contractor",
+    ],
+    message:
+      "Great to connect! Are you sourcing clear acrylic furniture, custom display cases, wall signage, or cut-to-size acrylic pieces for a client project?",
+    chips: [
+      "Acrylic tables & pedestals",
+      "Wall signage & display frames",
+      "Custom project fabrication",
+    ],
+    links: [
+      { label: "Browse Catalog", href: "/shop" },
+      { label: "Share Project Drawings", href: "/contact" },
+    ],
+    whatsappPrefill:
+      "Hi Classic Concepts! I am an architect/designer and want to discuss acrylic items for a project.",
+  },
+  {
+    keywords: [
+      "teacher",
+      "professor",
+      "principal",
+      "lecturer",
+      "faculty",
+      "dean",
+    ],
+    message:
+      "Hello! For your school or college, are you looking for a stage podium, classroom notice frames, or trophies and mementos for students?",
+    chips: [
+      "Clear auditorium podiums",
+      "Student trophies & mementos",
+      "Wall notice & sign holders",
+    ],
+    links: [
+      { label: "Explore Stage Podiums", href: "/podiums" },
+      { label: "Browse All Products", href: "/shop" },
+    ],
+    whatsappPrefill:
+      "Hi Classic Concepts! I need acrylic podiums, notice holders, or student awards for our school/college.",
+  },
+  {
+    keywords: ["student", "students", "college", "school", "university"],
+    message:
+      "Hi there! Tell me what you are looking for, such as awards and mementos for a college event, desk organisers, a stage podium, or a custom acrylic box for a project.",
+    chips: [
+      "Event trophies & mementos",
+      "Custom acrylic project box",
+      "College auditorium podiums",
+    ],
+    links: [
+      { label: "Browse Catalog", href: "/shop" },
+      { label: "Custom Size Enquiry", href: "/contact" },
+    ],
+    whatsappPrefill:
+      "Hi Classic Concepts! I am looking for acrylic products for a college/school requirement.",
+  },
+  {
+    keywords: [
+      "hr",
+      "manager",
+      "founder",
+      "director",
+      "ceo",
+      "owner",
+      "organizer",
+      "organiser",
+      "planner",
+      "lawyer",
+      "advocate",
+      "accountant",
+    ],
+    message:
+      "Hello! Tell me a little about what you need for your workplace or event, such as employee awards, desk nameplates, brochure stands, or a conference podium.",
+    chips: [
+      "Employee trophies & plaques",
+      "Office desk stands & signage",
+      "Conference room podiums",
+    ],
+    links: [
+      { label: "Browse All Products", href: "/shop" },
+      { label: "Explore Podiums", href: "/podiums" },
+    ],
+    whatsappPrefill:
+      "Hi Classic Concepts! Please help me choose acrylic products for our office or upcoming event.",
+  },
+];
+
+const GREETING_ONLY_WORDS = new Set([
+  "hi",
+  "hello",
+  "hey",
+  "hola",
+  "namaste",
+  "morning",
+  "afternoon",
+  "evening",
+  "good",
+  "there",
+  "acrio",
+  "help",
+  "thanks",
+  "thank",
+]);
+
+const OFF_TOPIC_HINTS = new Set([
+  "weather",
+  "rain",
+  "temperature",
+  "recipe",
+  "pizza",
+  "biryani",
+  "food",
+  "cook",
+  "cricket",
+  "football",
+  "score",
+  "movie",
+  "song",
+  "joke",
+  "poem",
+  "story",
+  "python",
+  "javascript",
+  "code",
+  "coding",
+  "homework",
+  "math",
+  "bitcoin",
+  "stock",
+  "crypto",
+  "iphone",
+  "laptop",
+  "flight",
+  "train",
+  "politics",
+]);
+
+function stemToken(word: string): string {
+  if (word.length <= 3) return word;
+  if (word.endsWith("ies") && word.length > 4) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("boxes")) return word.slice(0, -2);
+  if (word.endsWith("ches") || word.endsWith("shes") || word.endsWith("sses")) {
+    return word.slice(0, -2);
+  }
+  if (word.endsWith("s") && !word.endsWith("ss") && !word.endsWith("us") && !word.endsWith("is")) {
+    return word.slice(0, -1);
+  }
+  return word;
+}
+
+function isOneEditAway(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 5 || b.length < 5) return false;
+  if (Math.abs(a.length - b.length) > 1) return false;
+
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+    } else {
+      edits++;
+      if (edits > 1) return false;
+      // Check transposition e.g. "poduim" vs "podium"
+      if (i + 1 < a.length && j + 1 < b.length && a[i] === b[j + 1] && a[i + 1] === b[j]) {
+        i += 2;
+        j += 2;
+      } else if (a.length > b.length) {
+        i++;
+      } else if (b.length > a.length) {
+        j++;
+      } else {
+        i++;
+        j++;
+      }
+    }
+  }
+  if (i < a.length || j < b.length) edits++;
+  return edits <= 1;
+}
+
+function tokenMatchesWord(queryTok: string, targetWord: string): boolean {
+  if (!queryTok || !targetWord) return false;
+  if (queryTok === targetWord) return true;
+  const qs = stemToken(queryTok);
+  const ts = stemToken(targetWord);
+  if (qs === ts && qs.length >= 3) return true;
+  if (qs.length >= 4 && ts.length >= 4 && (ts.startsWith(qs) || qs.startsWith(ts))) {
+    return true;
+  }
+  return isOneEditAway(qs, ts);
+}
+
+function splitWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
 
 /**
  * Instant, zero-credit local synonym & intent matcher.
@@ -811,12 +1278,9 @@ export function localSmartProductMatch(
   snapshot: KnowledgeSnapshot,
   rawQuery: string,
   options?: { limit?: number; onlyPodiums?: boolean; categorySlug?: string }
-): {
-  products: CachedProductSummary[];
-  matchedCategories: { name: string; slug: string; href: string }[];
-  advisoryMessage: string;
-} {
-  const q = rawQuery.toLowerCase().trim();
+): LocalSmartMatchResult {
+  const cleanRaw = rawQuery.trim();
+  const q = cleanRaw.toLowerCase();
   const limit = options?.limit ?? 6;
 
   let pool = snapshot.products;
@@ -834,6 +1298,7 @@ export function localSmartProductMatch(
 
   if (!q) {
     return {
+      intent: "browse",
       products: pool.slice(0, limit),
       matchedCategories: snapshot.categories.slice(0, 4).map((c) => ({
         name: c.name,
@@ -841,22 +1306,162 @@ export function localSmartProductMatch(
         href: `/shop/c/${c.slug}`,
       })),
       advisoryMessage:
-        "Here are popular acrylic products made directly in our 16,000 sq. ft. factory. Tell us about your event, shop, office, or size needs and we will help you pick the right one!",
+        "Browse popular clear acrylic products below, or tell ACRIO what item, event, or business setup you are shopping for.",
+      highlights: [],
+      followUpChips: [
+        "Clear stage podiums",
+        "Acrylic trophies & mementos",
+        "Brochure & menu stands",
+      ],
+      suggestedLinks: [
+        { label: "Explore Podiums", href: "/podiums" },
+        { label: "Browse All Products", href: "/shop" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! Please help me choose the right acrylic product.",
     };
   }
 
-  const rawTokens = q
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length >= 2);
+  const allWords = splitWords(q);
 
-  // Expand query with domain synonyms for vague queries
-  const expandedTokens = new Set<string>(rawTokens);
-  for (const token of rawTokens) {
+  // Check explicit AI / identity meta question ("which ai are you using", "who are you")
+  if (
+    /\b(which ai|what ai|what model|which model|who are you|what are you|claude|gpt|openai)\b/i.test(
+      q
+    )
+  ) {
+    return {
+      intent: "greeting",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "I am ACRIO, Classic Concepts' product assistant built to run on Claude Haiku 5.5 alongside our live catalog index. Tell me what acrylic product, event, or workplace setup you need and I will show matching options.",
+      highlights: [],
+      followUpChips: [
+        "Clear stage podiums",
+        "Gifts & trophies for students",
+        "Shop & counter display stands",
+      ],
+      suggestedLinks: [
+        { label: "Browse Full Catalog", href: "/shop" },
+        { label: "Explore Podiums", href: "/podiums" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! I would like help finding an acrylic product.",
+    };
+  }
+
+  const meaningfulTokens = allWords.filter(
+    (t) => t.length >= 2 && !QUERY_STOP_WORDS.has(t)
+  );
+
+  // Pure greeting check ("hi", "hello", "good morning", "hey acrio")
+  if (
+    allWords.length > 0 &&
+    allWords.length <= 5 &&
+    allWords.every((w) => GREETING_ONLY_WORDS.has(w) || QUERY_STOP_WORDS.has(w))
+  ) {
+    return {
+      intent: "greeting",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "Hello! I am ACRIO. Tell me what acrylic item you are looking for, such as a stage podium, menu stand, trophy, donation box, or display holder.",
+      highlights: [],
+      followUpChips: [
+        "Stage podium for speeches",
+        "Gifts & trophies for students",
+        "Menu & sign holders",
+      ],
+      suggestedLinks: [
+        { label: "Explore Podiums", href: "/podiums" },
+        { label: "Browse All Products", href: "/shop" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! Please help me find the right acrylic product.",
+    };
+  }
+
+  const hasExplicitProductTerm = meaningfulTokens.some((tok) =>
+    Array.from(EXPLICIT_PRODUCT_TERMS).some((pt) => tokenMatchesWord(tok, pt))
+  );
+
+  // Role-only / profession introduction check (e.g. "i am an engineer", "i am an enginner", "im a doctor")
+  if (!hasExplicitProductTerm && meaningfulTokens.length > 0 && meaningfulTokens.length <= 4) {
+    for (const profile of ROLE_PROFILES) {
+      const matchesRole = meaningfulTokens.some((tok) =>
+        profile.keywords.some((kw) => tokenMatchesWord(tok, kw))
+      );
+      if (matchesRole) {
+        return {
+          intent: "role_clarify",
+          products: [],
+          matchedCategories: [],
+          advisoryMessage: profile.message,
+          highlights: [],
+          followUpChips: profile.chips,
+          suggestedLinks: profile.links,
+          whatsappPrefill: profile.whatsappPrefill,
+        };
+      }
+    }
+  }
+
+  // Obvious off-topic check when zero product terms exist
+  if (
+    !hasExplicitProductTerm &&
+    meaningfulTokens.length > 0 &&
+    meaningfulTokens.some((tok) => OFF_TOPIC_HINTS.has(stemToken(tok)) || OFF_TOPIC_HINTS.has(tok))
+  ) {
+    return {
+      intent: "off_topic",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "I only help with Classic Concepts acrylic products such as podiums, display stands, boxes, sign holders, and trophies. Tell me what item or event you are shopping for and I will find the closest match.",
+      highlights: [],
+      followUpChips: [
+        "Clear stage podiums",
+        "Acrylic trophies & gifts",
+        "Display stands & holders",
+      ],
+      suggestedLinks: [
+        { label: "Browse All Products", href: "/shop" },
+        { label: "Contact Our Team", href: "/contact" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! I would like to check available acrylic products.",
+    };
+  }
+
+  if (meaningfulTokens.length === 0) {
+    return {
+      intent: "role_clarify",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "Could you share a few words on what acrylic product you need? For example: a stage podium, student trophy, menu holder, retail stand, or custom box.",
+      highlights: [],
+      followUpChips: [
+        "Clear stage podium",
+        "Trophies & gifts",
+        "Display & sign holders",
+      ],
+      suggestedLinks: [{ label: "Browse All Products", href: "/shop" }],
+      whatsappPrefill:
+        "Hi Classic Concepts! Please help me choose an acrylic product.",
+    };
+  }
+
+  // Expand query with domain synonyms using clean word/typo matching (never 2-letter substring matches!)
+  const expandedTokens = new Set<string>();
+  const matchedGroups = new Set<string>();
+  for (const token of meaningfulTokens) {
     for (const [groupKey, words] of Object.entries(DOMAIN_SYNONYMS)) {
-      if (words.some((w) => token.includes(w) || w.includes(token))) {
+      if (words.some((w) => tokenMatchesWord(token, w))) {
+        matchedGroups.add(groupKey);
         expandedTokens.add(groupKey);
-        words.slice(0, 4).forEach((w) => expandedTokens.add(w));
+        words.slice(0, 6).forEach((w) => expandedTokens.add(w));
       }
     }
   }
@@ -867,35 +1472,54 @@ export function localSmartProductMatch(
   );
   const maxPrice = priceLimitMatch ? Number(priceLimitMatch[1]) : null;
 
+  const isGiftOrAwardIntent =
+    matchedGroups.has("award") && !matchedGroups.has("podium");
+
   const scored = pool.map((p) => {
     let score = 0;
     const nameLower = p.name.toLowerCase();
     const skuLower = (p.sku || "").toLowerCase();
+    const nameWords = splitWords(nameLower);
+    const catWords = splitWords(
+      `${p.categoryName} ${p.subCategoryName || ""}`
+    );
+    const blobWords = splitWords(p.searchBlob);
 
-    if (nameLower === q || skuLower === q) score += 120;
-    if (nameLower.includes(q)) score += 60;
-    if (skuLower && skuLower.includes(q)) score += 80;
+    if (nameLower === q || (skuLower && skuLower === q)) score += 140;
+    else if (q.length >= 4 && skuLower && skuLower.includes(q)) score += 90;
+    else if (q.length >= 5 && meaningfulTokens.length >= 2 && nameLower.includes(q)) {
+      score += 70;
+    }
 
-    for (const tok of rawTokens) {
-      if (nameLower.includes(tok)) score += 25;
-      if (skuLower.includes(tok)) score += 35;
-      if (p.categoryName.toLowerCase().includes(tok)) score += 18;
-      if (p.subCategoryName?.toLowerCase().includes(tok)) score += 20;
-      if (p.searchBlob.includes(tok)) score += 10;
+    for (const tok of meaningfulTokens) {
+      if (skuLower && tok.length >= 3 && skuLower.includes(tok)) score += 40;
+      if (nameWords.some((nw) => tokenMatchesWord(tok, nw))) score += 30;
+      if (catWords.some((cw) => tokenMatchesWord(tok, cw))) score += 22;
+      if (blobWords.some((bw) => tokenMatchesWord(tok, bw))) score += 12;
     }
 
     for (const syn of expandedTokens) {
-      if (!rawTokens.includes(syn)) {
-        if (nameLower.includes(syn)) score += 8;
-        else if (p.searchBlob.includes(syn)) score += 4;
+      if (!meaningfulTokens.includes(syn)) {
+        if (nameWords.some((nw) => nw === syn || stemToken(nw) === stemToken(syn))) {
+          score += 12;
+        } else if (catWords.some((cw) => cw === syn || stemToken(cw) === stemToken(syn))) {
+          score += 10;
+        } else if (blobWords.includes(syn)) {
+          score += 4;
+        }
       }
+    }
+
+    // Keep gift/student searches focused on awards, mementos, desk items rather than full-size stage podiums
+    if (isGiftOrAwardIntent && p.isPodium) {
+      score -= 25;
     }
 
     if (maxPrice !== null) {
       if (p.effectivePrice && p.effectivePrice <= maxPrice) {
         score += 15;
       } else if (p.effectivePrice && p.effectivePrice > maxPrice) {
-        score -= 20;
+        score -= 25;
       }
     }
 
@@ -903,28 +1527,109 @@ export function localSmartProductMatch(
   });
 
   const matched = scored
-    .filter((item) => item.score > 0)
+    .filter((item) => item.score >= 16)
     .sort((a, b) => b.score - a.score || a.product.name.localeCompare(b.product.name))
     .slice(0, limit)
     .map((item) => item.product);
 
-  const finalProducts = matched.length > 0 ? matched : pool.slice(0, Math.min(4, limit));
+  if (matched.length === 0) {
+    return {
+      intent: "no_match",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage: `We could not find a ready catalog item matching "${cleanRaw}". Tell me how you plan to use it, or message our team on WhatsApp if you want to check whether we can make it in acrylic.`,
+      highlights: [],
+      followUpChips: [
+        "Clear stage podiums",
+        "Acrylic trophies & awards",
+        "Display stands & boxes",
+      ],
+      suggestedLinks: [
+        { label: "Browse All Categories", href: "/shop" },
+        { label: "Ask About Custom Work", href: "/contact" },
+      ],
+      whatsappPrefill: `Hi Classic Concepts! Do you make or stock an acrylic item for: ${cleanRaw}?`,
+    };
+  }
 
-  const matchedCategories = snapshot.categories
-    .filter((c) =>
-      Array.from(expandedTokens).some((t) => c.name.toLowerCase().includes(t))
-    )
-    .slice(0, 3)
-    .map((c) => ({ name: c.name, slug: c.slug, href: `/shop/c/${c.slug}` }));
+  // Derive categories strictly from the actual matched products so unrelated links never appear
+  const seenCatSlugs = new Set<string>();
+  const matchedCategories: { name: string; slug: string; href: string }[] = [];
+  for (const prod of matched) {
+    if (prod.categorySlug && !seenCatSlugs.has(prod.categorySlug)) {
+      seenCatSlugs.add(prod.categorySlug);
+      matchedCategories.push({
+        name: prod.categoryName,
+        slug: prod.categorySlug,
+        href: `/shop/c/${prod.categorySlug}`,
+      });
+    }
+    if (matchedCategories.length >= 3) break;
+  }
 
-  const advisoryMessage =
-    matched.length > 0
-      ? `Based on "${rawQuery}", here are our best matching acrylic products made in our 16,000 sq. ft. factory. Every item can also be custom-made with your logo, size, or LED light.`
-      : `We custom-make clear acrylic products for "${rawQuery}"! Here are popular options from our catalog, or message our team on WhatsApp for custom sizes and logo printing.`;
+  const topCatLabels = matchedCategories.map((c) => c.name);
+  const priced = matched
+    .map((p) => p.effectivePrice)
+    .filter((v): v is number => typeof v === "number" && v > 0);
+  const minPrice = priced.length > 0 ? Math.min(...priced) : null;
+
+  let advisoryMessage: string;
+  if (isGiftOrAwardIntent) {
+    advisoryMessage = `Here ${matched.length === 1 ? "is" : "are"} ${matched.length} acrylic award and gift ${matched.length === 1 ? "option" : "options"} from our catalog for "${cleanRaw}".`;
+  } else if (matched.every((p) => p.isPodium)) {
+    advisoryMessage = `Here ${matched.length === 1 ? "is" : "are"} ${matched.length} matching acrylic ${matched.length === 1 ? "podium" : "podiums"} for "${cleanRaw}".`;
+  } else {
+    const catPhrase =
+      topCatLabels.length > 0 ? ` in ${topCatLabels.slice(0, 2).join(" and ")}` : "";
+    advisoryMessage = `Found ${matched.length} matching catalog ${matched.length === 1 ? "product" : "products"}${catPhrase} for "${cleanRaw}".`;
+  }
+
+  const highlights: string[] = [];
+  if (minPrice !== null) {
+    highlights.push(`Listed catalog options starting from ₹${minPrice.toLocaleString("en-IN")}`);
+  }
+  if (isGiftOrAwardIntent) {
+    highlights.push("Suitable for event prizes, student recognition, and batch orders");
+  } else if (matched.some((p) => p.isPodium)) {
+    highlights.push("Available in full-clear, frosted, LED, and wood-accent podium styles");
+  }
+
+  let followUpChips: string[];
+  if (isGiftOrAwardIntent) {
+    followUpChips = [
+      "Acrylic mementos & plaques",
+      "Desk pen & card holders",
+      "Bulk order for school or college event",
+    ];
+  } else if (matched.some((p) => p.isPodium)) {
+    followUpChips = [
+      "Full clear acrylic podiums",
+      "Wooden & acrylic podiums",
+      "Podiums under ₹25,000",
+    ];
+  } else {
+    followUpChips = [
+      "Countertop brochure & menu stands",
+      "Acrylic boxes & enclosures",
+      "Custom trophies & mementos",
+    ];
+  }
+
+  const suggestedLinks: { label: string; href: string }[] = matchedCategories
+    .slice(0, 2)
+    .map((c) => ({ label: c.name, href: c.href }));
+  if (suggestedLinks.length === 0) {
+    suggestedLinks.push({ label: "Browse All Products", href: "/shop" });
+  }
 
   return {
-    products: finalProducts,
+    intent: "product_match",
+    products: matched,
     matchedCategories,
     advisoryMessage,
+    highlights,
+    followUpChips,
+    suggestedLinks,
+    whatsappPrefill: `Hi Classic Concepts! I am interested in your acrylic options for: ${cleanRaw}`,
   };
 }

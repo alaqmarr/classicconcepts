@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { Users, Plus, Edit, Phone, MessageCircle } from "lucide-react";
+import { Users, Plus, Edit, Phone } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import Link from "next/link";
 import { DeleteForm } from "@/components/admin/DeleteForm";
 import { requireAdminSession } from "@/lib/auth";
@@ -91,7 +92,7 @@ export default async function AdminTeamPage() {
                   <td className="p-4 text-slate-600">
                     {member.whatsapp ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-green-50 text-green-700 px-2.5 py-1 rounded-md">
-                        <MessageCircle size={12} />
+                        <WhatsAppIcon size={12} />
                         {member.whatsapp}
                       </span>
                     ) : (

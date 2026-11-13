@@ -1,4 +1,5 @@
-import { Phone, MessageCircle, Mail, Users } from "lucide-react";
+import { Phone, Mail, Users } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { getContentValue, hasContentOverride, type SiteContentMap } from "@/lib/site-content-shared";
 import { EditableText } from "@/components/inline-edit/EditableText";
 import { EditableImage } from "@/components/inline-edit/EditableImage";
@@ -176,12 +177,12 @@ export function TeamSection({
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#25D366] text-white font-bold text-xs hover:bg-[#1ebe57] transition-colors shadow-sm"
                     >
-                      <MessageCircle size={14} />
+                      <WhatsAppIcon size={14} />
                       WhatsApp
                     </a>
                   ) : (
                     <span className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs cursor-not-allowed">
-                      <MessageCircle size={14} />
+                      <WhatsAppIcon size={14} />
                       WhatsApp
                     </span>
                   )}

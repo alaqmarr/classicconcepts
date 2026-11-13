@@ -11,3 +11,6 @@ All customer answers, catalog search summaries, inline AI suggestions, product b
 - **Zero em-dashes (`—`), spaced en-dashes (` – `), or `--`** anywhere in AI or fallback copy.
 - **Zero high-level English or robotic AI buzzwords** (`bespoke`, `elevate`, `delve`, `meticulous`, `unparalleled`, `seamless`, `state-of-the-art`, `cutting-edge`, `optical-grade`, `utilize`, `leverage`, `robust`, `consultative`, etc.).
 - Both Client (`agents/client-support-agent.yaml`) and Admin (`agents/admin-copilot-agent.yaml`) agents are strictly locked to `claude-haiku-5-5` with separate API keys.
+
+# Git Workflow Rule
+- **Always commit and push changes to `origin/master` automatically once verified** (type-checked and tested).

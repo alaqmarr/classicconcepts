@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { Mail, ArrowLeft, Send, MessageCircle } from "lucide-react";
+import { Mail, ArrowLeft, Send } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import Link from "next/link";
 import { ReplyForm } from "./ReplyForm";
 
@@ -44,7 +45,7 @@ export default async function AdminEnquiryDetailPage({ params }: { params: Promi
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-bold hover:bg-emerald-100 transition-colors"
               >
-                <MessageCircle size={16} />
+                <WhatsAppIcon size={16} />
                 WhatsApp Client
               </a>
             )}
@@ -82,7 +83,7 @@ export default async function AdminEnquiryDetailPage({ params }: { params: Promi
                   rel="noopener noreferrer"
                   className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-1"
                 >
-                  <MessageCircle size={14} /> Chat on WhatsApp
+                  <WhatsAppIcon size={14} /> Chat on WhatsApp
                 </a>
               )}
             </div>

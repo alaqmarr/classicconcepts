@@ -32,6 +32,8 @@ interface InlineEditContextValue {
   editMode: boolean;
   setEditMode: (enabled: boolean) => void;
   aiConfigured: boolean;
+  clientAiConfigured: boolean;
+  aiModel: string;
   aiEnabled: boolean;
   popupEnabled: boolean;
   popupDelaySeconds: number;
@@ -50,6 +52,8 @@ const InlineEditContext = createContext<InlineEditContextValue>({
   editMode: false,
   setEditMode: () => {},
   aiConfigured: false,
+  clientAiConfigured: false,
+  aiModel: "claude-haiku-5-5",
   aiEnabled: true,
   popupEnabled: true,
   popupDelaySeconds: 3,
@@ -79,6 +83,8 @@ export function InlineEditProvider({
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [editMode, setEditModeState] = useState(true);
   const [aiConfigured, setAiConfigured] = useState(false);
+  const [clientAiConfigured, setClientAiConfigured] = useState(false);
+  const [aiModel, setAiModel] = useState("claude-haiku-5-5");
   const [aiEnabled, setAiEnabled] = useState(true);
   const [popupEnabled, setPopupEnabled] = useState(true);
   const [popupDelaySeconds, setPopupDelaySeconds] = useState(3);
@@ -125,6 +131,10 @@ export function InlineEditProvider({
         setIsAdmin(Boolean(data.isAdmin));
         setAdminEmail(data.email || null);
         setAiConfigured(Boolean(data.aiConfigured));
+        setClientAiConfigured(Boolean(data.clientAiConfigured));
+        if (typeof data.model === "string" && data.model) {
+          setAiModel(data.model);
+        }
         setAiEnabled(data.aiEnabled !== false);
         setPopupEnabled(data.popupEnabled !== false);
         if (typeof data.popupDelaySeconds === "number") {
@@ -177,6 +187,8 @@ export function InlineEditProvider({
       editMode: isAdmin && editMode,
       setEditMode,
       aiConfigured,
+      clientAiConfigured,
+      aiModel,
       aiEnabled,
       popupEnabled,
       popupDelaySeconds,
@@ -194,6 +206,8 @@ export function InlineEditProvider({
       editMode,
       setEditMode,
       aiConfigured,
+      clientAiConfigured,
+      aiModel,
       aiEnabled,
       popupEnabled,
       popupDelaySeconds,

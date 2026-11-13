@@ -8,7 +8,8 @@ import {
   hasContentOverride,
 } from "@/lib/site-content";
 import { EditableText } from "@/components/inline-edit/EditableText";
-import { Users, Phone, MessageCircle } from "lucide-react";
+import { Users, Phone } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import Link from "next/link";
 
 export const metadata = {
@@ -112,7 +113,7 @@ export default async function TeamPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#25D366] text-white font-bold hover:bg-[#1ebe57] transition-colors"
               >
-                <MessageCircle size={18} />
+                <WhatsAppIcon size={18} />
                 <EditableText
                   contentKey="team.empty.whatsapp_cta"
                   value={getContentValue(

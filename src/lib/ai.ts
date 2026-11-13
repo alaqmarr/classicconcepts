@@ -7,6 +7,7 @@ import {
   normalizeQueryForCache,
   localSmartProductMatch,
   type CachedProductSummary,
+  type LocalQueryIntent,
 } from "@/lib/ai-context";
 import {
   getAgentDefinition,
@@ -37,6 +38,7 @@ export interface ConciergeProductCard {
 }
 
 export interface ConciergeResponse {
+  intent?: LocalQueryIntent;
   message: string;
   highlights: string[];
   products: ConciergeProductCard[];
@@ -45,6 +47,9 @@ export interface ConciergeResponse {
   whatsappNumber: string;
   whatsappPrefill: string;
   source: "ai" | "cache" | "smart-local";
+  modelUsed?: string;
+  engineLabel?: string;
+  aiDiagnostic?: string;
 }
 
 interface AnthropicCallResult {
@@ -61,6 +66,9 @@ interface AnthropicCallResult {
     cacheReadInputTokens: number;
   };
 }
+
+let clientCircuitOpenUntil = 0;
+let clientCircuitReason = "";
 
 function toCard(p: CachedProductSummary, reason?: string): ConciergeProductCard {
   return {
@@ -253,31 +261,26 @@ export async function runCustomerConcierge(
   allowAiGeneration = true
 ): Promise<ConciergeResponse> {
   const snapshot = await getKnowledgeSnapshot();
+  const settings = await getAiRuntimeSettings();
   const cleanQuery = (rawQuery || "").trim().slice(0, 500);
 
   if (!cleanQuery) {
     const local = localSmartProductMatch(snapshot, "", { limit: 4 });
     return {
+      intent: local.intent,
       message: local.advisoryMessage,
-      highlights: [
-        "Made directly in our 16,000 sq. ft. factory with 20+ years of experience",
-        "Custom sizes, front logo printing, and safe delivery across India and abroad",
-      ],
+      highlights: local.highlights,
       products: local.products.map((p) => toCard(p)),
-      suggestedLinks: [
-        { label: "Explore Acrylic Podiums", href: "/podiums" },
-        { label: "Browse All Products", href: "/shop" },
-        { label: "Ask for a Custom Size", href: "/contact" },
-      ],
-      followUpChips: [
-        "Stage podium for hall or college",
-        "Hotel & banquet stands",
-        "Shop & jewellery display stands",
-        "Custom trophies & awards",
-      ],
+      suggestedLinks: local.suggestedLinks,
+      followUpChips: local.followUpChips,
       whatsappNumber: snapshot.whatsappNumber,
-      whatsappPrefill: "Hi Classic Concepts! Please help me choose the right acrylic product.",
+      whatsappPrefill: local.whatsappPrefill,
       source: "smart-local",
+      modelUsed: settings.clientApiKey && settings.aiEnabled ? LOCKED_CLAUDE_MODEL : "local-catalog",
+      engineLabel:
+        settings.clientApiKey && settings.aiEnabled
+          ? "Claude Haiku 5.5 Ready"
+          : "Local Catalog Match • AI Key Not Set",
     };
   }
 
@@ -285,16 +288,18 @@ export async function runCustomerConcierge(
 
   // 1. Check Persistent Response Cache FIRST (0 AI credits!)
   type CachedShape = {
+    intent?: LocalQueryIntent;
     message: string;
     highlights: string[];
     recommendations: { slug: string; reason?: string }[];
     suggestedLinks: { label: string; href: string }[];
     followUpChips: string[];
     whatsappPrefill: string;
+    modelUsed?: string;
   };
 
   const cached = await getCachedAiResponse<CachedShape>(
-    "concierge",
+    "concierge:v2",
     normalizedKey,
     snapshot.catalogHash
   );
@@ -308,53 +313,70 @@ export async function runCustomerConcierge(
       })
       .filter((x): x is ConciergeProductCard => Boolean(x));
 
-    const fallbackCards =
-      hydrated.length > 0
-        ? hydrated
-        : localSmartProductMatch(snapshot, cleanQuery, { limit: 4 }).products.map((p) =>
-            toCard(p)
-          );
-
     return {
+      intent: cached.intent || (hydrated.length > 0 ? "product_match" : "role_clarify"),
       message: cleanAiPatterns(cached.message),
       highlights: (cached.highlights || []).map((h) => cleanAiPatterns(h)),
-      products: fallbackCards,
+      products: hydrated,
       suggestedLinks: cached.suggestedLinks || [{ label: "Browse Full Catalog", href: "/shop" }],
       followUpChips: (cached.followUpChips || []).map((c) => cleanAiPatterns(c)),
       whatsappNumber: snapshot.whatsappNumber,
       whatsappPrefill: cleanAiPatterns(
         cached.whatsappPrefill ||
-          `Hi Classic Concepts! I am looking for acrylic products for: ${cleanQuery}`
+          `Hi Classic Concepts! I am looking for help with: ${cleanQuery}`
       ),
       source: "cache",
+      modelUsed: cached.modelUsed || LOCKED_CLAUDE_MODEL,
+      engineLabel: "Claude Haiku 5.5 • Instant Cache",
     };
   }
 
   // 2. Call Client Agent (Claude Haiku 5.5) using Dedicated Client API Key
-  const settings = await getAiRuntimeSettings();
-  if (allowAiGeneration && settings.clientApiKey && settings.aiEnabled) {
+  let lastAiError: string | undefined;
+  const now = Date.now();
+  const circuitActive = now < clientCircuitOpenUntil && Boolean(clientCircuitReason);
+  if (circuitActive) {
+    lastAiError = clientCircuitReason;
+  }
+
+  if (
+    !circuitActive &&
+    allowAiGeneration &&
+    settings.clientApiKey &&
+    settings.aiEnabled
+  ) {
     const aiRes = await callClaudeHaiku({
       scope: "client",
       useCatalogSystemCache: true,
       maxTokens: 550,
       temperature: 0.25,
-      taskSystemInstruction: `You are Classic Concepts' Friendly Product Helper.
-A website visitor has shared what they need, what work they do, or a rough question.
-Write everything in simple everyday layman English so someone who knows nothing about technical acrylic terms understands right away. Never use em dashes ("—") or fancy words.
+      taskSystemInstruction: `You are ACRIO, Classic Concepts' Friendly Product Helper running on Claude Haiku 5.5.
+A website visitor has typed a product search, a role introduction, a greeting, or a general message.
+Write everything in simple everyday layman English. Never use em dashes ("—") or fancy buzzwords.
+IMPORTANT ANTI-REPETITION & INTENT RULES:
+- Do NOT mention "16,000 sq. ft. factory" unless the visitor specifically asks about our factory, manufacturing facility, or bulk capacity.
+- Do NOT repeat generic lines about "custom logo, size, or LED light" on every query. Only mention custom work if they ask for customisation or if no ready item matches.
+- Classify the visitor's message first:
+  * "product_match": They want a product, gift, or venue setup (e.g. "gift for students", "stage podium", "hotel stands"). Pick 1 to 4 genuinely relevant slugs from Section 4.
+  * "role_clarify": They ONLY state their job/role without saying what item they want (e.g. "I am an engineer", "I am a doctor", "we are architects"). Greet them, ask 1 short clarifying question tailored to their profession, and set "recommendations": [] and "highlights": [].
+  * "greeting": Greeting or question about you/which AI model is used (confirm you are ACRIO powered by Claude Haiku 5.5). Set "recommendations": [] and "highlights": [].
+  * "off_topic": Unrelated topic (weather, food, sports, coding, random words). Politely state that you help with Classic Concepts acrylic products and set "recommendations": [] and "highlights": [].
+  * "no_match": Product request that has no matching item in Section 4. Explain honestly and set "recommendations": [] and "highlights": [].
+
 Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with this exact schema:
 {
-  "message": "Warm, simple 2-3 sentence answer in everyday words (max 1 emoji), using only real catalog facts. If certainty is below 80% (such as exact custom drawings or special factory bulk rates), do NOT guess. Say simply that a Classic Concepts team member can check and confirm exact details.",
-  "highlights": ["Simple helpful point 1 for their need", "Simple helpful point 2 (such as logo printing, custom size, or safe delivery)"],
+  "intent": "product_match | role_clarify | greeting | off_topic | no_match",
+  "message": "Warm, natural 1-3 sentence reply tailored directly to what they typed (max 1 emoji). Zero repetitive slogans.",
+  "highlights": ["0 to 2 short catalog facts specific to this query, or empty [] when clarifying/greeting/off_topic"],
   "recommendations": [
-    { "slug": "exact-product-slug-from-section-4", "reason": "One short, plain-English reason why this fits them" }
+    { "slug": "exact-product-slug-from-section-4", "reason": "Short plain-English reason why this fits" }
   ],
   "suggestedLinks": [
-    { "label": "Simple link label", "href": "/podiums or /shop/c/<slug> or /contact" }
+    { "label": "Simple link label", "href": "/podiums or /shop/c/<slug> or /shop or /contact" }
   ],
-  "followUpChips": ["Simple follow-up option 1", "Simple option 2", "Simple option 3"],
-  "whatsappPrefill": "Simple ready-to-send WhatsApp message with their question, matched products, and any custom need"
-}
-Pick up to 4 best-matching product slugs from Section 4. Never invent slugs.`,
+  "followUpChips": ["Specific clickable follow-up 1", "Specific follow-up 2", "Specific follow-up 3"],
+  "whatsappPrefill": "Simple ready-to-send WhatsApp message matching their actual request"
+}`,
       userPrompt: `Customer input: "${cleanQuery}"`,
     });
 
@@ -362,18 +384,33 @@ Pick up to 4 best-matching product slugs from Section 4. Never invent slugs.`,
       const parsed = extractJsonObject<CachedShape>(aiRes.text);
       if (parsed && parsed.message) {
         const bySlug = new Map(snapshot.products.map((p) => [p.slug, p]));
-        const validRecs = (parsed.recommendations || [])
-          .filter((r) => bySlug.has(r.slug))
-          .map((r) => ({
-            slug: r.slug,
-            reason: r.reason ? cleanAiPatterns(r.reason) : undefined,
-          }));
+        const intent: LocalQueryIntent =
+          parsed.intent &&
+          ["product_match", "role_clarify", "greeting", "off_topic", "no_match", "browse"].includes(
+            parsed.intent
+          )
+            ? parsed.intent
+            : Array.isArray(parsed.recommendations) && parsed.recommendations.length > 0
+              ? "product_match"
+              : "role_clarify";
+
+        const validRecs =
+          intent === "product_match"
+            ? (parsed.recommendations || [])
+                .filter((r) => bySlug.has(r.slug))
+                .map((r) => ({
+                  slug: r.slug,
+                  reason: r.reason ? cleanAiPatterns(r.reason) : undefined,
+                }))
+            : [];
 
         const safeToCache: CachedShape = {
+          intent,
           message: cleanAiPatterns(parsed.message),
-          highlights: Array.isArray(parsed.highlights)
-            ? parsed.highlights.slice(0, 4).map((h) => cleanAiPatterns(h))
-            : [],
+          highlights:
+            intent === "product_match" && Array.isArray(parsed.highlights)
+              ? parsed.highlights.slice(0, 2).map((h) => cleanAiPatterns(h))
+              : [],
           recommendations: validRecs.slice(0, 4),
           suggestedLinks: Array.isArray(parsed.suggestedLinks)
             ? parsed.suggestedLinks
@@ -388,31 +425,34 @@ Pick up to 4 best-matching product slugs from Section 4. Never invent slugs.`,
             parsed.whatsappPrefill ||
               `Hi Classic Concepts! I am looking for help with: ${cleanQuery}`
           ),
+          modelUsed: LOCKED_CLAUDE_MODEL,
         };
 
         await setCachedAiResponse(
-          "concierge",
+          "concierge:v2",
           normalizedKey,
           cleanQuery,
           snapshot.catalogHash,
           safeToCache
         );
 
-        const hydrated = validRecs
+        let finalProducts = validRecs
           .map((r) => {
             const p = bySlug.get(r.slug);
             return p ? toCard(p, r.reason) : null;
           })
           .filter((x): x is ConciergeProductCard => Boolean(x));
 
-        const finalProducts =
-          hydrated.length > 0
-            ? hydrated
-            : localSmartProductMatch(snapshot, cleanQuery, { limit: 4 }).products.map((p) =>
-                toCard(p)
-              );
+        // Only backfill if Claude explicitly classified as product_match AND local also confirms a real product match
+        if (intent === "product_match" && finalProducts.length === 0) {
+          const localCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
+          if (localCheck.intent === "product_match") {
+            finalProducts = localCheck.products.map((p) => toCard(p));
+          }
+        }
 
         return {
+          intent,
           message: safeToCache.message,
           highlights: safeToCache.highlights,
           products: finalProducts,
@@ -421,35 +461,73 @@ Pick up to 4 best-matching product slugs from Section 4. Never invent slugs.`,
           whatsappNumber: snapshot.whatsappNumber,
           whatsappPrefill: safeToCache.whatsappPrefill,
           source: "ai",
+          modelUsed: LOCKED_CLAUDE_MODEL,
+          engineLabel: "Claude Haiku 5.5 • Live AI",
         };
+      }
+      lastAiError = "Claude response could not be parsed as JSON";
+    } else {
+      lastAiError = aiRes.error;
+      if (
+        lastAiError &&
+        /credit balance is too low|invalid x-api-key|authentication_error/i.test(
+          lastAiError
+        )
+      ) {
+        clientCircuitOpenUntil = Date.now() + 2 * 60 * 1000;
+        clientCircuitReason = lastAiError;
       }
     }
   }
 
   // 3. Seamless Non-Blocking Smart Local Fallback (when API key is not yet set or transient failure)
   const local = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
-  const suggestedLinks = [
-    ...local.matchedCategories.map((c) => ({ label: c.name, href: c.href })),
-    { label: "Explore Podiums", href: "/podiums" },
-    { label: "Get a Custom Quote", href: "/contact" },
-  ].slice(0, 3);
+
+  let engineLabel = "Local Catalog Match";
+  let aiDiagnostic: string | undefined;
+  if (!settings.clientApiKey) {
+    engineLabel = "Local Catalog Match • AI Key Not Set";
+    aiDiagnostic =
+      "ANTHROPIC_CLIENT_API_KEY is not configured yet. Add it in .env or Admin Settings to enable live Claude Haiku 5.5 replies.";
+  } else if (!settings.aiEnabled) {
+    engineLabel = "Local Catalog Match • AI Paused";
+    aiDiagnostic = "AI responses are currently paused in Admin Settings.";
+  } else if (lastAiError && /credit balance is too low/i.test(lastAiError)) {
+    engineLabel = "Local Catalog Match • AI Credits Exhausted";
+    aiDiagnostic = `Anthropic billing notice: ${lastAiError}`;
+  } else if (
+    lastAiError &&
+    /invalid x-api-key|authentication_error/i.test(lastAiError)
+  ) {
+    engineLabel = "Local Catalog Match • Invalid AI Key";
+    aiDiagnostic = `Anthropic API key error: ${lastAiError}`;
+  } else if (!allowAiGeneration) {
+    engineLabel = "Local Catalog Match • Rate Limit";
+    aiDiagnostic = "Per-visitor live AI budget reached; switched to instant catalog match.";
+  } else if (lastAiError) {
+    engineLabel = "Local Catalog Match • AI Fallback";
+    aiDiagnostic = `Claude Haiku 5.5 error: ${lastAiError}`;
+  }
+
+  const askedWhichAi = /\b(which ai|what ai|what model|which model)\b/i.test(cleanQuery);
+  const message =
+    askedWhichAi && engineLabel.startsWith("Local Catalog Match")
+      ? `ACRIO is configured for Claude Haiku 5.5, and right now it is answering in ${engineLabel} mode.`
+      : local.advisoryMessage;
 
   return {
-    message: local.advisoryMessage,
-    highlights: [
-      "We can print or engrave your company, school, or hotel logo on the front",
-      "Made from thick, glass-clear imported acrylic that does not turn yellow",
-    ],
+    intent: local.intent,
+    message,
+    highlights: local.highlights,
     products: local.products.map((p) => toCard(p)),
-    suggestedLinks,
-    followUpChips: [
-      "Show clear stage podiums",
-      "Display stands & holders",
-      "Custom trophies & awards",
-    ],
+    suggestedLinks: local.suggestedLinks,
+    followUpChips: local.followUpChips,
     whatsappNumber: snapshot.whatsappNumber,
-    whatsappPrefill: `Hi Classic Concepts! I am looking for acrylic products for: ${cleanQuery}`,
+    whatsappPrefill: local.whatsappPrefill,
     source: "smart-local",
+    modelUsed: "local-catalog",
+    engineLabel,
+    aiDiagnostic,
   };
 }
 
@@ -466,12 +544,16 @@ export async function runSmartCatalogSearch(
     limit?: number;
   }
 ): Promise<{
+  intent: LocalQueryIntent;
   products: ConciergeProductCard[];
   summary: string | null;
   matchedCategories: { name: string; slug: string; href: string }[];
   source: "ai" | "cache" | "smart-local";
+  modelUsed: string;
+  engineLabel: string;
 }> {
   const snapshot = await getKnowledgeSnapshot();
+  const settings = await getAiRuntimeSettings();
   const cleanQuery = (rawQuery || "").trim().slice(0, 300);
   const limit = options?.limit ?? 12;
 
@@ -481,6 +563,31 @@ export async function runSmartCatalogSearch(
     categorySlug: options?.categorySlug,
   });
 
+  const localEngineLabel = !settings.clientApiKey
+    ? "Local Catalog Match • AI Key Not Set"
+    : !settings.aiEnabled
+      ? "Local Catalog Match • AI Paused"
+      : "Local Catalog Match";
+
+  // For role introductions, greetings, or obvious off-topic inputs when typing in instant search, return cleanly with 0 products
+  if (
+    localResult.intent === "role_clarify" ||
+    localResult.intent === "greeting" ||
+    localResult.intent === "off_topic"
+  ) {
+    if (!options?.useAi) {
+      return {
+        intent: localResult.intent,
+        products: [],
+        summary: localResult.advisoryMessage,
+        matchedCategories: [],
+        source: "smart-local",
+        modelUsed: "local-catalog",
+        engineLabel: localEngineLabel,
+      };
+    }
+  }
+
   // For empty or 1-word exact SKU/keyword queries when useAi isn't explicitly requested, local match is instant (<1ms)
   const wordCount = cleanQuery.split(/\s+/).filter(Boolean).length;
   const shouldUseAi =
@@ -489,17 +596,21 @@ export async function runSmartCatalogSearch(
 
   if (!shouldUseAi) {
     return {
+      intent: localResult.intent,
       products: localResult.products.map((p) => toCard(p)),
       summary: cleanQuery ? localResult.advisoryMessage : null,
       matchedCategories: localResult.matchedCategories,
       source: "smart-local",
+      modelUsed: "local-catalog",
+      engineLabel: localEngineLabel,
     };
   }
 
-  const scopePrefix = `search:${options?.onlyPodiums ? "podiums" : "all"}:${options?.categorySlug || "any"}`;
+  const scopePrefix = `search:v2:${options?.onlyPodiums ? "podiums" : "all"}:${options?.categorySlug || "any"}`;
   const normalizedKey = normalizeQueryForCache(cleanQuery);
 
   type SearchCachedShape = {
+    intent?: LocalQueryIntent;
     summary: string;
     matches: { slug: string; reason?: string }[];
   };
@@ -529,65 +640,81 @@ export async function runSmartCatalogSearch(
       })
       .filter((x): x is ConciergeProductCard => Boolean(x));
 
-    if (cards.length > 0) {
-      return {
-        products: cards,
-        summary: cached.summary ? cleanAiPatterns(cached.summary) : null,
-        matchedCategories: localResult.matchedCategories,
-        source: "cache",
-      };
-    }
+    const cachedIntent = cached.intent || (cards.length > 0 ? "product_match" : "no_match");
+    return {
+      intent: cachedIntent,
+      products: cards,
+      summary: cached.summary ? cleanAiPatterns(cached.summary) : null,
+      matchedCategories: cards.length > 0 ? localResult.matchedCategories : [],
+      source: "cache",
+      modelUsed: LOCKED_CLAUDE_MODEL,
+      engineLabel: "Claude Haiku 5.5 • Instant Cache",
+    };
   }
 
-  const settings = await getAiRuntimeSettings();
   if (settings.clientApiKey && settings.aiEnabled) {
     const aiRes = await callClaudeHaiku({
       scope: "client",
       useCatalogSystemCache: true,
       maxTokens: 450,
       temperature: 0.15,
-      taskSystemInstruction: `You are Classic Concepts' Simple Product Search Helper.
-Given a customer's search query${options?.onlyPodiums ? " (restricted ONLY to Podiums)" : ""}${
+      taskSystemInstruction: `You are ACRIO, Classic Concepts' Product Search Helper running on Claude Haiku 5.5.
+Given a visitor's search query${options?.onlyPodiums ? " (restricted ONLY to Podiums)" : ""}${
         options?.categorySlug ? ` (within category "${options.categorySlug}")` : ""
-      }, write in plain everyday English (no em dashes, no technical jargon) and return STRICTLY valid JSON:
+      }, write in plain everyday English (no em dashes, no "16,000 sq. ft." or generic customisation slogans) and return STRICTLY valid JSON:
 {
-  "summary": "One short, simple sentence explaining what matches their search.",
+  "intent": "product_match | role_clarify | greeting | off_topic | no_match",
+  "summary": "One short, natural sentence answering or explaining what matches their query.",
   "matches": [
-    { "slug": "exact-slug-from-section-4", "reason": "Very short 5-8 word everyday reason" }
+    { "slug": "exact-slug-from-section-4", "reason": "Short 5-8 word everyday reason" }
   ]
 }
-Select up to ${Math.min(limit, 8)} best-matching product slugs from Section 4 in relevance order.`,
+If the input is a role introduction ("I am an engineer"), greeting, or off-topic query, set "matches": [] and write a polite clarifying or helpful summary. Otherwise select up to ${Math.min(limit, 8)} best-matching slugs from Section 4.`,
       userPrompt: `Search query: "${cleanQuery}"`,
     });
 
     if (aiRes.ok) {
       const parsed = extractJsonObject<SearchCachedShape>(aiRes.text);
       if (parsed && Array.isArray(parsed.matches)) {
-        const validMatches = parsed.matches
-          .filter((m) => bySlug.has(m.slug))
-          .map((m) => ({
-            slug: m.slug,
-            reason: m.reason ? cleanAiPatterns(m.reason) : undefined,
-          }));
-        if (validMatches.length > 0) {
-          const cleanSummary = parsed.summary ? cleanAiPatterns(parsed.summary) : "";
-          await setCachedAiResponse(
-            scopePrefix,
-            normalizedKey,
-            cleanQuery,
-            snapshot.catalogHash,
-            { summary: cleanSummary, matches: validMatches }
-          );
+        const intent: LocalQueryIntent =
+          parsed.intent &&
+          ["product_match", "role_clarify", "greeting", "off_topic", "no_match"].includes(
+            parsed.intent
+          )
+            ? parsed.intent
+            : parsed.matches.length > 0
+              ? "product_match"
+              : "no_match";
 
-          const aiCards = validMatches
-            .map((m) => {
-              const p = bySlug.get(m.slug)!;
-              if (options?.onlyPodiums && !p.isPodium) return null;
-              return toCard(p, m.reason);
-            })
-            .filter((x): x is ConciergeProductCard => Boolean(x));
+        const validMatches =
+          intent === "product_match"
+            ? parsed.matches
+                .filter((m) => bySlug.has(m.slug))
+                .map((m) => ({
+                  slug: m.slug,
+                  reason: m.reason ? cleanAiPatterns(m.reason) : undefined,
+                }))
+            : [];
 
-          // Merge any strong lexical matches not already included
+        const cleanSummary = parsed.summary ? cleanAiPatterns(parsed.summary) : "";
+        await setCachedAiResponse(
+          scopePrefix,
+          normalizedKey,
+          cleanQuery,
+          snapshot.catalogHash,
+          { intent, summary: cleanSummary, matches: validMatches }
+        );
+
+        const aiCards = validMatches
+          .map((m) => {
+            const p = bySlug.get(m.slug)!;
+            if (options?.onlyPodiums && !p.isPodium) return null;
+            return toCard(p, m.reason);
+          })
+          .filter((x): x is ConciergeProductCard => Boolean(x));
+
+        // Merge strong lexical matches ONLY when intent is product_match
+        if (intent === "product_match" && localResult.intent === "product_match") {
           const seen = new Set(aiCards.map((c) => c.slug));
           for (const lp of localResult.products) {
             if (!seen.has(lp.slug) && aiCards.length < limit) {
@@ -595,23 +722,29 @@ Select up to ${Math.min(limit, 8)} best-matching product slugs from Section 4 in
               seen.add(lp.slug);
             }
           }
-
-          return {
-            products: aiCards,
-            summary: cleanSummary || localResult.advisoryMessage,
-            matchedCategories: localResult.matchedCategories,
-            source: "ai",
-          };
         }
+
+        return {
+          intent,
+          products: aiCards,
+          summary: cleanSummary || localResult.advisoryMessage,
+          matchedCategories: aiCards.length > 0 ? localResult.matchedCategories : [],
+          source: "ai",
+          modelUsed: LOCKED_CLAUDE_MODEL,
+          engineLabel: "Claude Haiku 5.5 • Live AI",
+        };
       }
     }
   }
 
   return {
+    intent: localResult.intent,
     products: localResult.products.map((p) => toCard(p)),
     summary: localResult.advisoryMessage,
     matchedCategories: localResult.matchedCategories,
     source: "smart-local",
+    modelUsed: "local-catalog",
+    engineLabel: localEngineLabel,
   };
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Send, Loader2, MessageCircle, Sparkles, Wand2, Check, X } from "lucide-react";
+import { Send, Loader2, Sparkles, Wand2, Check, X } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -284,7 +285,7 @@ export function ReplyForm({
             onClick={handleWhatsAppReply}
             className="flex items-center justify-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#1ebe57] transition-all shadow-sm"
           >
-            <MessageCircle size={19} />
+            <WhatsAppIcon size={19} />
             Reply on WhatsApp
           </button>
         )}

@@ -9,8 +9,9 @@ import {
   X,
   ArrowRight,
   CheckCircle2,
-  MessageCircle,
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { useInlineEdit } from "@/components/inline-edit/InlineEditProvider";
 import type { ConciergeProductCard, ConciergeResponse } from "@/lib/ai";
 
 interface ShopSmartSearchBarProps {
@@ -36,6 +37,7 @@ export function ShopSmartSearchBar({
   onlyPodiums = false,
   placeholder = "Search products, SKU, or talk to ACRIO in your own words...",
 }: ShopSmartSearchBarProps) {
+  const { isAdmin } = useInlineEdit();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ConciergeProductCard[] | null>(null);
@@ -55,36 +57,40 @@ export function ShopSmartSearchBar({
     }
     setLoading(true);
     try {
-      const [searchRes, conciergeRes] = await Promise.all([
-        fetch(
-          `/api/ai/search?q=${encodeURIComponent(clean)}&limit=12${
-            onlyPodiums ? "&podiums=1" : ""
-          }&ai=1`
-        ),
-        fetch("/api/ai/concierge", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: onlyPodiums ? `Acrylic podium requirement: ${clean}` : clean,
-          }),
+      const conciergeRes = await fetch("/api/ai/concierge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: onlyPodiums ? `${clean}` : clean,
         }),
-      ]);
-      const searchJson = await searchRes.json();
+      });
       const conciergeJson = (await conciergeRes.json()) as ConciergeResponse;
 
-      const searchProducts: ConciergeProductCard[] = Array.isArray(
-        searchJson.products
-      )
-        ? searchJson.products
-        : [];
-      const mergedProducts =
-        onlyPodiums || searchProducts.length > 0
-          ? searchProducts
-          : conciergeJson.products || [];
+      if (conciergeJson.intent && conciergeJson.intent !== "product_match") {
+        setResults([]);
+        setSummary(conciergeJson.message || null);
+        setAcrioData(conciergeJson);
+        return;
+      }
 
-      setResults(mergedProducts);
-      setSummary(conciergeJson.message || searchJson.summary || null);
-      setAcrioData(conciergeJson);
+      if (onlyPodiums) {
+        const searchRes = await fetch(
+          `/api/ai/search?q=${encodeURIComponent(clean)}&limit=12&podiums=1`
+        );
+        const searchJson = await searchRes.json();
+        const searchProducts: ConciergeProductCard[] = Array.isArray(
+          searchJson.products
+        )
+          ? searchJson.products
+          : [];
+        setResults(searchProducts);
+        setSummary(conciergeJson.message || searchJson.summary || null);
+        setAcrioData(conciergeJson);
+      } else {
+        setResults(conciergeJson.products || []);
+        setSummary(conciergeJson.message || null);
+        setAcrioData(conciergeJson);
+      }
     } catch {
       setResults([]);
     } finally {
@@ -175,16 +181,36 @@ export function ShopSmartSearchBar({
 
       {results !== null && (
         <div className="max-w-5xl mx-auto mt-5 p-4 sm:p-6 rounded-3xl bg-white border border-indigo-200 shadow-lg space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap text-sm font-bold text-slate-900">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[11px] font-extrabold">
                 <Sparkles className="w-3 h-3 text-amber-300" />
                 ACRIO
               </span>
-              <span>
-                Found {results.length} matching{" "}
-                {onlyPodiums ? "podiums" : "products"}
-              </span>
+              {acrioData?.engineLabel && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                    acrioData.source === "ai" || acrioData.source === "cache"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                      : "bg-amber-50 border-amber-200 text-amber-800"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      acrioData.source === "ai" || acrioData.source === "cache"
+                        ? "bg-emerald-500"
+                        : "bg-amber-500"
+                    }`}
+                  />
+                  {acrioData.engineLabel}
+                </span>
+              )}
+              {results.length > 0 && (
+                <span>
+                  Found {results.length} matching{" "}
+                  {onlyPodiums ? "podiums" : "products"}
+                </span>
+              )}
             </div>
             <button
               type="button"
@@ -202,6 +228,11 @@ export function ShopSmartSearchBar({
           {summary && (
             <div className="text-xs sm:text-sm text-slate-800 bg-gradient-to-r from-indigo-50/80 to-blue-50/60 border border-indigo-100 px-4 py-3 rounded-2xl space-y-2">
               <p className="leading-relaxed font-medium">{summary}</p>
+              {isAdmin && acrioData?.aiDiagnostic && (
+                <p className="text-[11px] text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-lg px-2.5 py-1.5">
+                  <strong>Admin Note:</strong> {acrioData.aiDiagnostic}
+                </p>
+              )}
               {acrioData?.highlights && acrioData.highlights.length > 0 && (
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
                   {acrioData.highlights.map((h, i) => (
@@ -218,7 +249,7 @@ export function ShopSmartSearchBar({
             </div>
           )}
 
-          {results.length > 0 ? (
+          {results.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {results.map((prod) => (
                 <Link
@@ -251,10 +282,6 @@ export function ShopSmartSearchBar({
                 </Link>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-slate-500 py-3 text-center">
-              No direct catalog match yet. Describe your size or logo need and our factory team will custom-make it for you!
-            </p>
           )}
 
           {acrioData && (
@@ -280,10 +307,10 @@ export function ShopSmartSearchBar({
                 )}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1da851] hover:bg-[#158c42] text-white text-xs font-bold transition-colors shadow-2xs"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>Discuss Custom Size on WhatsApp</span>
+                <WhatsAppIcon size={14} className="shrink-0" />
+                <span>Chat on WhatsApp</span>
               </a>
             </div>
           )}

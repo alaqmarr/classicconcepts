@@ -10,11 +10,12 @@ import {
   ArrowRight,
   Tag,
   CheckCircle2,
-  MessageCircle,
   RotateCcw,
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { useInlineEdit } from "@/components/inline-edit/InlineEditProvider";
 import type { ConciergeProductCard, ConciergeResponse } from "@/lib/ai";
+import type { LocalQueryIntent } from "@/lib/ai-context";
 
 const DISMISS_STORAGE_KEY = "cc_concierge_dismissed_until";
 
@@ -27,10 +28,13 @@ export function openGlobalSearchModal(initialQuery?: string) {
 }
 
 interface SearchApiResponse {
+  intent?: LocalQueryIntent;
   products: ConciergeProductCard[];
   summary: string | null;
   matchedCategories: { name: string; slug: string }[];
   source: "ai" | "cache" | "smart-local";
+  modelUsed?: string;
+  engineLabel?: string;
 }
 
 const ACRIO_SEARCH_PROMPTS = [
@@ -61,8 +65,14 @@ const ACRIO_SEARCH_PROMPTS = [
 ];
 
 export function GlobalSearchModal() {
-  const { isAdmin, popupEnabled, popupDelaySeconds, statusLoaded } =
-    useInlineEdit();
+  const {
+    isAdmin,
+    clientAiConfigured,
+    aiEnabled,
+    popupEnabled,
+    popupDelaySeconds,
+    statusLoaded,
+  } = useInlineEdit();
 
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -71,6 +81,7 @@ export function GlobalSearchModal() {
   const [data, setData] = useState<SearchApiResponse | null>(null);
   const [acrioReply, setAcrioReply] = useState<ConciergeResponse | null>(null);
   const debounceRef = useRef<number | null>(null);
+  const skipNextDebounceRef = useRef(false);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -107,21 +118,24 @@ export function GlobalSearchModal() {
   const talkToAcrioInSearch = useCallback(async (q: string) => {
     const clean = q.trim();
     if (!clean) return;
+    if (debounceRef.current) {
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    skipNextDebounceRef.current = true;
     setQuery(clean);
     setAcrioLoading(true);
     try {
-      const [conciergeRes, searchRes] = await Promise.all([
-        fetch("/api/ai/concierge", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: clean }),
-        }),
-        fetch(`/api/ai/search?q=${encodeURIComponent(clean)}&limit=10&ai=1`),
-      ]);
+      const conciergeRes = await fetch("/api/ai/concierge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: clean }),
+      });
       const conciergeJson = (await conciergeRes.json()) as ConciergeResponse;
-      const searchJson = (await searchRes.json()) as SearchApiResponse;
       setAcrioReply(conciergeJson);
-      setData(searchJson);
+      if (conciergeJson.intent && conciergeJson.intent !== "product_match") {
+        setData(null);
+      }
     } catch {
       // Non-blocking fallback
     } finally {
@@ -186,6 +200,11 @@ export function GlobalSearchModal() {
     if (!isOpen) return;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
 
+    if (skipNextDebounceRef.current) {
+      skipNextDebounceRef.current = false;
+      return;
+    }
+
     if (!query.trim()) {
       setData(null);
       setAcrioReply(null);
@@ -201,10 +220,11 @@ export function GlobalSearchModal() {
     };
   }, [query, isOpen, executeInstantSearch]);
 
-  const displayProducts =
-    acrioReply?.products && acrioReply.products.length > 0
-      ? acrioReply.products
-      : data?.products || [];
+  const displayProducts = acrioReply
+    ? acrioReply.products || []
+    : data?.products || [];
+
+  const isClaudeActive = clientAiConfigured && aiEnabled;
 
   return (
     <>
@@ -278,6 +298,38 @@ export function GlobalSearchModal() {
               </button>
             </form>
 
+            {/* Live AI Engine Transparency Bar */}
+            {statusLoaded && (
+              <div className="px-4 py-1.5 bg-slate-50/90 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      isClaudeActive ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                  />
+                  <span>
+                    Active Engine:{" "}
+                    <strong className="text-slate-800">
+                      {isClaudeActive
+                        ? "Claude Haiku 5.5 (Live AI)"
+                        : !clientAiConfigured
+                          ? "Local Catalog Match (Client AI Key Not Set)"
+                          : "Local Catalog Match (AI Paused)"}
+                    </strong>
+                  </span>
+                </div>
+                {isAdmin && !isClaudeActive && (
+                  <Link
+                    href="/admin/settings"
+                    onClick={handleClose}
+                    className="text-[#0056b3] hover:underline font-bold"
+                  >
+                    Configure AI Key &rarr;
+                  </Link>
+                )}
+              </div>
+            )}
+
             {/* Results & Direct ACRIO Conversation Area */}
             <div className="max-h-[72vh] overflow-y-auto p-4 sm:p-5 space-y-4">
               {!query.trim() && (
@@ -349,15 +401,30 @@ export function GlobalSearchModal() {
               {/* Direct ACRIO Conversational Reply inside Search */}
               {acrioReply && (
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/80 border border-indigo-200 space-y-3 shadow-2xs">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 mt-0.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0">
                         <Sparkles className="w-2.5 h-2.5 text-amber-300" />
                         ACRIO
                       </span>
-                      <p className="text-xs sm:text-sm font-medium text-slate-800 leading-relaxed">
-                        {acrioReply.message}
-                      </p>
+                      {acrioReply.engineLabel && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                            acrioReply.source === "ai" || acrioReply.source === "cache"
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                              : "bg-amber-50 border-amber-200 text-amber-800"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              acrioReply.source === "ai" || acrioReply.source === "cache"
+                                ? "bg-emerald-500"
+                                : "bg-amber-500"
+                            }`}
+                          />
+                          {acrioReply.engineLabel}
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -372,6 +439,16 @@ export function GlobalSearchModal() {
                       <span>Reset</span>
                     </button>
                   </div>
+
+                  <p className="text-xs sm:text-sm font-medium text-slate-800 leading-relaxed">
+                    {acrioReply.message}
+                  </p>
+
+                  {isAdmin && acrioReply.aiDiagnostic && (
+                    <p className="text-[11px] text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-lg px-2.5 py-1.5">
+                      <strong>Admin Note:</strong> {acrioReply.aiDiagnostic}
+                    </p>
+                  )}
 
                   {acrioReply.highlights?.length > 0 && (
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
@@ -428,10 +505,10 @@ export function GlobalSearchModal() {
                       )}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1da851] hover:bg-[#158c42] text-white text-[11px] font-bold transition-colors shadow-2xs"
                     >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Custom Size / Quote on WhatsApp</span>
+                      <WhatsAppIcon size={14} className="shrink-0" />
+                      <span>Chat on WhatsApp</span>
                     </a>
                   </div>
                 </div>
@@ -454,23 +531,25 @@ export function GlobalSearchModal() {
                 </div>
               )}
 
-              {data?.matchedCategories && data.matchedCategories.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
-                    <Tag className="w-3 h-3" /> Categories:
-                  </span>
-                  {data.matchedCategories.map((c) => (
-                    <Link
-                      key={c.slug}
-                      href={`/shop/c/${c.slug}`}
-                      onClick={handleClose}
-                      className="px-2.5 py-1 rounded-full bg-blue-50 text-[#0056b3] text-xs font-bold hover:bg-[#0056b3] hover:text-white transition-colors"
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
+              {displayProducts.length > 0 &&
+                data?.matchedCategories &&
+                data.matchedCategories.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                      <Tag className="w-3 h-3" /> Categories:
+                    </span>
+                    {data.matchedCategories.map((c) => (
+                      <Link
+                        key={c.slug}
+                        href={`/shop/c/${c.slug}`}
+                        onClick={handleClose}
+                        className="px-2.5 py-1 rounded-full bg-blue-50 text-[#0056b3] text-xs font-bold hover:bg-[#0056b3] hover:text-white transition-colors"
+                      >
+                        {c.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
 
               {query.trim() && displayProducts.length > 0 && (
                 <div className="divide-y divide-slate-100">
@@ -527,11 +606,13 @@ export function GlobalSearchModal() {
               {query.trim() &&
                 !loading &&
                 !acrioLoading &&
+                !acrioReply &&
                 data &&
+                data.intent === "no_match" &&
                 displayProducts.length === 0 && (
-                  <div className="py-8 text-center space-y-3">
+                  <div className="py-6 text-center space-y-3">
                     <p className="text-sm text-slate-600">
-                      No exact catalog item matched &ldquo;{query}&rdquo; yet.
+                      No exact catalog item matched &ldquo;{query}&rdquo;.
                     </p>
                     <button
                       type="button"
@@ -539,7 +620,7 @@ export function GlobalSearchModal() {
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0056b3] text-white text-xs font-bold hover:bg-blue-700 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Talk to ACRIO for Closest Match or Custom Size</span>
+                      <span>Ask ACRIO About Custom Work</span>
                     </button>
                   </div>
                 )}
