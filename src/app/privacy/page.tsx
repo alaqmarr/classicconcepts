@@ -1,1 +1,5 @@
-export { dynamic, metadata, default } from "../privacy-policy/page";
+import PrivacyPolicyPage, { metadata } from "../privacy-policy/page";
+
+export const dynamic = "force-dynamic";
+export { metadata };
+export default PrivacyPolicyPage;
