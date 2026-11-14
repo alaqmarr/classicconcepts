@@ -121,6 +121,7 @@ export async function callClaudeHaiku(options: {
   scope: AiAgentScope;
   taskSystemInstruction: string;
   userPrompt: string;
+  conversationMessages?: { role: "user" | "assistant"; content: string }[];
   maxTokens?: number;
   temperature?: number;
   useCatalogSystemCache?: boolean;
@@ -177,34 +178,62 @@ export async function callClaudeHaiku(options: {
       : agent.coreSystemRules,
   });
 
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": scopedKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "prompt-caching-2024-07-31",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: options.maxTokens ?? 600,
-        temperature: options.temperature ?? 0.25,
-        system: systemBlocks,
-        messages: [
+  const apiMessages: { role: "user" | "assistant"; content: string }[] =
+    options.conversationMessages && options.conversationMessages.length > 0
+      ? options.conversationMessages
+      : [
           {
             role: "user",
             content: options.userPrompt,
           },
-        ],
-      }),
-      signal: AbortSignal.timeout(18000),
-    });
+        ];
 
-    const payload: any = await response.json().catch(() => null);
+  const wireCandidates = [model, "claude-haiku-4-5-20251001"];
 
-    if (!response.ok) {
-      const errMsg = payload?.error?.message || `HTTP ${response.status}`;
+  try {
+    let payload: any = null;
+    let responseOk = false;
+    let statusCode = 500;
+
+    for (const wireModel of wireCandidates) {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": scopedKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "prompt-caching-2024-07-31",
+        },
+        body: JSON.stringify({
+          model: wireModel,
+          max_tokens: options.maxTokens ?? 600,
+          temperature: options.temperature ?? 0.25,
+          system: systemBlocks,
+          messages: apiMessages,
+        }),
+        signal: AbortSignal.timeout(18000),
+      });
+
+      statusCode = response.status;
+      payload = await response.json().catch(() => null);
+      if (response.ok) {
+        responseOk = true;
+        break;
+      }
+
+      const errType = String(payload?.error?.type || "");
+      const errMsg = String(payload?.error?.message || "");
+      const isModelAliasNotFound =
+        response.status === 404 ||
+        errType === "not_found_error" ||
+        /model:\s*claude/i.test(errMsg);
+      if (!isModelAliasNotFound) {
+        break;
+      }
+    }
+
+    if (!responseOk) {
+      const errMsg = payload?.error?.message || `HTTP ${statusCode}`;
       return {
         ok: false,
         text: "",
@@ -252,17 +281,50 @@ export async function callClaudeHaiku(options: {
   }
 }
 
+export interface ConciergeHistoryTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
+function extractOrderIdCandidateFromText(input: string): string | null {
+  const m =
+    input.match(
+      /\b((?:CC|CE53|CE)-[A-Z0-9-]{3,20})\b/i
+    ) ||
+    input.match(
+      /\b(?:order|tracking)\s*(?:id|no|number|#)?\s*[:#-]?\s*([A-Z0-9-]{5,24})\b/i
+    );
+  return m?.[1] ? m[1].trim() : null;
+}
+
 /**
  * Customer Concierge: Understands even vague user descriptions ("we run a hotel", "college stage",
- * "jewellery shop", "need 50 awards") with two-tier caching + zero-blocking fallback.
+ * "jewellery shop", "need 50 awards"), keeps multi-turn conversations open with full memory,
+ * and checks live order tracking across Classic Concepts (:3003) and WhatsApp Hub (:3007).
  */
 export async function runCustomerConcierge(
   rawQuery: string,
-  allowAiGeneration = true
+  allowAiGeneration = true,
+  history?: ConciergeHistoryTurn[]
 ): Promise<ConciergeResponse> {
   const snapshot = await getKnowledgeSnapshot();
   const settings = await getAiRuntimeSettings();
   const cleanQuery = (rawQuery || "").trim().slice(0, 500);
+  const cleanHistory = Array.isArray(history)
+    ? history
+        .filter(
+          (h) =>
+            (h?.role === "user" || h?.role === "assistant") &&
+            typeof h?.text === "string" &&
+            h.text.trim().length > 0
+        )
+        .slice(-10)
+        .map((h) => ({
+          role: h.role,
+          text: h.text.trim().slice(0, 500),
+        }))
+    : [];
+  const hasConversationContext = cleanHistory.length > 0;
 
   if (!cleanQuery) {
     const local = localSmartProductMatch(snapshot, "", { limit: 4 });
@@ -284,9 +346,62 @@ export async function runCustomerConcierge(
     };
   }
 
-  const normalizedKey = normalizeQueryForCache(cleanQuery);
+  // 0. Live Order ID Lookup (0 AI credits, instant database + :3007 tracking check)
+  const orderIdCandidate = extractOrderIdCandidateFromText(cleanQuery);
+  if (orderIdCandidate) {
+    try {
+      const hubBase = (
+        process.env.CCWHATSAPP_INTERNAL_URL || "http://127.0.0.1:3007"
+      ).replace(/\/+$/, "");
+      const trackRes = await fetch(
+        `${hubBase}/api/tracking/lookup?id=${encodeURIComponent(orderIdCandidate)}&brand=CLASSIC_CONCEPTS`,
+        { signal: AbortSignal.timeout(3000) }
+      ).catch(() => null);
+      if (trackRes?.ok) {
+        const trackJson: any = await trackRes.json().catch(() => null);
+        if (trackJson?.ok && trackJson?.tracking) {
+          const t = trackJson.tracking;
+          const statusFriendly = String(t.shipmentStatus || "IN_PRODUCTION").replace(/_/g, " ");
+          const msg = `Order ${t.orderId} (${t.brandLabel || "Classic Concepts"}) is currently ${statusFriendly}.${
+            t.itemsSummary ? ` Items: ${t.itemsSummary}.` : ""
+          }${
+            t.awbNumber ? ` Courier: ${t.providerName || "Partner"} (AWB ${t.awbNumber}).` : ""
+          }`;
+          return {
+            intent: "browse",
+            message: cleanAiPatterns(msg),
+            highlights: [
+              `Status: ${statusFriendly}`,
+              ...(t.estimatedDelivery ? [`Estimated delivery: ${t.estimatedDelivery}`] : []),
+            ],
+            products: [],
+            suggestedLinks: [
+              { label: `Track ${t.orderId}`, href: `/tracking?id=${encodeURIComponent(t.orderId)}` },
+              { label: "Contact Support", href: "/contact" },
+            ],
+            followUpChips: [
+              "Check another order ID",
+              "Browse clear stage podiums",
+              "Ask about custom fabrication",
+            ],
+            whatsappNumber: snapshot.whatsappNumber,
+            whatsappPrefill: `Hi Classic Concepts, I am checking order ${t.orderId}.`,
+            source: "smart-local",
+            modelUsed: "order-db-lookup",
+            engineLabel: "Live Order Lookup",
+          };
+        }
+      }
+    } catch {
+      // Fall through cleanly
+    }
+  }
 
-  // 1. Check Persistent Response Cache FIRST (0 AI credits!)
+  const normalizedKey = hasConversationContext
+    ? ""
+    : normalizeQueryForCache(cleanQuery);
+
+  // 1. Check Persistent Response Cache FIRST for single-turn queries (0 AI credits!)
   type CachedShape = {
     intent?: LocalQueryIntent;
     message: string;
@@ -298,11 +413,13 @@ export async function runCustomerConcierge(
     modelUsed?: string;
   };
 
-  const cached = await getCachedAiResponse<CachedShape>(
-    "concierge:v2",
-    normalizedKey,
-    snapshot.catalogHash
-  );
+  const cached = !hasConversationContext
+    ? await getCachedAiResponse<CachedShape>(
+        "concierge:v2",
+        normalizedKey,
+        snapshot.catalogHash
+      )
+    : null;
 
   if (cached) {
     const bySlug = new Map(snapshot.products.map((p) => [p.slug, p]));
@@ -345,23 +462,47 @@ export async function runCustomerConcierge(
     settings.clientApiKey &&
     settings.aiEnabled
   ) {
+    const claudeTurns: { role: "user" | "assistant"; content: string }[] = [];
+    for (const h of cleanHistory) {
+      const prev = claudeTurns[claudeTurns.length - 1];
+      if (prev && prev.role === h.role) {
+        prev.content = `${prev.content}\n${h.text}`;
+      } else {
+        claudeTurns.push({ role: h.role, content: h.text });
+      }
+    }
+    while (claudeTurns.length > 0 && claudeTurns[0].role !== "user") {
+      claudeTurns.shift();
+    }
+    const finalUserMsg = hasConversationContext
+      ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.]\nVisitor follow-up: "${cleanQuery}"`
+      : `Customer input: "${cleanQuery}"`;
+    if (claudeTurns.length > 0 && claudeTurns[claudeTurns.length - 1].role === "user") {
+      claudeTurns[claudeTurns.length - 1].content = `${claudeTurns[claudeTurns.length - 1].content}\n\n${finalUserMsg}`;
+    } else {
+      claudeTurns.push({ role: "user", content: finalUserMsg });
+    }
+
     const aiRes = await callClaudeHaiku({
       scope: "client",
       useCatalogSystemCache: true,
       maxTokens: 550,
       temperature: 0.25,
+      conversationMessages: claudeTurns,
       taskSystemInstruction: `You are ACRIO, Classic Concepts' Friendly Product Helper running on Claude Haiku 5.5.
-A website visitor has typed a product search, a role introduction, a greeting, or a general message.
+A website visitor is chatting with you inside our search & concierge modal.
 Write everything in simple everyday layman English. Never use em dashes ("—") or fancy buzzwords.
-IMPORTANT ANTI-REPETITION & INTENT RULES:
+CONVERSATION CONTINUITY & ANTI-REPETITION RULES:
+- Keep the conversation open and helpful! If the visitor gives a short or vague message (like "price?", "something smaller", "for our office", "need 10"), use the conversation history above to understand what they mean, suggest matching options, and ask 1 natural follow-up question.
+- Never repeat "Hello" or "Welcome" on follow-up turns.
 - Do NOT mention "16,000 sq. ft. factory" unless the visitor specifically asks about our factory, manufacturing facility, or bulk capacity.
 - Do NOT repeat generic lines about "custom logo, size, or LED light" on every query. Only mention custom work if they ask for customisation or if no ready item matches.
-- Classify the visitor's message first:
-  * "product_match": They want a product, gift, or venue setup (e.g. "gift for students", "stage podium", "hotel stands"). Pick 1 to 4 genuinely relevant slugs from Section 4.
-  * "role_clarify": They ONLY state their job/role without saying what item they want (e.g. "I am an engineer", "I am a doctor", "we are architects"). Greet them, ask 1 short clarifying question tailored to their profession, and set "recommendations": [] and "highlights": [].
+- Classify the visitor's message:
+  * "product_match": They want a product, gift, or venue setup (or are refining an earlier product request). Pick 1 to 4 genuinely relevant slugs from Section 4.
+  * "role_clarify": They ONLY state their job/role or a vague problem without saying what item they want. Ask 1 short, friendly clarifying question and set "recommendations": [] and "highlights": [].
   * "greeting": Greeting or question about you/which AI model is used (confirm you are ACRIO powered by Claude Haiku 5.5). Set "recommendations": [] and "highlights": [].
-  * "off_topic": Unrelated topic (weather, food, sports, coding, random words). Politely state that you help with Classic Concepts acrylic products and set "recommendations": [] and "highlights": [].
-  * "no_match": Product request that has no matching item in Section 4. Explain honestly and set "recommendations": [] and "highlights": [].
+  * "off_topic": Unrelated topic (weather, food, sports, coding). Politely state that you help with Classic Concepts acrylic products and set "recommendations": [] and "highlights": [].
+  * "no_match": Product request that has no matching item in Section 4. Explain honestly, offer custom size options if acrylic-related, and set "recommendations": [] and "highlights": [].
 
 Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with this exact schema:
 {
@@ -377,7 +518,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
   "followUpChips": ["Specific clickable follow-up 1", "Specific follow-up 2", "Specific follow-up 3"],
   "whatsappPrefill": "Simple ready-to-send WhatsApp message matching their actual request"
 }`,
-      userPrompt: `Customer input: "${cleanQuery}"`,
+      userPrompt: finalUserMsg,
     });
 
     if (aiRes.ok) {
@@ -428,13 +569,15 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
           modelUsed: LOCKED_CLAUDE_MODEL,
         };
 
-        await setCachedAiResponse(
-          "concierge:v2",
-          normalizedKey,
-          cleanQuery,
-          snapshot.catalogHash,
-          safeToCache
-        );
+        if (!hasConversationContext && normalizedKey) {
+          await setCachedAiResponse(
+            "concierge:v2",
+            normalizedKey,
+            cleanQuery,
+            snapshot.catalogHash,
+            safeToCache
+          );
+        }
 
         let finalProducts = validRecs
           .map((r) => {

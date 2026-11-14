@@ -25,9 +25,27 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Invalid order ID or status" }, { status: 400 });
     }
 
-    await prisma.cartOrder.update({
+    const updatedOrder = await prisma.cartOrder.update({
       where: { id: orderId },
       data: { status },
+      include: { items: true },
+    });
+
+    const { pushWebsiteOrderToWhatsAppHub } = await import("@/lib/whatsapp-bridge");
+    void pushWebsiteOrderToWhatsAppHub({
+      orderId: updatedOrder.id,
+      displayOrderId: `CC-${updatedOrder.id.slice(-6).toUpperCase()}`,
+      name: updatedOrder.name,
+      email: updatedOrder.email,
+      phone: updatedOrder.phone,
+      itemsSummary:
+        updatedOrder.items
+          .map((it) => `${it.quantity}x ${it.productName}`)
+          .join(", ") || "Website Order",
+      totalAmountInr: updatedOrder.total || 0,
+      status: updatedOrder.status,
+      city: updatedOrder.city,
+      state: updatedOrder.state,
     });
 
     revalidatePath("/admin/orders");

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendAdminOrderNotification, sendClientOrderThankYou } from "@/lib/email";
+import { pushWebsiteOrderToWhatsAppHub } from "@/lib/whatsapp-bridge";
 
 export async function POST(req: Request) {
   try {
@@ -80,7 +81,12 @@ export async function POST(req: Request) {
       price: item.price ?? undefined,
     }));
 
-    // Send Emails asynchronously
+    const displayOrderId = `CC-${order.id.slice(-6).toUpperCase()}`;
+    const itemsSummary = sanitizedItems
+      .map((i: any) => `${i.quantity}x ${i.productName}`)
+      .join(", ");
+
+    // Send Emails + sync Order ID to WhatsApp Hub (:3007) for instant order tracking
     Promise.all([
       sendAdminOrderNotification({
         name,
@@ -94,11 +100,28 @@ export async function POST(req: Request) {
         items: emailItems,
       }),
       sendClientOrderThankYou({ name, email, items: emailItems }),
+      pushWebsiteOrderToWhatsAppHub({
+        orderId: order.id,
+        displayOrderId,
+        name,
+        email,
+        phone,
+        itemsSummary,
+        totalAmountInr: cartTotal,
+        status: order.status,
+        city,
+        state,
+      }),
     ]).catch((err) => {
-      console.error("Email sending failed for order:", err);
+      console.error("Email / WhatsApp order sync failed:", err);
     });
 
-    return NextResponse.json({ success: true, orderId: order.id });
+    return NextResponse.json({
+      success: true,
+      orderId: order.id,
+      displayOrderId,
+      trackingUrl: `https://track.ccapl.cc/${displayOrderId}`,
+    });
   } catch (error) {
     console.error("Checkout processing error:", error);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
