@@ -438,7 +438,7 @@ export function Footer({
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-white/50">
+        <div className="border-t border-white/10 pt-6 flex flex-col lg:flex-row justify-between items-center gap-4 text-xs text-white/50">
           <p className="font-medium">
             Website Managed by{" "}
             <a
@@ -450,6 +450,28 @@ export function Footer({
               The Web Sensei
             </a>
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-white/70 font-medium">
+            <Link
+              href="/privacy-policy"
+              className="hover:text-white transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <span className="text-white/25">|</span>
+            <Link
+              href="/terms-of-service"
+              className="hover:text-white transition-colors"
+            >
+              Terms of Service
+            </Link>
+            <span className="text-white/25">|</span>
+            <Link
+              href="/data-deletion"
+              className="hover:text-white transition-colors"
+            >
+              Data Deletion
+            </Link>
+          </div>
           <p className="font-semibold text-center md:text-left text-white/60">
             Copyright &copy; {new Date().getFullYear()} - All Rights Reserved -
             Classic Concepts
