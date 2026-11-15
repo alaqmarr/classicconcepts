@@ -266,7 +266,16 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
         }),
       ]);
 
-      const products: CachedProductSummary[] = productsRaw.map((p) => {
+      const products: CachedProductSummary[] = productsRaw
+        .filter((p) => {
+          const cleanId = String(p.id || "").trim().toLowerCase();
+          const cleanName = String(p.name || "").trim().toLowerCase();
+          if (!cleanName || cleanId === "test" || cleanName === "test" || /^test\s+product\b/i.test(cleanName)) {
+            return false;
+          }
+          return true;
+        })
+        .map((p) => {
         const bullets = extractBulletsFromContent(p.descriptionHtml, p.description).slice(0, 5);
         const features = p.features.map((f) => f.text);
         const specs = p.specifications.map((s) => ({
@@ -1840,39 +1849,34 @@ export function localSmartProductMatch(
 
     // Keep gift/student searches focused on awards, mementos, desk items rather than full-size stage podiums
     if (isGiftOrAwardIntent && p.isPodium) {
-      score -= 25;
+      score = -1000;
     }
 
-    if (maxPrice !== null) {
-      if (typeof p.effectivePrice === "number" && p.effectivePrice > 0) {
-        if (p.effectivePrice <= maxPrice) {
+    const topicalScore = score;
+
+    if (maxPrice !== null || minPriceFilter !== null) {
+      const hasValidPrice =
+        typeof p.effectivePrice === "number" && p.effectivePrice > 0;
+      if (!hasValidPrice) {
+        score = -1000;
+      } else {
+        if (maxPrice !== null && p.effectivePrice! > maxPrice) {
+          score = -1000;
+        } else if (maxPrice !== null) {
           score += 18;
-        } else {
-          score = -1000;
         }
-      }
-    }
-    if (minPriceFilter !== null) {
-      if (typeof p.effectivePrice === "number" && p.effectivePrice > 0) {
-        if (p.effectivePrice >= minPriceFilter) {
-          score += 12;
-        } else {
+        if (minPriceFilter !== null && p.effectivePrice! < minPriceFilter) {
           score = -1000;
+        } else if (minPriceFilter !== null) {
+          score += 12;
         }
       }
     }
 
-    return { product: p, score };
+    return { product: p, score, topicalScore };
   });
 
-  const validScored = scored.filter((item) => item.score >= 16);
-  const pricedValid = validScored.filter(
-    (item) => typeof item.product.effectivePrice === "number" && item.product.effectivePrice > 0
-  );
-  const filteredScored =
-    (maxPrice !== null || minPriceFilter !== null) && pricedValid.length > 0
-      ? pricedValid
-      : validScored;
+  const filteredScored = scored.filter((item) => item.score >= 16);
 
   const matched = filteredScored
     .sort((a, b) => {
@@ -1887,12 +1891,32 @@ export function localSmartProductMatch(
     .map((item) => item.product);
 
   if (matched.length === 0) {
+    const topicalPriced = scored
+      .filter(
+        (item) =>
+          item.topicalScore >= 16 &&
+          typeof item.product.effectivePrice === "number" &&
+          item.product.effectivePrice > 0
+      )
+      .sort(
+        (a, b) =>
+          (a.product.effectivePrice || 0) - (b.product.effectivePrice || 0)
+      );
+    const lowestStartingPrice = topicalPriced[0]?.product.effectivePrice ?? null;
+    const budgetMissMsg =
+      (maxPrice !== null || minPriceFilter !== null) && lowestStartingPrice !== null
+        ? `We do not have a ready catalog option within that budget for "${cleanRaw}". Our ready options in this category start from ₹${lowestStartingPrice.toLocaleString("en-IN")}. Let us know if you would like to view those options or message our team on WhatsApp.`
+        : `We could not find a ready catalog item matching "${cleanRaw}". Tell me how you plan to use it, or message our team on WhatsApp if you want to check whether we can make it in acrylic.`;
+
     return {
       intent: "no_match",
       products: [],
       matchedCategories: [],
-      advisoryMessage: `We could not find a ready catalog item matching "${cleanRaw}". Tell me how you plan to use it, or message our team on WhatsApp if you want to check whether we can make it in acrylic.`,
-      highlights: [],
+      advisoryMessage: budgetMissMsg,
+      highlights:
+        lowestStartingPrice !== null
+          ? [`Ready options in this category start from ₹${lowestStartingPrice.toLocaleString("en-IN")}`]
+          : [],
       followUpChips: [
         "Clear stage podiums",
         "Acrylic trophies & awards",

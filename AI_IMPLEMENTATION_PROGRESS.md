@@ -5,7 +5,7 @@
 - [x] **Phase A — Fix Intent Routing & Unnecessary Product Retrieval** *(Completed)*
 - [x] **Shortlink Domain Resolution Fix (`ccapl.cc/<slug>` -> `classicconcepts.in` / `classicedge53.com`)** *(Completed)*
 - [x] **Phase B — Conversation Memory & Context Management** *(Completed)*
-- [ ] **Phase C — Product Search Relevance, Synonym Grounding & Strict Category Isolation** *(Pending)*
+- [x] **Phase C — Product Search Relevance, Synonym Grounding & Strict Category Isolation** *(Completed)*
 - [ ] **Phase D — Fix Human Handoff State Machine & Ownership Rules** *(Pending)*
 - [ ] **Phase E — Fix WhatsApp Template Drafter & Outbound Message Formatting** *(Pending)*
 - [ ] **Phase F — Complete End-to-End `ai.logs` & `/dashboard/ai-logs` Observability** *(Pending)*
@@ -71,3 +71,53 @@
 - `npx tsx scripts/test-phase-b-conversation-state.ts` in `classicconcepts`: **PASS**
 - `npx tsx scripts/test-phase-a-intent-routing.ts` in `classicconcepts`: **PASS**
 - `npx tsc --noEmit` in `ccwhatsapp` (`apps/web`) and `classicconcepts`: **PASS (0 errors)**
+
+---
+
+## Phase C — Product Retrieval, Catalog Filtering, Business Routing, Budget Enforcement & Product Relevance — Completed Summary
+
+### What Was Fixed
+1. **Strict Business Routing, Category Isolation, Inline Negation & Budget Enforcement (`ccwhatsapp`)**:
+   - Upgraded `searchEcosystemItems()` in `packages/database/src/clients.ts`:
+     - **Business Routing**: Enforces hard separation between `CLASSIC_CONCEPTS` (retail display, stage podiums/pulpits, trophies/awards, hotel & home accessories) and `CLASSIC_EDGE_53` (acrylic diamond edge polishers, strip heaters/benders, laser/CNC machines, thermoforming ovens, and fabrication consumables).
+     - **Category / Product-Family Isolation**:
+       - `podium` / `pulpit` / `lectern` / `rostrum` queries strictly require podium title/category/code (`^ccp\d`) and exclude trays, donation boxes, tubes, trophies, and machines.
+       - `award` / `trophy` / `memento` / `plaque` queries strictly isolate to Awards & Trophies and exclude podiums, trays, and machines.
+       - `tray` / `tissue` / `coaster` queries strictly exclude podiums, trophies, and machines.
+     - **Inline Negation Filtering**: Queries containing `"not looking for tools, just machines"`, `"no consumables"`, `"without blades"`, or `"only machines"` automatically strip negated tokens before scoring and exclude `CONSUMABLE` items (returning `0` consumables and only `MACHINE` items).
+     - **Strict Budget Enforcement (No Unpriced or Over-Budget Leaks)**: When `maxPrice` or `minPrice` is active, items without a verified positive price (`basePrice === null` or `<= 0`) are excluded alongside items outside the budget range (unless `includeUnpricedOnBudget: true` is explicitly passed).
+     - **Minimum Topical Relevance Threshold (`matchScore >= 14`)**: Eliminates weak description-only false matches.
+   - Added `getEcosystemBudgetFallbackInfo()` in `packages/database/src/clients.ts` and wired it into `buildZeroMatchHelpfulReply()` and LLM system prompts in `packages/connections/src/index.ts`:
+     - When a customer asks for an unrealistically tight budget (e.g. `"I am looking for pulpits under ₹5,000"`), ACRIO returns `0` false matches and honestly reports the lowest starting price in that category (`Acrylic Podium CCP057S` at `₹7,150`) instead of hallucinating or showing over-budget products as matches.
+2. **Website Catalog Filtering, Dummy Row Exclusion & Tight-Budget Honesty (`classicconcepts`)**:
+   - Excluded dummy placeholder rows (`TEST PRODUCT` / `test`) in `getKnowledgeSnapshot()` in `src/lib/ai-context.ts`.
+   - Enforced strict budget filtering in `localSmartProductMatch()` so unpriced items (`effectivePrice === null` or `<= 0`) and over-budget items are never returned on budget-constrained queries.
+   - Enforced minimum topical score (`score >= 16`) and explicit category isolation (`wantsPodium`, `wantsAward`, `wantsSignHolder`, `wantsBox`, `wantsHotelOrTray`).
+   - Updated `localSmartProductMatch()` and `runCustomerConcierge()` in `src/lib/ai.ts` so when a budget constraint yields `0` verified within-budget products, the assistant returns `products: []` and states the lowest starting price in that category (`₹7,150` for pulpits).
+3. **Classic Edge 53 Global Search Tokenization, Synonyms, Negation & Fallback Catalog (`classicedge`)**:
+   - Upgraded `globalSearch()` in `src/app/actions/search.ts` to:
+     - Gate non-product/non-machine queries (`"Hello"`, `"I am looking for pulpits"`) with `0` false matches.
+     - Tokenize multi-word queries (`"diamond edge polishing machines"`) with domain synonym expansion (`polisher`/`polishing`/`diamond`, `bender`/`bending`/`strip heater`, `laser`/`cnc`/`router`).
+     - Enforce item-type negations (`"Actually I am not looking for tools, just machines"` excludes all consumables).
+     - Filter out dummy `'test'` DB rows and fall back to the built-in Classic Edge 53 machine and consumable catalog when `dev.db` has no real records.
+     - Fixed pre-existing bug in `search.ts` where `consumableResults.map((c) => ...)` referenced `p.url` instead of `c.url`.
+
+### Changed Files in Phase C
+- `C:\Users\DELL\Downloads\ccwhatsapp\packages\database\src\clients.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\packages\connections\src\index.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\scripts\test-phase-c-retrieval-and-budget.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\ai-context.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\ai.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\scripts\test-phase-c-retrieval-and-budget.ts`
+- `C:\Users\DELL\Desktop\classicedge\src\app\actions\search.ts`
+- `C:\Users\DELL\Desktop\classicedge\scripts\test-phase-c-search.ts`
+
+### Verification & Regression Tests Run
+- `npx tsx scripts/test-phase-c-retrieval-and-budget.ts` in `ccwhatsapp`: **PASS**
+- `npx tsx scripts/test-phase-b-conversation-state.ts` in `ccwhatsapp`: **PASS**
+- `npx tsx scripts/test-phase-a-intent-routing.ts` in `ccwhatsapp`: **PASS**
+- `npx tsx scripts/test-phase-c-retrieval-and-budget.ts` in `classicconcepts`: **PASS**
+- `npx tsx scripts/test-phase-b-conversation-state.ts` in `classicconcepts`: **PASS**
+- `npx tsx scripts/test-phase-a-intent-routing.ts` in `classicconcepts`: **PASS**
+- `npx tsx scripts/test-phase-c-search.ts` in `classicedge`: **PASS**
+- `npx tsc --noEmit` across `ccwhatsapp` (`apps/web`), `classicconcepts`, and `classicedge`: **PASS (0 errors)**

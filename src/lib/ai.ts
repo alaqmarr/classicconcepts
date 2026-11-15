@@ -8,6 +8,7 @@ import {
   localSmartProductMatch,
   isNonProductQueryIntent,
   deriveWebsiteConversationState,
+  extractWebsiteBudgetConstraints,
   type CachedProductSummary,
   type LocalQueryIntent,
 } from "@/lib/ai-context";
@@ -792,12 +793,16 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
           .map((r) => {
             const p = bySlug.get(r.slug);
             if (!p) return null;
-            if (
-              webState.maxPrice !== null &&
-              typeof p.effectivePrice === "number" &&
-              p.effectivePrice > webState.maxPrice
-            ) {
-              return null;
+            if (webState.maxPrice !== null || webState.minPrice !== null) {
+              if (!(typeof p.effectivePrice === "number" && p.effectivePrice > 0)) {
+                return null;
+              }
+              if (webState.maxPrice !== null && p.effectivePrice > webState.maxPrice) {
+                return null;
+              }
+              if (webState.minPrice !== null && p.effectivePrice < webState.minPrice) {
+                return null;
+              }
             }
             if (webState.onlyPodiums && !p.isPodium) {
               return null;
@@ -1229,10 +1234,26 @@ If the input is a role introduction ("I am an engineer"), greeting, or off-topic
           { intent, summary: cleanSummary, matches: validMatches }
         );
 
+        const searchBudget = extractWebsiteBudgetConstraints(cleanQuery);
+        const searchWantsPodium =
+          Boolean(options?.onlyPodiums) ||
+          /\b(pulpit|pulpits|podium|podiums|lectern|lecterns|rostrum)\b/i.test(cleanQuery);
+
         const aiCards = validMatches
           .map((m) => {
             const p = bySlug.get(m.slug)!;
-            if (options?.onlyPodiums && !p.isPodium) return null;
+            if (searchWantsPodium && !p.isPodium) return null;
+            if (searchBudget.maxPrice !== null || searchBudget.minPrice !== null) {
+              if (!(typeof p.effectivePrice === "number" && p.effectivePrice > 0)) {
+                return null;
+              }
+              if (searchBudget.maxPrice !== null && p.effectivePrice > searchBudget.maxPrice) {
+                return null;
+              }
+              if (searchBudget.minPrice !== null && p.effectivePrice < searchBudget.minPrice) {
+                return null;
+              }
+            }
             return toCard(p, m.reason);
           })
           .filter((x): x is ConciergeProductCard => Boolean(x));
