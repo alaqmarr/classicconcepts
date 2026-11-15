@@ -674,7 +674,10 @@ export async function runCustomerConcierge(
     const finalUserMsg = hasConversationContext
       ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${stateHint}${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"`
       : `Customer input: "${cleanQuery}"`;
-    if (claudeTurns.length > 0 && claudeTurns[claudeTurns.length - 1].role === "user") {
+    if (preClassifiedNonProduct) {
+      claudeTurns.length = 0;
+      claudeTurns.push({ role: "user", content: finalUserMsg });
+    } else if (claudeTurns.length > 0 && claudeTurns[claudeTurns.length - 1].role === "user") {
       claudeTurns[claudeTurns.length - 1].content = `${claudeTurns[claudeTurns.length - 1].content}\n\n${finalUserMsg}`;
     } else {
       claudeTurns.push({ role: "user", content: finalUserMsg });
@@ -773,8 +776,10 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
             ? parsed.followUpChips.slice(0, 3).map((c) => cleanAiPatterns(c))
             : [],
           whatsappPrefill: cleanAiPatterns(
-            parsed.whatsappPrefill ||
-              `Hi Classic Concepts! I am looking for help with: ${cleanQuery}`
+            intent === "human_handoff_info" && webState.primaryProductQuery
+              ? `Hi Classic Concepts! Please connect me with the Sales Team regarding ${webState.primaryProductQuery}${activeBudgetLabel ? ` (budget ${activeBudgetLabel})` : ""}${webState.preferences.length ? `, preferences: ${webState.preferences.join(", ")}` : ""}.`
+              : parsed.whatsappPrefill ||
+                  `Hi Classic Concepts! I am looking for help with: ${cleanQuery}`
           ),
           modelUsed: LOCKED_CLAUDE_MODEL,
         };
@@ -920,6 +925,10 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
       : local.advisoryMessage;
 
   const fallbackCards = localIsNonProd ? [] : local.products.map((p) => toCard(p));
+  const contextPrefill =
+    local.intent === "human_handoff_info" && webState.primaryProductQuery
+      ? `Hi Classic Concepts! Please connect me with the Sales Team regarding ${webState.primaryProductQuery}${activeBudgetLabel ? ` (budget ${activeBudgetLabel})` : ""}${webState.preferences.length ? `, preferences: ${webState.preferences.join(", ")}` : ""}.`
+      : local.whatsappPrefill;
   pushStep(
     "Served deterministic local catalog match fallback",
     `engine="${engineLabel}", intent=${local.intent}, matchedProducts=${fallbackCards.length}`,
@@ -959,7 +968,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
     suggestedLinks: local.suggestedLinks,
     followUpChips: local.followUpChips,
     whatsappNumber: snapshot.whatsappNumber,
-    whatsappPrefill: local.whatsappPrefill,
+    whatsappPrefill: contextPrefill,
     source: "smart-local",
     modelUsed: "local-catalog",
     engineLabel,

@@ -6,8 +6,8 @@
 - [x] **Shortlink Domain Resolution Fix (`ccapl.cc/<slug>` -> `classicconcepts.in` / `classicedge53.com`)** *(Completed)*
 - [x] **Phase B — Conversation Memory & Context Management** *(Completed)*
 - [x] **Phase C — Product Search Relevance, Synonym Grounding & Strict Category Isolation** *(Completed)*
-- [ ] **Phase D — Fix Human Handoff State Machine & Ownership Rules** *(Pending)*
-- [ ] **Phase E — Fix WhatsApp Template Drafter & Outbound Message Formatting** *(Pending)*
+- [x] **Phase D — Response Relevance, WhatsApp Handoff & Human Takeover** *(Completed)*
+- [ ] **Phase E — Upgrade & Formalize ACRO Administrator Assistant Across Classic Concepts & Classic Edge 53** *(Pending)*
 - [ ] **Phase F — Complete End-to-End `ai.logs` & `/dashboard/ai-logs` Observability** *(Pending)*
 - [ ] **Phase G — Add Evaluation & Regression Test Suite** *(Pending)*
 
@@ -121,3 +121,41 @@
 - `npx tsx scripts/test-phase-a-intent-routing.ts` in `classicconcepts`: **PASS**
 - `npx tsx scripts/test-phase-c-search.ts` in `classicedge`: **PASS**
 - `npx tsc --noEmit` across `ccwhatsapp` (`apps/web`), `classicconcepts`, and `classicedge`: **PASS (0 errors)**
+
+---
+
+## Phase D — Response Relevance, WhatsApp Handoff & Human Takeover — Completed Summary
+
+### What Was Fixed
+1. **Strict Separation of Informational Handoff Questions vs Explicit Human Handoff Requests (`ccwhatsapp` & `classicconcepts`)**:
+   - Expanded `HUMAN_HANDOFF_INFO` in `classifyAcrioInboundIntent()` (`packages/connections/src/index.ts`) and `localSmartProductMatch()` (`classicconcepts/src/lib/ai-context.ts`) so informational questions (`"Whom will you connect me to?"`, `"Who handles custom quotes?"`, `"Who is your sales manager?"`, `"What team will you connect me to?"`, `"Can I know who I will talk to?"`) never trigger a false handoff (`needsHumanHandoff === false`) and instead explain our Sales & Fabrication Team clearly.
+   - Expanded `HUMAN_HANDOFF_REQUEST` so explicit takeover requests (`"Connect me to a human"`, `"Can you connect me to a human?"`, `"Talk to sales team"`, `"Can someone call me?"`, `"Yes, please connect me"`, `"Connect me now"`) immediately trigger human handoff (`needsHumanHandoff === true`).
+2. **Response Relevance on Non-Product Turns & Context-Preserving Handoff (`ccwhatsapp` & `classicconcepts`)**:
+   - In `runAcrioAutonomousTurn()` (`packages/connections/src/index.ts`) and `runCustomerConcierge()` (`classicconcepts/src/lib/ai.ts`), non-product turns (`IDENTITY_META`, `COMPANY_INFO`, `HUMAN_HANDOFF_INFO`, `TOPIC_RESET`, `GREETING`, `OFF_TOPIC`) no longer inject prior product-pitch turns into `claudeMessages` / `claudeTurns` and strip any stray `https://ccapl.cc/...` product shortlinks so `"Who are you?"`, `"Where is your factory?"`, and `"Whom will you connect me to?"` are answered cleanly with zero leaked product pitches.
+   - When a customer requests a human handoff after discussing products (`"Connect me to a human"`), ACRIO preserves the active `smartCategory` (e.g. `"Podiums & Stage"`) and embeds the customer's active requirements (`product: pulpit podium, budget: up to ₹30,000, preferences: ...`) into `handoffReason` (on WhatsApp Hub) and `whatsappPrefill` (on Website Concierge).
+3. **Webhook `wa_message_id` (`wamid`) Idempotency & Duplicate Prevention (`ccwhatsapp`)**:
+   - Added `claimInboundWaMessageId()` in `packages/workers/src/index.ts` (backed by an in-memory claim set + SQLite `messages.wa_message_id` check) and wired it into `POST /api/webhooks/whatsapp` (`apps/web/src/app/api/webhooks/whatsapp/route.ts`) and `processInboundAutomations()`.
+   - Duplicate Meta webhook retries with the same `wamid` are skipped before inserting duplicate messages, running ACRIO twice, or double-billing the ledger.
+4. **Mid-Flight Human Takeover Race Protection & Post-Takeover AI Suspension (`ccwhatsapp`)**:
+   - Tightened `isHandledByAcrio` in `processInboundAutomations()` (`packages/workers/src/index.ts`) to require `assigned_staff_id === 'ACRIO' && status !== 'ASSIGNED' && (!assigned_team_id || assigned_team_id === 'System (ACRIO)')`.
+   - Added a pre-send ownership re-verification check immediately after `runAcrioAutonomousTurn()` completes (and before `sendWhatsAppCloudMessage()`): if a human staff member or team took over while ACRIO was generating its reply, ACRIO aborts without sending its message, billing the ledger, or overwriting `assigned_staff_id`.
+
+### Changed Files in Phase D
+- `C:\Users\DELL\Downloads\ccwhatsapp\packages\connections\src\index.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\packages\workers\src\index.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\apps\web\src\app\api\webhooks\whatsapp\route.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\scripts\test-phase-d-handoff-and-relevance.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\ai-context.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\ai.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\scripts\test-phase-d-handoff-and-relevance.ts`
+
+### Verification & Regression Tests Run
+- `npx tsx scripts/test-phase-d-handoff-and-relevance.ts` in `ccwhatsapp`: **PASS**
+- `npx tsx scripts/test-phase-c-retrieval-and-budget.ts` in `ccwhatsapp`: **PASS**
+- `npx tsx scripts/test-phase-b-conversation-state.ts` in `ccwhatsapp`: **PASS**
+- `npx tsx scripts/test-phase-a-intent-routing.ts` in `ccwhatsapp`: **PASS**
+- `npx tsx scripts/test-phase-d-handoff-and-relevance.ts` in `classicconcepts`: **PASS**
+- `npx tsx scripts/test-phase-c-retrieval-and-budget.ts` in `classicconcepts`: **PASS**
+- `npx tsx scripts/test-phase-b-conversation-state.ts` in `classicconcepts`: **PASS**
+- `npx tsx scripts/test-phase-a-intent-routing.ts` in `classicconcepts`: **PASS**
+- `npx tsc --noEmit` in `ccwhatsapp` (`apps/web`) and `classicconcepts`: **PASS (0 errors)**

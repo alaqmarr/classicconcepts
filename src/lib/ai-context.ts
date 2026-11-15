@@ -1565,9 +1565,9 @@ export function localSmartProductMatch(
 
   const allWords = splitWords(q);
 
-  // 1. Informational handoff question ("whom will you connect me to", "who handles custom quotes")
+  // 1. Informational handoff question ("whom will you connect me to", "who handles custom quotes", "who is your sales manager")
   if (
-    /\b(?:who|whom|which\s*(?:team|person|department))\s+(?:will|would|do|can)\s+you\s+(?:connect|transfer|assign|hand\s*over|forward)\b|\b(?:to\s+whom|with\s+whom)\s+(?:will|would|do|can)\s+you\s+connect\b|\b(?:who|whom)\s+(?:handles|takes\s*care\s*of|manages)\s+(?:this|my\s*chat|custom|orders|sales|support)\b|\bhow\s+does\s+(?:the\s+)?(?:handoff|human\s*support|sales\s*team)\s+work\b/i.test(
+    /\b(?:who|whom|which\s*(?:team|person|department|member|specialist)|what\s*(?:team|department))\s+(?:will|would|do|can|are)\s+you\s+(?:connect|transfer|assign|hand\s*over|forward)\b|\b(?:to\s+whom|with\s+whom)\s+(?:will|would|do|can)\s+you\s+connect\b|\b(?:who|whom)\s+(?:handles|takes\s*care\s*of|manages|looks\s*after|is\s+in|is\s+your)\s+(?:this|my\s*chat|custom|orders|sales|support|enquiries|inquiries|team|manager|executive)\b|\b(?:can\s+i\s+know|tell\s+me)\s+(?:who|whom)\s+(?:you\s+will\s+connect|i\s+will\s+(?:talk|speak)\s+(?:to|with))\b|\bhow\s+does\s+(?:the\s+)?(?:handoff|human\s*support|sales\s*team)\s+work\b/i.test(
       q
     )
   ) {
@@ -1589,6 +1589,34 @@ export function localSmartProductMatch(
       ],
       whatsappPrefill:
         "Hi Classic Concepts! I would like to speak with the Sales Team.",
+    };
+  }
+
+  // 1b. Direct request to talk to a human / sales specialist on the website
+  if (
+    !/^(?:who|whom|which\s+team|what\s+team|how\s+does)\b/i.test(q) &&
+    /\b(talk\s*to\s*(?:a\s*|the\s*|your\s*)?(?:team|human|person|agent|staff|sales|someone|manager|executive)|speak\s*(?:to|with)\s*(?:a\s*|the\s*|your\s*)?(?:team|human|person|agent|staff|sales|someone|manager|executive)|connect\s*me(?:\s*(?:now|right\s*away|please)|\s*(?:to|with)\s*(?:a\s*|the\s*|your\s*)?(?:team|human|person|agent|staff|sales|someone|manager|executive))?|yes\s*,?\s*(?:please\s*)?connect\s*me|human\s*agent|real\s*person|call\s*me|can\s+someone\s+call|please\s*call|need\s*a\s*call|want\s*a\s*call)\b/i.test(
+      q
+    )
+  ) {
+    return {
+      intent: "human_handoff_info",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "Sure! Click the WhatsApp button below to connect directly with our Classic Concepts Sales & Fabrication Team right now.",
+      highlights: [],
+      followUpChips: [
+        "Clear stage podiums",
+        "Custom size acrylic box",
+        "Contact our Sales Team",
+      ],
+      suggestedLinks: [
+        { label: "Contact Our Team", href: "/contact" },
+        { label: "Browse All Products", href: "/shop" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! Please connect me with the Sales Team.",
     };
   }
 
