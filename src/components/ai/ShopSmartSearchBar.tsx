@@ -1,317 +1,327 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
-  Search,
   Sparkles,
-  Loader2,
-  X,
+  Search,
   ArrowRight,
+  Loader2,
   CheckCircle2,
+  MessageCircle,
+  Package,
+  X,
 } from "lucide-react";
-import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { EditableText } from "@/components/inline-edit/EditableText";
 import { useInlineEdit } from "@/components/inline-edit/InlineEditProvider";
-import type { ConciergeProductCard, ConciergeResponse } from "@/lib/ai";
 
-interface ShopSmartSearchBarProps {
-  onlyPodiums?: boolean;
-  placeholder?: string;
+function buildWhatsAppHref(rawNumber: string, text: string) {
+  const digits = rawNumber.replace(/\D/g, "") || "919393939773";
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
 
-const QUICK_PROMPTS_ALL = [
-  "Stage podium with our logo",
-  "Hotel & restaurant menu stands",
-  "Clear display stands for shop",
-  "Custom acrylic trophies",
+type RecommendedProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  priceType: string;
+  categoryName: string;
+  imageUrl: string | null;
+  reason?: string;
+};
+
+type ConciergeResponse = {
+  message: string;
+  highlights: string[];
+  suggestedLinks: { label: string; href: string }[];
+  whatsappPrefill: string;
+  products: RecommendedProduct[];
+};
+
+const SHOP_QUICK_IDEAS = [
+  "Clear podium for stage",
+  "Gifts for students under ₹1,000",
+  "Brochure & menu stand for counter",
+  "Suggestion box with lock",
+  "Custom size acrylic display cover",
 ];
 
-const QUICK_PROMPTS_PODIUMS = [
-  "Clear podium for auditorium speeches",
-  "Podium with LED light & logo",
-  "Wide-top pulpit for church or college",
-  "Easy-to-move podium for seminars",
+const PODIUM_QUICK_IDEAS = [
+  "Clear stage podium with school logo",
+  "Economy podium for classroom",
+  "Wood & acrylic lectern for auditorium",
+  "Heavy duty LED podium for hotel",
+  "Motorized height adjustable podium",
 ];
 
 export function ShopSmartSearchBar({
+  whatsappNumber = "919393939773",
+  defaultCategoryHint,
   onlyPodiums = false,
-  placeholder = "Search products, SKU, or talk to ACRIO in your own words...",
-}: ShopSmartSearchBarProps) {
-  const { isAdmin } = useInlineEdit();
+  placeholder,
+  customQuickIdeas,
+  contentPrefix = onlyPodiums ? "podiums.search" : "shop.search",
+}: {
+  whatsappNumber?: string;
+  defaultCategoryHint?: string;
+  onlyPodiums?: boolean;
+  placeholder?: string;
+  customQuickIdeas?: string[];
+  contentPrefix?: string;
+  isAdmin?: boolean;
+}) {
+  const { editMode } = useInlineEdit();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<ConciergeProductCard[] | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
   const [acrioData, setAcrioData] = useState<ConciergeResponse | null>(null);
 
-  const runAcrioSearch = async (overrideQuery?: string) => {
-    const clean = (overrideQuery ?? query).trim();
-    if (!clean) {
-      setResults(null);
-      setSummary(null);
-      setAcrioData(null);
-      return;
-    }
-    if (overrideQuery !== undefined) {
-      setQuery(clean);
-    }
+  const effectiveHint =
+    defaultCategoryHint || (onlyPodiums ? "Acrylic Podiums" : undefined);
+  const quickIdeas =
+    customQuickIdeas && customQuickIdeas.length > 0
+      ? customQuickIdeas
+      : onlyPodiums
+        ? PODIUM_QUICK_IDEAS
+        : SHOP_QUICK_IDEAS;
+
+  const handleAsk = async (promptText?: string) => {
+    const q = (promptText ?? query).trim();
+    if (q.length < 2) return;
+    if (promptText) setQuery(q);
+
     setLoading(true);
     try {
-      const conciergeRes = await fetch("/api/ai/concierge", {
+      const fullQuery =
+        effectiveHint && !q.toLowerCase().includes(effectiveHint.toLowerCase())
+          ? `${q} (${effectiveHint})`
+          : q;
+
+      const res = await fetch("/api/ai/concierge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: onlyPodiums ? `${clean}` : clean,
-        }),
+        body: JSON.stringify({ query: fullQuery }),
       });
-      const conciergeJson = (await conciergeRes.json()) as ConciergeResponse;
-
-      if (conciergeJson.intent && conciergeJson.intent !== "product_match") {
-        setResults([]);
-        setSummary(conciergeJson.message || null);
-        setAcrioData(conciergeJson);
-        return;
-      }
-
-      if (onlyPodiums) {
-        const searchRes = await fetch(
-          `/api/ai/search?q=${encodeURIComponent(clean)}&limit=12&podiums=1`
-        );
-        const searchJson = await searchRes.json();
-        const searchProducts: ConciergeProductCard[] = Array.isArray(
-          searchJson.products
-        )
-          ? searchJson.products
-          : [];
-        setResults(searchProducts);
-        setSummary(conciergeJson.message || searchJson.summary || null);
-        setAcrioData(conciergeJson);
-      } else {
-        setResults(conciergeJson.products || []);
-        setSummary(conciergeJson.message || null);
-        setAcrioData(conciergeJson);
+      const data = await res.json();
+      if (res.ok && data) {
+        setAcrioData({
+          message: data.message || "",
+          highlights: Array.isArray(data.highlights) ? data.highlights : [],
+          suggestedLinks: Array.isArray(data.suggestedLinks)
+            ? data.suggestedLinks
+            : [],
+          whatsappPrefill:
+            data.whatsappPrefill ||
+            `Hi Classic Concepts! I am looking for: ${q}. Please share options and prices.`,
+          products: Array.isArray(data.products) ? data.products : [],
+        });
       }
     } catch {
-      setResults([]);
+      // Fallback handled silently
     } finally {
       setLoading(false);
     }
   };
 
-  const quickChips = onlyPodiums ? QUICK_PROMPTS_PODIUMS : QUICK_PROMPTS_ALL;
-
   return (
-    <div className="mb-10">
+    <div className="w-full mb-4">
+      {/* Full-Width Search & Product Finder Bar */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void runAcrioSearch();
+          handleAsk();
         }}
-        className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-2.5 bg-white p-2 rounded-2xl shadow-md border border-slate-200"
+        className="bg-white p-1.5 sm:p-2 rounded-xl shadow-xs border border-slate-200 flex items-center gap-2 focus-within:ring-2 focus-within:ring-[#0056b3] transition-all"
       >
-        <div className="flex-1 flex items-center gap-2.5 px-2.5 py-1.5">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-extrabold shrink-0">
-            <Sparkles className="w-3 h-3 text-indigo-600" />
-            <span>ACRIO</span>
-          </span>
-          <Search className="w-4 h-4 text-slate-400 shrink-0 hidden sm:block" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (!e.target.value.trim()) {
-                setResults(null);
-                setSummary(null);
-                setAcrioData(null);
-              }
-            }}
-            placeholder={placeholder}
-            className="w-full text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none min-w-0"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setResults(null);
-                setSummary(null);
-                setAcrioData(null);
-              }}
-              className="text-slate-400 hover:text-slate-600"
-              aria-label="Clear search"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        <div className="pl-2.5 sm:pl-3 flex items-center gap-2 text-[#0056b3] shrink-0">
+          <Search className="w-5 h-5" />
         </div>
-
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={
+            placeholder ||
+            "Search by product name, SKU, size, or describe what you need (e.g. 'stage podium with logo', 'gift under ₹1,000')..."
+          }
+          className="flex-1 bg-transparent text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm md:text-base font-medium focus:outline-none py-2 px-1"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setAcrioData(null);
+            }}
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
+            aria-label="Clear search"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
         <button
           type="submit"
-          disabled={loading || !query.trim()}
-          className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0056b3] to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-bold shadow-xs disabled:opacity-50 transition-all cursor-pointer shrink-0"
+          disabled={loading || query.trim().length < 2}
+          className="bg-[#0056b3] hover:bg-[#004494] disabled:opacity-60 text-white font-bold px-4 sm:px-6 py-2.5 rounded-lg text-xs sm:text-sm transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
         >
           {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Searching...</span>
+            </>
           ) : (
-            <Sparkles className="w-4 h-4 text-amber-300" />
+            <>
+              <Sparkles className="w-4 h-4" />
+              <span>Find Products</span>
+            </>
           )}
-          <span>{loading ? "Asking ACRIO..." : "Talk to ACRIO"}</span>
         </button>
       </form>
 
-      {/* Quick 1-click ACRIO prompts directly beneath the search bar */}
-      {results === null && (
-        <div className="max-w-3xl mx-auto mt-2.5 flex flex-wrap items-center justify-center gap-1.5 px-2">
-          <span className="text-[11px] font-semibold text-slate-400 mr-1">
-            Talk to ACRIO:
-          </span>
-          {quickChips.map((chip) => (
-            <button
-              key={chip}
-              type="button"
-              onClick={() => void runAcrioSearch(chip)}
-              className="px-2.5 py-1 rounded-full bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-[11px] font-medium text-slate-600 hover:text-indigo-800 transition-colors cursor-pointer"
+      {/* Quick Prompt Chips (Editable in Inline Edit mode) */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
+        <EditableText
+          contentKey={`${contentPrefix}.quick_label`}
+          value="Quick Search:"
+          label="Quick Search Label"
+          className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1"
+        />
+        {quickIdeas.map((idea, idx) =>
+          editMode ? (
+            <span
+              key={idx}
+              className="text-[11px] sm:text-xs font-semibold bg-white text-slate-700 border border-slate-200 px-3 py-1 rounded-full"
             >
-              {chip}
+              <EditableText
+                contentKey={`${contentPrefix}.chip_${idx + 1}`}
+                value={idea}
+                label={`Quick Search Chip #${idx + 1}`}
+              />
+            </span>
+          ) : (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleAsk(idea)}
+              className="text-[11px] sm:text-xs font-semibold bg-white hover:bg-[#0056b3] text-slate-700 hover:text-white border border-slate-200 hover:border-[#0056b3] px-3 py-1 rounded-full transition-colors cursor-pointer"
+            >
+              {idea}
             </button>
-          ))}
-        </div>
-      )}
+          )
+        )}
+      </div>
 
-      {results !== null && (
-        <div className="max-w-5xl mx-auto mt-5 p-4 sm:p-6 rounded-3xl bg-white border border-indigo-200 shadow-lg space-y-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap text-sm font-bold text-slate-900">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[11px] font-extrabold">
-                <Sparkles className="w-3 h-3 text-amber-300" />
-                ACRIO
+      {/* Inline Recommendations Card */}
+      {(loading || acrioData) && (
+        <div className="mt-4 bg-white text-slate-900 rounded-xl shadow-md border border-slate-200 p-4 sm:p-5 text-left animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#0056b3] bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">
+                <Sparkles className="w-3.5 h-3.5" /> ACRIO Catalog
+                Recommendations
               </span>
-              {acrioData?.engineLabel && (
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${
-                    acrioData.source === "ai" || acrioData.source === "cache"
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                      : "bg-amber-50 border-amber-200 text-amber-800"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      acrioData.source === "ai" || acrioData.source === "cache"
-                        ? "bg-emerald-500"
-                        : "bg-amber-500"
-                    }`}
-                  />
-                  {acrioData.engineLabel}
-                </span>
-              )}
-              {results.length > 0 && (
-                <span>
-                  Found {results.length} matching{" "}
-                  {onlyPodiums ? "podiums" : "products"}
-                </span>
-              )}
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setResults(null);
-                setSummary(null);
-                setAcrioData(null);
-              }}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
-            >
-              Close
-            </button>
+            <div className="flex items-center gap-2">
+              {acrioData?.whatsappPrefill && (
+                <a
+                  href={buildWhatsAppHref(
+                    whatsappNumber,
+                    acrioData.whatsappPrefill
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#25D366] hover:bg-[#1ebe57] text-white px-3 py-1.5 rounded-lg transition-colors shadow-xs"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> Get Quote on
+                  WhatsApp
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => setAcrioData(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                aria-label="Close recommendations"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {summary && (
-            <div className="text-xs sm:text-sm text-slate-800 bg-gradient-to-r from-indigo-50/80 to-blue-50/60 border border-indigo-100 px-4 py-3 rounded-2xl space-y-2">
-              <p className="leading-relaxed font-medium">{summary}</p>
-              {isAdmin && acrioData?.aiDiagnostic && (
-                <p className="text-[11px] text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-lg px-2.5 py-1.5">
-                  <strong>Admin Note:</strong> {acrioData.aiDiagnostic}
-                </p>
-              )}
+          {loading && !acrioData ? (
+            <div className="flex items-center gap-2.5 py-4 text-sm font-medium text-slate-600">
+              <Loader2 className="w-5 h-5 text-[#0056b3] animate-spin" />
+              Finding the best products from our catalog...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm sm:text-base text-slate-800 font-medium leading-relaxed">
+                {acrioData?.message}
+              </p>
+
               {acrioData?.highlights && acrioData.highlights.length > 0 && (
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-2">
                   {acrioData.highlights.map((h, i) => (
-                    <li
+                    <span
                       key={i}
-                      className="flex items-start gap-1.5 text-xs text-slate-600"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                      <span>{h}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {results.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {results.map((prod) => (
-                <Link
-                  key={prod.id}
-                  href={`/shop/p/${prod.slug}`}
-                  className="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 hover:border-[#0056b3] hover:bg-blue-50/30 transition-all group"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={prod.mainImage || "/short-logo.png"}
-                    alt={prod.name}
-                    className="w-16 h-16 rounded-xl object-contain bg-slate-50 border border-slate-100 p-1 shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#0056b3]">
-                      {prod.subCategoryName || prod.categoryName}
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      {h}
                     </span>
-                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#0056b3] line-clamp-2 leading-snug">
-                      {prod.name}
-                    </h4>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-slate-800">
-                        {prod.effectivePrice
-                          ? `₹${prod.effectivePrice.toLocaleString("en-IN")}`
-                          : "Price on Request"}
-                      </span>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0056b3]" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+                  ))}
+                </div>
+              )}
 
-          {acrioData && (
-            <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {acrioData.followUpChips?.slice(0, 3).map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => void runAcrioSearch(chip)}
-                    className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 text-xs font-medium text-slate-700 hover:text-indigo-800 transition-colors cursor-pointer"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-              <a
-                href={`https://wa.me/${(
-                  acrioData.whatsappNumber || "+917337222876"
-                ).replace(/\D/g, "")}?text=${encodeURIComponent(
-                  acrioData.whatsappPrefill ||
-                    `Hi Classic Concepts, I need help with: ${query}`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1da851] hover:bg-[#158c42] text-white text-xs font-bold transition-colors shadow-2xs"
-              >
-                <WhatsAppIcon size={14} className="shrink-0" />
-                <span>Chat on WhatsApp</span>
-              </a>
+              {acrioData?.products && acrioData.products.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                  {acrioData.products.slice(0, 4).map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/shop/p/${product.slug}`}
+                      className="flex flex-col justify-between p-3 rounded-xl border border-slate-200 hover:border-[#0056b3] hover:bg-blue-50/30 transition-all group bg-white"
+                    >
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-14 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center relative">
+                            {product.imageUrl ? (
+                              <Image
+                                src={product.imageUrl}
+                                alt={product.name}
+                                fill
+                                sizes="56px"
+                                className="object-contain p-1 group-hover:scale-105 transition-transform"
+                              />
+                            ) : (
+                              <Package className="w-6 h-6 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#0056b3] line-clamp-2 leading-snug">
+                              {product.name}
+                            </p>
+                            <p className="text-xs font-extrabold text-[#0056b3] mt-1">
+                              {product.priceType === "FIXED" &&
+                              product.price > 0
+                                ? `₹${product.price.toLocaleString("en-IN")}`
+                                : "Custom Quote / POA"}
+                            </p>
+                          </div>
+                        </div>
+                        {product.reason && (
+                          <p className="text-[11px] text-slate-600 bg-slate-50 rounded-lg px-2.5 py-1.5 mt-2.5 leading-snug">
+                            {product.reason}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-bold text-[#0056b3] mt-2 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        View Specs &amp; Price{" "}
+                        <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

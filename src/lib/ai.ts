@@ -695,7 +695,7 @@ export async function runCustomerConcierge(
       maxTokens: 550,
       temperature: 0.25,
       conversationMessages: claudeTurns,
-      taskSystemInstruction: `You are ACRIO, Classic Concepts' Friendly Product Helper running on Claude Haiku 5.5.
+      taskSystemInstruction: `You are ACRIO, Classic Concepts' Friendly Product Helper.
 A website visitor is chatting with you inside our search & concierge modal.
 Write everything in simple everyday layman English. Never use em dashes ("—") or fancy buzzwords.
 CONVERSATION CONTINUITY & ANTI-REPETITION RULES:
@@ -706,7 +706,7 @@ CONVERSATION CONTINUITY & ANTI-REPETITION RULES:
 - Classify the visitor's message:
   * "product_match": They want a product, gift, or venue setup (or are refining an earlier product request). Pick 1 to 4 genuinely relevant slugs from Section 4.
   * "role_clarify": They ONLY state their job/role or a vague problem without saying what item they want. Ask 1 short, friendly clarifying question and set "recommendations": [] and "highlights": [].
-  * "greeting": Greeting or question about you/which AI model is used (confirm you are ACRIO powered by Claude Haiku 5.5). Set "recommendations": [] and "highlights": [].
+  * "greeting": Greeting or question about you (confirm you are ACRIO, Classic Concepts' product assistant). Set "recommendations": [] and "highlights": [].
   * "company_info": Question about our factory location, working hours, pan-India shipping, or what Classic Concepts does. Answer clearly and set "recommendations": [] and "highlights": [].
   * "topic_reset": They say "I have a different query" or "Let's start over". Invite their new question warmly and set "recommendations": [] and "highlights": [] (do NOT repeat products from earlier turns).
   * "human_handoff_info": They ask "Whom will you connect me to?". Explain that we connect them to our Classic Concepts Sales & Fabrication Team on WhatsApp, and set "recommendations": [] and "highlights": [].
@@ -924,11 +924,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
     aiDiagnostic = `Claude Haiku 5.5 error: ${lastAiError}`;
   }
 
-  const askedWhichAi = /\b(which ai|what ai|what model|which model)\b/i.test(cleanQuery);
-  const message =
-    askedWhichAi && engineLabel.startsWith("Local Catalog Match")
-      ? `ACRIO is configured for Claude Haiku 5.5, and right now it is answering in ${engineLabel} mode.`
-      : local.advisoryMessage;
+  const message = local.advisoryMessage;
 
   const fallbackCards = localIsNonProd ? [] : local.products.map((p) => toCard(p));
   const contextPrefill =

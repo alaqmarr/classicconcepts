@@ -410,8 +410,8 @@ export default function InlineEditorModal({
       setAiPreview(String(data.result));
       setAiSourceLabel(
         data.source === "ai" && !data.warning
-          ? "Claude Haiku 5.5 (Design & Styling Retained)"
-          : "Smart Local Formatter (Configure API key for full generative AI)"
+          ? "ACRIO Copy Assist (Design & Styling Retained)"
+          : "Smart Local Formatter"
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "AI generation failed.");
@@ -628,7 +628,7 @@ export default function InlineEditorModal({
                 {mode !== "image" && (
                   <span className="text-[11px] text-slate-400">
                     {aiConfigured
-                      ? "Claude Haiku 5.5 Ready"
+                      ? "ACRIO Ready"
                       : "Smart Local Assist"}
                   </span>
                 )}

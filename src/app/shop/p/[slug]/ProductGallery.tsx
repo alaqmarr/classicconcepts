@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 
 interface ProductGalleryProps {
   images: string[];
   productName: string;
   discountBadge?: string | null;
   selectedImageUrl?: string | null;
+  activeImage?: string;
+  onSelectImage?: (url: string) => void;
 }
 
 export function ProductGallery({
@@ -17,208 +18,159 @@ export function ProductGallery({
   productName,
   discountBadge,
   selectedImageUrl,
+  activeImage,
+  onSelectImage,
 }: ProductGalleryProps) {
-  const safeImages = useMemo(() => {
-    let imgs = images.length > 0 ? [...images] : ["/placeholder-image.jpg"];
-    if (selectedImageUrl && !imgs.includes(selectedImageUrl)) {
-      imgs = [selectedImageUrl, ...imgs];
-    }
-    return imgs;
-  }, [images, selectedImageUrl]);
+  const safeImages = images.length > 0 ? images : ["/short-logo.png"];
+  const controlledUrl = selectedImageUrl || activeImage || safeImages[0];
+  const initialIdx = Math.max(0, safeImages.indexOf(controlledUrl));
+  const [currentIndex, setCurrentIndex] = useState(initialIdx);
+  const [isZooming, setIsZooming] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const [isPaused, setIsPaused] = useState(false);
-
-  const thumbTrackRef = useRef<HTMLDivElement | null>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const thumbTrackRef = useRef<HTMLDivElement>(null);
   const thumbItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const touchStartXRef = useRef<number | null>(null);
 
   const total = safeImages.length;
 
-  const goToIndex = useCallback(
-    (nextIndex: number, dir?: number) => {
-      if (total <= 1) return;
-      const wrapped = ((nextIndex % total) + total) % total;
-      setDirection(dir ?? (wrapped >= currentIndex ? 1 : -1));
-      setCurrentIndex(wrapped);
-    },
-    [currentIndex, total]
-  );
-
-  const goToNext = useCallback(() => {
-    if (total <= 1) return;
-    setDirection(1);
-    setCurrentIndex((prev) => (prev + 1) % total);
-  }, [total]);
-
-  const goToPrev = useCallback(() => {
-    if (total <= 1) return;
-    setDirection(-1);
-    setCurrentIndex((prev) => (prev - 1 + total) % total);
-  }, [total]);
-
-  // Keep moving forward automatically unless hovered/paused
+  // Keep internal index synced when parent changes selectedImageUrl / activeImage (e.g., variant click)
   useEffect(() => {
-    if (isPaused || total <= 1) return;
-
-    const interval = setInterval(() => {
-      setDirection(1);
-      setCurrentIndex((prev) => (prev + 1) % total);
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, [isPaused, total]);
-
-  // Switch to selected variant image when chosen
-  useEffect(() => {
-    if (selectedImageUrl) {
-      const index = safeImages.findIndex((img) => img === selectedImageUrl);
-      if (index !== -1) {
-        setDirection(1);
-        setCurrentIndex(index);
-      }
+    const targetUrl = selectedImageUrl || activeImage;
+    if (!targetUrl) return;
+    const idx = safeImages.indexOf(targetUrl);
+    if (idx !== -1 && idx !== currentIndex) {
+      setCurrentIndex(idx);
     }
-  }, [selectedImageUrl, safeImages]);
+  }, [selectedImageUrl, activeImage, safeImages, currentIndex]);
 
-  // Reset index safely if images list shrinks
-  useEffect(() => {
-    if (currentIndex >= total) {
-      setCurrentIndex(0);
-    }
-  }, [currentIndex, total]);
-
-  // Smoothly scroll ONLY the horizontal thumbnail strip (never page vertical scroll)
+  // Keep active thumbnail centered inside the horizontal strip
   useEffect(() => {
     const track = thumbTrackRef.current;
     const activeThumb = thumbItemRefs.current[currentIndex];
     if (!track || !activeThumb) return;
 
-    const trackWidth = track.clientWidth;
-    const thumbLeft = activeThumb.offsetLeft;
-    const thumbWidth = activeThumb.offsetWidth;
-    const targetLeft = Math.max(0, thumbLeft - trackWidth / 2 + thumbWidth / 2);
+    const targetLeft =
+      activeThumb.offsetLeft -
+      track.clientWidth / 2 +
+      activeThumb.clientWidth / 2;
 
     track.scrollTo({
-      left: targetLeft,
+      left: Math.max(0, targetLeft),
       behavior: "smooth",
     });
   }, [currentIndex]);
 
-  const scrollThumbStrip = (dir: "left" | "right") => {
+  const goToIndex = useCallback(
+    (nextIdx: number) => {
+      if (total === 0) return;
+      const wrapped = ((nextIdx % total) + total) % total;
+      setCurrentIndex(wrapped);
+      onSelectImage?.(safeImages[wrapped]);
+    },
+    [total, safeImages, onSelectImage]
+  );
+
+  const handlePrev = () => goToIndex(currentIndex - 1);
+  const handleNext = () => goToIndex(currentIndex + 1);
+
+  const scrollThumbStrip = (direction: "left" | "right") => {
     const track = thumbTrackRef.current;
     if (!track) return;
-    const step = Math.max(160, track.clientWidth * 0.65);
+    const step = Math.max(180, track.clientWidth * 0.65);
     track.scrollBy({
-      left: dir === "right" ? step : -step,
+      left: direction === "left" ? -step : step,
       behavior: "smooth",
     });
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!imageContainerRef.current) return;
+    const { left, top, width, height } =
+      imageContainerRef.current.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomPos({ x, y });
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartXRef.current === null) return;
-    const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
-    const deltaX = endX - touchStartXRef.current;
-    touchStartXRef.current = null;
-
-    if (Math.abs(deltaX) > 40) {
-      if (deltaX < 0) {
-        goToNext();
-      } else {
-        goToPrev();
-      }
-    }
-  };
-
-  const slideVariants = {
-    enter: (dir: number) => ({
-      x: dir > 0 ? 48 : -48,
-      opacity: 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: (dir: number) => ({
-      x: dir > 0 ? -48 : 48,
-      opacity: 0,
-    }),
-  };
+  const displayedImage = safeImages[currentIndex] || safeImages[0];
 
   return (
-    <div
-      className="w-full max-w-[340px] sm:max-w-[460px] md:max-w-[540px] lg:max-w-[500px] xl:max-w-[560px] 2xl:max-w-[620px] mx-auto flex flex-col gap-4 select-none"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
-      {/* Main Carousel Stage */}
+    <div className="space-y-4 w-full mx-auto">
+      {/* Main Studio Image Frame */}
       <div
-        className="group relative aspect-square w-full rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        ref={imageContainerRef}
+        className="relative aspect-square w-full rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-xs cursor-crosshair group select-none"
+        onMouseEnter={() => setIsZooming(true)}
+        onMouseLeave={() => setIsZooming(false)}
+        onMouseMove={handleMouseMove}
       >
+        <Image
+          src={displayedImage}
+          alt={productName}
+          fill
+          priority
+          sizes="(max-width: 1024px) 92vw, 45vw"
+          className={`object-contain p-3 sm:p-5 transition-transform duration-200 ease-out ${
+            isZooming ? "scale-[2]" : "scale-100"
+          }`}
+          style={
+            isZooming
+              ? {
+                  transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                }
+              : undefined
+          }
+        />
+
         {discountBadge && (
-          <div className="absolute top-4 left-4 z-20 bg-red-500 text-white text-xs sm:text-sm font-bold px-3.5 py-1.5 rounded-full shadow-md">
+          <div className="absolute top-3.5 right-3.5 bg-[#e31837] text-white px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider shadow-sm pointer-events-none">
             {discountBadge}
           </div>
         )}
 
-        <AnimatePresence initial={false} custom={direction} mode="wait">
-          <motion.div
-            key={currentIndex}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.28, ease: "easeOut" }}
-            className="absolute inset-0"
-          >
-            <Image
-              src={safeImages[currentIndex]}
-              alt={`${productName} image ${currentIndex + 1}`}
-              fill
-              sizes="(max-width: 640px) 340px, (max-width: 1024px) 540px, 620px"
-              className="object-cover"
-              priority={currentIndex === 0}
-            />
-          </motion.div>
-        </AnimatePresence>
+        {/* Hover Zoom Hint */}
+        {!isZooming && (
+          <div className="absolute bottom-3.5 right-3.5 bg-slate-900/75 backdrop-blur-xs text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 pointer-events-none opacity-80 group-hover:opacity-0 transition-opacity">
+            <ZoomIn size={14} /> Hover to zoom
+          </div>
+        )}
 
-        {/* Left / Right Navigation Arrows */}
+        {/* Prev / Next Navigation Overlay */}
         {total > 1 && (
           <>
             <button
               type="button"
-              onClick={goToPrev}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrev();
+              }}
               aria-label="Previous product image"
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-[#0056b3] text-slate-800 hover:text-white border border-slate-200/80 shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-md border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
             >
-              <ChevronLeft size={22} />
+              <ChevronLeft size={18} />
             </button>
-
             <button
               type="button"
-              onClick={goToNext}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNext();
+              }}
               aria-label="Next product image"
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-[#0056b3] text-slate-800 hover:text-white border border-slate-200/80 shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-md border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
             >
-              <ChevronRight size={22} />
+              <ChevronRight size={18} />
             </button>
 
             {/* Image Counter Pill */}
-            <div className="absolute bottom-3 right-3 z-20 bg-slate-900/75 backdrop-blur-xs text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+            <div className="absolute top-3.5 left-3.5 bg-slate-900/70 backdrop-blur-xs text-white px-2.5 py-1 rounded-full text-[11px] font-bold pointer-events-none">
               {currentIndex + 1} / {total}
             </div>
           </>
         )}
       </div>
 
-      {/* Single-Row Horizontal Auto-Advancing Thumbnail Strip */}
+      {/* Horizontal Thumbnail Strip */}
       {total > 1 && (
         <div className="relative w-full flex items-center gap-2">
           {total > 4 && (
@@ -226,7 +178,7 @@ export function ProductGallery({
               type="button"
               onClick={() => scrollThumbStrip("left")}
               aria-label="Scroll thumbnails left"
-              className="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#0056b3] hover:border-[#0056b3] shadow-xs flex items-center justify-center transition-colors"
+              className="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#0056b3] hover:border-[#0056b3] shadow-xs flex items-center justify-center transition-colors cursor-pointer"
             >
               <ChevronLeft size={16} />
             </button>
@@ -247,10 +199,10 @@ export function ProductGallery({
                   type="button"
                   onClick={() => goToIndex(index)}
                   aria-label={`View image ${index + 1}`}
-                  className={`relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 bg-white transition-all duration-200 ${
+                  className={`relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 bg-white transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? "border-[#0056b3] ring-2 ring-[#0056b3]/20 shadow-md opacity-100"
-                      : "border-slate-200 opacity-65 hover:opacity-100 hover:border-slate-300"
+                      ? "border-[#0056b3] ring-2 ring-[#0056b3]/20 shadow-sm opacity-100"
+                      : "border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-300"
                   }`}
                 >
                   <Image
@@ -258,7 +210,7 @@ export function ProductGallery({
                     alt={`${productName} thumbnail ${index + 1}`}
                     fill
                     sizes="80px"
-                    className="object-cover"
+                    className="object-contain p-1"
                   />
                 </button>
               );
@@ -270,7 +222,7 @@ export function ProductGallery({
               type="button"
               onClick={() => scrollThumbStrip("right")}
               aria-label="Scroll thumbnails right"
-              className="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#0056b3] hover:border-[#0056b3] shadow-xs flex items-center justify-center transition-colors"
+              className="flex-shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-[#0056b3] hover:border-[#0056b3] shadow-xs flex items-center justify-center transition-colors cursor-pointer"
             >
               <ChevronRight size={16} />
             </button>

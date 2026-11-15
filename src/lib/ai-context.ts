@@ -1667,7 +1667,7 @@ export function localSmartProductMatch(
       products: [],
       matchedCategories: [],
       advisoryMessage:
-        "I am ACRIO, Classic Concepts' product assistant built to run on Claude Haiku 5.5 alongside our live catalog index. Tell me what acrylic product, event, or workplace setup you need and I will show matching options.",
+        "I am ACRIO, Classic Concepts' product assistant. Tell me what acrylic product, event, or workplace setup you need and I will show matching options from our live catalog.",
       highlights: [],
       followUpChips: [
         "Clear stage podiums",

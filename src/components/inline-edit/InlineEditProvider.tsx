@@ -290,7 +290,7 @@ export function InlineEditProvider({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-colors"
                 title={
                   aiConfigured
-                    ? "ACRIO (Claude Haiku 5.5) Connected"
+                    ? "ACRIO Connected"
                     : "Click to configure ACRIO API Key"
                 }
               >

@@ -253,15 +253,15 @@ export function InteractiveProductView({
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
         {/* Left Column: Image Gallery & Product Video */}
-        <div className="p-6 sm:p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50 space-y-8 min-w-0 relative">
+        <div className="lg:col-span-6 xl:col-span-5 p-5 sm:p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-slate-200/80 bg-slate-50/50 space-y-6 min-w-0 relative">
           {editMode && (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowGalleryModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0056b3] hover:bg-[#004494] text-white text-xs font-semibold shadow-md transition-colors"
               >
                 <ImageIcon className="w-3.5 h-3.5" />
                 <span>Manage Photos &amp; Video ({product.images.length})</span>
@@ -286,7 +286,7 @@ export function InteractiveProductView({
           />
 
           {resolvedVideos.length > 0 ? (
-            <div className="pt-6 border-t border-slate-200/80 max-w-[340px] sm:max-w-[460px] md:max-w-[540px] lg:max-w-[500px] xl:max-w-[560px] 2xl:max-w-[620px] mx-auto w-full">
+            <div className="pt-6 border-t border-slate-200/80 w-full">
               <UniversalVideoPlayer
                 rawVideoUrl={product.videoUrl}
                 productName={product.name}
@@ -295,7 +295,7 @@ export function InteractiveProductView({
                     <button
                       type="button"
                       onClick={() => setShowGalleryModal(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-[11px] font-semibold transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 hover:bg-[#0056b3] text-[#0056b3] hover:text-white border border-blue-200 text-[11px] font-semibold transition-colors"
                     >
                       <Pencil className="w-2.5 h-2.5" />
                       <span>Edit Videos</span>
@@ -305,11 +305,11 @@ export function InteractiveProductView({
               />
             </div>
           ) : editMode ? (
-            <div className="pt-6 border-t border-slate-200/80 max-w-[540px] mx-auto w-full">
+            <div className="pt-6 border-t border-slate-200/80 w-full">
               <button
                 type="button"
                 onClick={() => setShowGalleryModal(true)}
-                className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/40 hover:bg-blue-50 text-[#0056b3] text-xs font-bold flex items-center justify-center gap-2 transition-colors"
               >
                 <PlayCircle className="w-4 h-4" />
                 <span>
@@ -321,7 +321,7 @@ export function InteractiveProductView({
         </div>
 
         {/* Right Column: Product Details */}
-        <div className="p-6 sm:p-8 lg:p-12 flex flex-col min-w-0">
+        <div className="lg:col-span-6 xl:col-span-7 p-5 sm:p-8 lg:p-10 flex flex-col min-w-0">
           <div className="mb-5">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <Link
@@ -556,6 +556,42 @@ export function InteractiveProductView({
             }}
             phone={phone}
           />
+
+          {/* Factory Assurance & Institutional Dispatch Grid */}
+          <div className="mt-6 pt-5 border-t border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+              <p className="text-[11px] font-extrabold text-slate-900">
+                ISO 9001:2015
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                Certified fabrication quality
+              </p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+              <p className="text-[11px] font-extrabold text-slate-900">
+                16,000 sq. ft. Factory
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                Direct manufacturer pricing
+              </p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+              <p className="text-[11px] font-extrabold text-slate-900">
+                Custom Branding
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                UV logo print &amp; laser engraving
+              </p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+              <p className="text-[11px] font-extrabold text-slate-900">
+                Pan-India Shipping
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                Safe foam &amp; wooden crate packing
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

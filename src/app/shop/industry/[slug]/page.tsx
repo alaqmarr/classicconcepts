@@ -1,14 +1,17 @@
 import { getFullCatalogIndex, getPublicSiteSettings } from "@/lib/public-data";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
-import Link from "next/link";
-import { Filter } from "lucide-react";
+import { ShopSmartSearchBar } from "@/components/ai/ShopSmartSearchBar";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const catalog = await getFullCatalogIndex();
   const industry = catalog.industries.find((i) => i.slug === slug) || null;
@@ -23,7 +26,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
-    keywords: [industry.name, `Acrylic for ${industry.name}`, "Classic Concepts"],
+    keywords: [
+      industry.name,
+      `Acrylic for ${industry.name}`,
+      "Classic Concepts",
+    ],
     alternates: {
       canonical: canonicalUrl,
     },
@@ -38,7 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
           width: 800,
           height: 800,
           alt: industry.name,
-        }
+        },
       ],
       type: "website",
     },
@@ -47,7 +54,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title,
       description,
       images: [mainImage],
-    }
+    },
   };
 }
 
@@ -74,6 +81,61 @@ export default async function IndustryShopPage({
   );
   const allIndustries = catalog.industries;
   const totalProductsOverall = catalog.totalProductsOverall;
+  const categories = catalog.categories.filter((c) => c._count.products > 0);
+
+  const quickPills = [
+    {
+      label: "All Products",
+      href: "/shop",
+      count: totalProductsOverall,
+      active: false,
+    },
+    ...allIndustries.map((ind) => ({
+      label: ind.name,
+      href: `/shop/industry/${ind.slug}`,
+      active: ind.id === industry.id,
+    })),
+  ];
+
+  const filterGroups = [
+    {
+      title: "Industries",
+      items: allIndustries.map((ind) => ({
+        label: ind.name,
+        href: `/shop/industry/${ind.slug}`,
+        active: ind.id === industry.id,
+      })),
+    },
+    {
+      title: "Product Categories",
+      items: [
+        {
+          label: "All Products",
+          href: "/shop",
+          count: totalProductsOverall,
+          active: false,
+        },
+        ...categories.map((cat) => ({
+          label: cat.name,
+          href: `/shop/c/${cat.slug}`,
+          count: cat._count.products,
+          active: false,
+        })),
+      ],
+    },
+    ...(catalog.problemStatements.length > 0
+      ? [
+          {
+            title: "Shop by Requirement",
+            items: catalog.problemStatements.map((ps) => ({
+              label: ps.name,
+              href: `/shop/problem/${ps.slug}`,
+              active: false,
+            })),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">
@@ -82,7 +144,7 @@ export default async function IndustryShopPage({
           { label: "Home", href: "/" },
           { label: "Shop", href: "/shop" },
           { label: "Industries", href: "/shop/industry" },
-          { label: industry.name }
+          { label: industry.name },
         ]}
         title={
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
@@ -91,54 +153,23 @@ export default async function IndustryShopPage({
         }
       />
 
-      <section className="py-12 container mx-auto px-6 relative z-20 flex flex-col md:flex-row gap-8">
-        
-        {/* Sidebar Filters */}
-        <aside className="w-full md:w-64 flex-shrink-0 space-y-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
-              <Filter size={18} className="text-[#0056b3]" />
-              Industries
-            </h3>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/shop" className="text-slate-600 hover:text-[#0056b3] font-medium text-sm flex items-center justify-between group transition-colors">
-                  <span>All Products</span>
-                  <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs group-hover:bg-blue-50 group-hover:text-[#0056b3] transition-colors">
-                    {totalProductsOverall}
-                  </span>
-                </Link>
-              </li>
-              {allIndustries.map(cat => {
-                const isActive = cat.id === industry.id;
-                return (
-                  <li key={cat.id}>
-                    <Link href={`/shop/industry/${cat.slug}`} className={`${isActive ? "text-[#0056b3] font-bold" : "text-slate-600 hover:text-[#0056b3] font-medium"} text-sm flex items-center justify-between transition-colors`}>
-                      <span>{cat.name}</span>
-                      {isActive && (
-                        <span className="bg-blue-50 text-[#0056b3] px-2 py-0.5 rounded-full text-xs">
-                          {products.length}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </aside>
+      <section className="py-8 sm:py-10 container mx-auto px-4 sm:px-6 relative z-20 space-y-6">
+        <ShopSmartSearchBar
+          onlyPodiums={false}
+          whatsappNumber={settings?.whatsappNumber || "+917337222876"}
+          defaultCategoryHint={industry.name}
+        />
 
-        {/* Main Content */}
-        <div className="flex-1">
-          <ProductGridWithSearch
-            products={products}
-            phone={settings?.whatsappNumber || "+917337222876"}
-            contextLabel={industry.name}
-            itemLabel="products"
-            clearHref="/shop"
-            clearText="Browse All Products"
-          />
-        </div>
+        <ProductGridWithSearch
+          products={products}
+          phone={settings?.whatsappNumber || "+917337222876"}
+          contextLabel={industry.name}
+          itemLabel="products"
+          clearHref="/shop"
+          clearText="Browse All Products"
+          quickPills={quickPills}
+          filterGroups={filterGroups}
+        />
       </section>
     </main>
   );

@@ -4,14 +4,9 @@ import {
 } from "@/lib/public-data";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductGridWithSearch } from "@/components/shop/ProductGridWithSearch";
-import {
-  getSiteContentMap,
-  getContentValue,
-  hasContentOverride,
-} from "@/lib/site-content";
+import { ShopSmartSearchBar } from "@/components/ai/ShopSmartSearchBar";
 import { EditableText } from "@/components/inline-edit/EditableText";
 import Link from "next/link";
-import { Filter, Layers } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +22,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const resolvedSearch = await searchParams;
   const subQuery =
-    typeof resolvedSearch.sub === "string" ? resolvedSearch.sub.trim() : undefined;
+    typeof resolvedSearch.sub === "string"
+      ? resolvedSearch.sub.trim()
+      : undefined;
 
-  const { category, convertedSub } = await lookupCategoryOrConvertedSubBySlug(slug);
+  const { category, convertedSub } =
+    await lookupCategoryOrConvertedSubBySlug(slug);
 
   if (!category) {
     if (convertedSub) {
@@ -47,13 +45,16 @@ export async function generateMetadata({
     ? category.subCategories.find((s) => s.slug === subQuery)
     : null;
 
-  const displayName = activeSub ? `${activeSub.name} (${category.name})` : category.name;
+  const displayName = activeSub
+    ? `${activeSub.name} (${category.name})`
+    : category.name;
   const title = `${displayName} | Buy Acrylic ${activeSub ? activeSub.name : category.name} | Classic Concepts`;
   const description =
     activeSub?.description ||
     category.description ||
     `Browse our collection of durable clear cast acrylic ${category.name.toLowerCase()} made by Classic Concepts Since 2008. Custom logo printing and pan-India safe delivery.`;
-  const mainImage = activeSub?.imageUrl || category.imageUrl || "/short-logo.png";
+  const mainImage =
+    activeSub?.imageUrl || category.imageUrl || "/short-logo.png";
   const canonicalUrl = activeSub
     ? `https://classicconcepts.in/shop/c/${category.slug}?sub=${activeSub.slug}`
     : `https://classicconcepts.in/shop/c/${category.slug}`;
@@ -105,19 +106,21 @@ export default async function CategoryShopPage({
   const { slug } = await params;
   const resolvedSearch = await searchParams;
   const subSlug =
-    typeof resolvedSearch.sub === "string" ? resolvedSearch.sub.trim() : undefined;
+    typeof resolvedSearch.sub === "string"
+      ? resolvedSearch.sub.trim()
+      : undefined;
 
-  const [{ category, convertedSub, catalog }, settings, content] =
-    await Promise.all([
-      lookupCategoryOrConvertedSubBySlug(slug),
-      getPublicSiteSettings(),
-      getSiteContentMap(),
-    ]);
+  const [{ category, convertedSub, catalog }, settings] = await Promise.all([
+    lookupCategoryOrConvertedSubBySlug(slug),
+    getPublicSiteSettings(),
+  ]);
 
   if (!category) {
     // Automatic Legacy Category -> SubCategory Redirect so zero live production URLs 404!
     if (convertedSub?.categorySlug) {
-      redirect(`/shop/c/${convertedSub.categorySlug}?sub=${convertedSub.slug}`);
+      redirect(
+        `/shop/c/${convertedSub.categorySlug}?sub=${convertedSub.slug}`
+      );
     }
     notFound();
   }
@@ -174,6 +177,102 @@ export default async function CategoryShopPage({
         : `<p>Explore ${activeSubCategory.name.toLowerCase()} under ${category.name.toLowerCase()}, made from strong non-yellowing cast acrylic with custom logo branding options.</p>`)
     : "";
 
+  const quickPills =
+    visibleSubCategories.length > 0
+      ? [
+          {
+            label: `All ${category.name}`,
+            href: `/shop/c/${category.slug}`,
+            count: category._count.products,
+            active: !activeSubCategory,
+          },
+          ...visibleSubCategories.map((sub) => ({
+            label: sub.name,
+            href: `/shop/c/${category.slug}?sub=${sub.slug}`,
+            count: Math.max(sub._count.products, sub._count.multiProducts),
+            active: activeSubCategory?.id === sub.id,
+          })),
+        ]
+      : [
+          {
+            label: "All Products",
+            href: "/shop",
+            count: totalProductsOverall,
+            active: false,
+          },
+          ...allCategories.map((cat) => ({
+            label: cat.name,
+            href: `/shop/c/${cat.slug}`,
+            count: cat._count.products,
+            active: cat.id === category.id,
+          })),
+        ];
+
+  const filterGroups = [
+    ...(visibleSubCategories.length > 0
+      ? [
+          {
+            title: `${category.name} Types`,
+            items: [
+              {
+                label: `All ${category.name}`,
+                href: `/shop/c/${category.slug}`,
+                count: category._count.products,
+                active: !activeSubCategory,
+              },
+              ...visibleSubCategories.map((sub) => ({
+                label: sub.name,
+                href: `/shop/c/${category.slug}?sub=${sub.slug}`,
+                count: Math.max(sub._count.products, sub._count.multiProducts),
+                active: activeSubCategory?.id === sub.id,
+              })),
+            ],
+          },
+        ]
+      : []),
+    {
+      title: "All Categories",
+      items: [
+        {
+          label: "All Products",
+          href: "/shop",
+          count: totalProductsOverall,
+          active: false,
+        },
+        ...allCategories.map((cat) => ({
+          label: cat.name,
+          href: `/shop/c/${cat.slug}`,
+          count: cat._count.products,
+          active: cat.id === category.id,
+        })),
+      ],
+    },
+    ...(catalog.problemStatements.length > 0
+      ? [
+          {
+            title: "Shop by Requirement",
+            items: catalog.problemStatements.map((ps) => ({
+              label: ps.name,
+              href: `/shop/problem/${ps.slug}`,
+              active: false,
+            })),
+          },
+        ]
+      : []),
+    ...(catalog.industries.length > 0
+      ? [
+          {
+            title: "Shop by Industry",
+            items: catalog.industries.map((ind) => ({
+              label: ind.name,
+              href: `/shop/industry/${ind.slug}`,
+              active: false,
+            })),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">
       <script
@@ -207,244 +306,99 @@ export default async function CategoryShopPage({
         }
       />
 
-      <section className="py-12 container mx-auto px-6 relative z-20 flex flex-col md:flex-row gap-8">
-        {/* Sidebar Filters */}
-        <aside className="w-full md:w-64 flex-shrink-0 space-y-6">
-          {visibleSubCategories.length > 0 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 text-sm">
-                <Layers size={17} className="text-[#0056b3]" />
-                <span>{category.name} Types</span>
-              </h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link
-                    href={`/shop/c/${category.slug}`}
-                    className={`${
-                      !activeSubCategory
-                        ? "text-[#0056b3] font-bold bg-blue-50/70"
-                        : "text-slate-600 hover:text-[#0056b3] font-medium"
-                    } px-3 py-2 rounded-xl text-sm flex items-center justify-between transition-colors`}
-                  >
-                    <span>All {category.name}</span>
-                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
-                      {category._count.products}
-                    </span>
-                  </Link>
-                </li>
-                {visibleSubCategories.map((sub) => {
-                  const isActive = activeSubCategory?.id === sub.id;
-                  return (
-                    <li key={sub.id}>
-                      <Link
-                        href={`/shop/c/${category.slug}?sub=${sub.slug}`}
-                        className={`${
-                          isActive
-                            ? "text-[#0056b3] font-bold bg-blue-50/70"
-                            : "text-slate-600 hover:text-[#0056b3] font-medium"
-                        } px-3 py-2 rounded-xl text-sm flex items-center justify-between transition-colors gap-2`}
-                      >
-                        <EditableText
-                          entity={{
-                            model: "subCategory",
-                            id: sub.id,
-                            field: "name",
-                          }}
-                          value={sub.name}
-                          label={`Subcategory Name: ${sub.name}`}
-                        />
-                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs shrink-0">
-                          {Math.max(sub._count.products, sub._count.multiProducts)}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+      <section className="py-8 sm:py-10 container mx-auto px-4 sm:px-6 relative z-20 space-y-6">
+        <ShopSmartSearchBar
+          onlyPodiums={false}
+          whatsappNumber={settings?.whatsappNumber || "+917337222876"}
+          defaultCategoryHint={
+            activeSubCategory ? activeSubCategory.name : category.name
+          }
+          placeholder={`Search inside ${
+            activeSubCategory ? activeSubCategory.name : category.name
+          }, SKU, or describe what you need...`}
+        />
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
-              <Filter size={18} className="text-[#0056b3]" />
-              <EditableText
-                contentKey="shop.sidebar.categories_title"
-                value={getContentValue(
-                  content,
-                  "shop.sidebar.categories_title",
-                  "Categories"
-                )}
-                hasCustomValue={hasContentOverride(
-                  content,
-                  "shop.sidebar.categories_title"
-                )}
-                label="Sidebar Categories Heading"
-              />
-            </h3>
-            <ul className="space-y-3">
-              <li>
-                <Link
-                  href="/shop"
-                  className="text-slate-600 hover:text-[#0056b3] font-medium text-sm flex items-center justify-between group transition-colors"
-                >
-                  <span>All Products</span>
-                  <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs group-hover:bg-blue-50 group-hover:text-[#0056b3] transition-colors">
-                    {totalProductsOverall}
-                  </span>
-                </Link>
-              </li>
-              {allCategories.map((cat) => {
-                const isActive = cat.id === category.id;
-                return (
-                  <li key={cat.id}>
-                    <Link
-                      href={`/shop/c/${cat.slug}`}
-                      className={`${
-                        isActive
-                          ? "text-[#0056b3] font-bold"
-                          : "text-slate-600 hover:text-[#0056b3] font-medium"
-                      } text-sm flex items-center justify-between transition-colors gap-2`}
-                    >
-                      <EditableText
-                        entity={{
-                          model: "category",
-                          id: cat.id,
-                          field: "name",
-                        }}
-                        value={cat.name}
-                        label={`Category Name: ${cat.name}`}
-                      />
-                      <span
-                        className={`${
-                          isActive
-                            ? "bg-blue-50 text-[#0056b3]"
-                            : "bg-slate-100 text-slate-500"
-                        } px-2 py-0.5 rounded-full text-xs shrink-0`}
-                      >
-                        {cat._count.products}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <div className="flex-1 space-y-6 min-w-0">
-          {/* Subcategory Horizontal Filter Pills */}
-          {visibleSubCategories.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href={`/shop/c/${category.slug}`}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                  !activeSubCategory
-                    ? "bg-[#0056b3] text-white shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:border-[#0056b3] hover:text-[#0056b3]"
-                }`}
-              >
-                All {category.name} ({category._count.products})
-              </Link>
-              {visibleSubCategories.map((sub) => {
-                const isActive = activeSubCategory?.id === sub.id;
-                return (
-                  <Link
-                    key={sub.id}
-                    href={`/shop/c/${category.slug}?sub=${sub.slug}`}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                      isActive
-                        ? "bg-[#0056b3] text-white shadow-sm"
-                        : "bg-white text-slate-600 border border-slate-200 hover:border-[#0056b3] hover:text-[#0056b3]"
-                    }`}
-                  >
-                    {sub.name} ({sub._count.products})
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Category / Active Subcategory Description Card */}
-          {activeSubCategory ? (
-            <div className="bg-white rounded-2xl p-5 shadow-2xs border border-blue-200/80">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                <EditableText
-                  as="h2"
-                  entity={{
-                    model: "subCategory",
-                    id: activeSubCategory.id,
-                    field: "name",
-                  }}
-                  value={activeSubCategory.name}
-                  label={`Subcategory Title: ${activeSubCategory.name}`}
-                  className="text-lg font-bold text-slate-900 block"
-                />
-                <Link
-                  href={`/shop/c/${category.slug}`}
-                  className="text-xs font-bold text-[#0056b3] hover:underline"
-                >
-                  ← View All {category.name}
-                </Link>
-              </div>
-              <EditableText
-                as="div"
-                mode="html"
-                entity={{
-                  model: "subCategory",
-                  id: activeSubCategory.id,
-                  field: "descriptionHtml",
-                }}
-                value={defaultSubDescription}
-                label={`Subcategory Description: ${activeSubCategory.name}`}
-                className="text-sm text-slate-600 leading-relaxed block"
-              />
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl p-5 shadow-2xs border border-slate-200/80">
+        {/* Category / Active Subcategory Description Card */}
+        {activeSubCategory ? (
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border border-blue-200/80">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <EditableText
                 as="h2"
                 entity={{
-                  model: "category",
-                  id: category.id,
+                  model: "subCategory",
+                  id: activeSubCategory.id,
                   field: "name",
                 }}
-                value={category.name}
-                label={`Category Title: ${category.name}`}
-                className="text-lg font-bold text-slate-900 mb-1 block"
+                value={activeSubCategory.name}
+                label={`Subcategory Title: ${activeSubCategory.name}`}
+                className="text-base sm:text-lg font-bold text-slate-900 block"
               />
-              <EditableText
-                as="div"
-                mode="html"
-                entity={{
-                  model: "category",
-                  id: category.id,
-                  field: "descriptionHtml",
-                }}
-                value={defaultCatDescription}
-                label={`Category Description: ${category.name}`}
-                className="text-sm text-slate-600 leading-relaxed block"
-              />
+              <Link
+                href={`/shop/c/${category.slug}`}
+                className="text-xs font-bold text-[#0056b3] hover:underline"
+              >
+                ← View All {category.name}
+              </Link>
             </div>
-          )}
+            <EditableText
+              as="div"
+              mode="html"
+              entity={{
+                model: "subCategory",
+                id: activeSubCategory.id,
+                field: "descriptionHtml",
+              }}
+              value={defaultSubDescription}
+              label={`Subcategory Description: ${activeSubCategory.name}`}
+              className="text-xs sm:text-sm text-slate-600 leading-relaxed block"
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border border-slate-200/80">
+            <EditableText
+              as="h2"
+              entity={{
+                model: "category",
+                id: category.id,
+                field: "name",
+              }}
+              value={category.name}
+              label={`Category Title: ${category.name}`}
+              className="text-base sm:text-lg font-bold text-slate-900 mb-1 block"
+            />
+            <EditableText
+              as="div"
+              mode="html"
+              entity={{
+                model: "category",
+                id: category.id,
+                field: "descriptionHtml",
+              }}
+              value={defaultCatDescription}
+              label={`Category Description: ${category.name}`}
+              className="text-xs sm:text-sm text-slate-600 leading-relaxed block"
+            />
+          </div>
+        )}
 
-          <ProductGridWithSearch
-            products={products}
-            phone={settings?.whatsappNumber || "+917337222876"}
-            contextLabel={
-              activeSubCategory ? activeSubCategory.name : category.name
-            }
-            itemLabel="products"
-            clearHref={
-              activeSubCategory ? `/shop/c/${category.slug}` : "/shop"
-            }
-            clearText={
-              activeSubCategory
-                ? `All ${category.name}`
-                : "Browse All Products"
-            }
-          />
-        </div>
+        <ProductGridWithSearch
+          products={products}
+          phone={settings?.whatsappNumber || "+917337222876"}
+          contextLabel={
+            activeSubCategory ? activeSubCategory.name : category.name
+          }
+          itemLabel="products"
+          clearHref={
+            activeSubCategory ? `/shop/c/${category.slug}` : "/shop"
+          }
+          clearText={
+            activeSubCategory
+              ? `All ${category.name}`
+              : "Browse All Products"
+          }
+          quickPills={quickPills}
+          filterGroups={filterGroups}
+        />
       </section>
     </main>
   );
