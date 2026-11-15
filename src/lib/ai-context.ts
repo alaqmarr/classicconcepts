@@ -693,8 +693,22 @@ export type LocalQueryIntent =
   | "role_clarify"
   | "greeting"
   | "off_topic"
+  | "company_info"
+  | "topic_reset"
+  | "human_handoff_info"
   | "no_match"
   | "browse";
+
+export function isNonProductQueryIntent(intent?: LocalQueryIntent | string | null): boolean {
+  return (
+    intent === "greeting" ||
+    intent === "role_clarify" ||
+    intent === "off_topic" ||
+    intent === "company_info" ||
+    intent === "topic_reset" ||
+    intent === "human_handoff_info"
+  );
+}
 
 export interface LocalSmartMatchResult {
   intent: LocalQueryIntent;
@@ -1324,9 +1338,36 @@ export function localSmartProductMatch(
 
   const allWords = splitWords(q);
 
-  // Check explicit AI / identity meta question ("which ai are you using", "who are you")
+  // 1. Informational handoff question ("whom will you connect me to", "who handles custom quotes")
   if (
-    /\b(which ai|what ai|what model|which model|who are you|what are you|claude|gpt|openai)\b/i.test(
+    /\b(?:who|whom|which\s*(?:team|person|department))\s+(?:will|would|do|can)\s+you\s+(?:connect|transfer|assign|hand\s*over|forward)\b|\b(?:to\s+whom|with\s+whom)\s+(?:will|would|do|can)\s+you\s+connect\b|\b(?:who|whom)\s+(?:handles|takes\s*care\s*of|manages)\s+(?:this|my\s*chat|custom|orders|sales|support)\b|\bhow\s+does\s+(?:the\s+)?(?:handoff|human\s*support|sales\s*team)\s+work\b/i.test(
+      q
+    )
+  ) {
+    return {
+      intent: "human_handoff_info",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "When you choose to chat with our team, we connect you directly with our Classic Concepts Sales & Fabrication specialists on WhatsApp so they can help with custom sizes, bulk pricing, or order updates.",
+      highlights: [],
+      followUpChips: [
+        "Clear stage podiums",
+        "Custom size acrylic box",
+        "Contact our Sales Team",
+      ],
+      suggestedLinks: [
+        { label: "Contact Our Team", href: "/contact" },
+        { label: "Browse All Products", href: "/shop" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! I would like to speak with the Sales Team.",
+    };
+  }
+
+  // 2. Check explicit AI / identity meta question ("which ai are you using", "who are you", "what can you help me with")
+  if (
+    /\b(which ai|what ai|what model|which model|who are you|what are you|are you a bot|what can you do|what can you help me with|how can you help me|claude|gpt|openai)\b/i.test(
       q
     )
   ) {
@@ -1351,11 +1392,39 @@ export function localSmartProductMatch(
     };
   }
 
+  // 3. Company / factory / location / shipping info question ("where is your factory", "what does classic concepts do")
+  if (
+    /\b(where\s+(?:are\s+you|is\s+your)\s*(?:located|based|factory|office|workshop|shop|company|from)?|what\s+is\s+your\s+(?:location|address|factory\s+address|working\s+hours|timings)|what\s+(?:does|is)\s+classic\s+(?:concepts|edge(?:\s*53)?)(?:\s+do)?|difference\s+between\s+classic\s+concepts\s+and\s+classic\s+edge|tell\s+me\s+about\s+(?:your\s+company|classic\s+concepts)|do\s+you\s+(?:ship|deliver)\s+(?:across|all\s+over|pan)\s+india|do\s+you\s+provide\s+gst)\b/i.test(
+      q
+    ) &&
+    !/\b(under|below|above|price\s+of|cost\s+of|buy|looking\s+for\s+a)\b/i.test(q)
+  ) {
+    return {
+      intent: "company_info",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "Classic Concepts manufactures cast-acrylic stage podiums, awards, hotel and retail display stands, and custom acrylic boxes from our Mumbai facility, with pan-India delivery and full GST billing.",
+      highlights: [],
+      followUpChips: [
+        "Explore stage podiums",
+        "Browse awards & trophies",
+        "Ask about custom fabrication",
+      ],
+      suggestedLinks: [
+        { label: "About Classic Concepts", href: "/about" },
+        { label: "Contact Us", href: "/contact" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! I have a question about your factory and products.",
+    };
+  }
+
   const meaningfulTokens = allWords.filter(
     (t) => t.length >= 2 && !QUERY_STOP_WORDS.has(t)
   );
 
-  // Pure greeting check ("hi", "hello", "good morning", "hey acrio")
+  // 4. Pure greeting check ("hi", "hello", "good morning", "hey acrio")
   if (
     allWords.length > 0 &&
     allWords.length <= 5 &&
@@ -1385,6 +1454,34 @@ export function localSmartProductMatch(
   const hasExplicitProductTerm = meaningfulTokens.some((tok) =>
     Array.from(EXPLICIT_PRODUCT_TERMS).some((pt) => tokenMatchesWord(tok, pt))
   );
+
+  // 5. Topic reset / switching query ("i have a different query", "forget that, let's start over")
+  if (
+    !hasExplicitProductTerm &&
+    /\b(different\s*(?:query|question|requirement|topic|thing|enquiry|inquiry)|another\s*(?:query|question|requirement|topic|enquiry|inquiry)|something\s*else|forget\s*(?:that|it|previous|the\s*last)|start\s*over|start\s*afresh|change\s*(?:of\s*)?(?:topic|subject)|leave\s*(?:that|it)|never\s*mind(?:\s*(?:that|it))?|new\s*(?:query|question|topic|requirement)|i\s+have\s+a\s+(?:query|question|doubt))\b/i.test(
+      q
+    )
+  ) {
+    return {
+      intent: "topic_reset",
+      products: [],
+      matchedCategories: [],
+      advisoryMessage:
+        "Sure, let's start fresh! Tell me what acrylic product, event setup, or custom size you are looking for and I will show the right options.",
+      highlights: [],
+      followUpChips: [
+        "Clear stage podiums",
+        "Awards & trophies",
+        "Custom size acrylic box",
+      ],
+      suggestedLinks: [
+        { label: "Browse All Products", href: "/shop" },
+        { label: "Explore Podiums", href: "/podiums" },
+      ],
+      whatsappPrefill:
+        "Hi Classic Concepts! I have a new product question.",
+    };
+  }
 
   // Role-only / profession introduction check (e.g. "i am an engineer", "i am an enginner", "im a doctor")
   if (!hasExplicitProductTerm && meaningfulTokens.length > 0 && meaningfulTokens.length <= 4) {

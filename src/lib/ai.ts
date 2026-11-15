@@ -6,6 +6,7 @@ import {
   setCachedAiResponse,
   normalizeQueryForCache,
   localSmartProductMatch,
+  isNonProductQueryIntent,
   type CachedProductSummary,
   type LocalQueryIntent,
 } from "@/lib/ai-context";
@@ -538,10 +539,13 @@ export async function runCustomerConcierge(
       })
       .filter((x): x is ConciergeProductCard => Boolean(x));
 
+    const cachedIntent =
+      cached.intent || (hydrated.length > 0 ? "product_match" : "role_clarify");
+    const nonProductCached = isNonProductQueryIntent(cachedIntent);
     const cleanMsg = cleanAiPatterns(cached.message);
     pushStep(
       "Served response from concierge:v2 persistent cache",
-      `key="${normalizedKey}", matchedProducts=${hydrated.length}`
+      `key="${normalizedKey}", intent=${cachedIntent}, matchedProducts=${hydrated.length}`
     );
     logClassicConceptsAiTrace({
       feature: "Website Customer Concierge",
@@ -551,30 +555,32 @@ export async function runCustomerConcierge(
       effort: "medium",
       outcomeSource: "RESPONSE_CACHE",
       responseCacheStatus: "HIT",
-      catalogCacheStatus: "HIT",
-      cacheDetails: `concierge:v2 HIT (catalogHash=${snapshot.catalogHash.slice(0, 8)})`,
-      productLookupTriggered: true,
-      productLookupQuery: cleanQuery,
-      productLookupTotalScanned: snapshot.products.length,
-      productsLookedUp: hydrated.map((p) => ({
-        name: p.name,
-        slug: p.slug,
-        sku: p.sku,
-        brand: "CLASSIC_CONCEPTS",
-        priceInr: p.effectivePrice,
-        url: `/shop/${p.slug}`,
-        reason: p.reason || null,
-      })),
+      catalogCacheStatus: nonProductCached ? "BYPASS" : "HIT",
+      cacheDetails: `concierge:v2 HIT (intent=${cachedIntent}, catalogHash=${snapshot.catalogHash.slice(0, 8)})`,
+      productLookupTriggered: !nonProductCached,
+      productLookupQuery: nonProductCached ? "" : cleanQuery,
+      productLookupTotalScanned: nonProductCached ? 0 : snapshot.products.length,
+      productsLookedUp: nonProductCached
+        ? []
+        : hydrated.map((p) => ({
+            name: p.name,
+            slug: p.slug,
+            sku: p.sku,
+            brand: "CLASSIC_CONCEPTS",
+            priceInr: p.effectivePrice,
+            url: `/shop/${p.slug}`,
+            reason: p.reason || null,
+          })),
       steps,
       response: cleanMsg,
       durationMs: Date.now() - startedAt,
     });
 
     return {
-      intent: cached.intent || (hydrated.length > 0 ? "product_match" : "role_clarify"),
+      intent: cachedIntent,
       message: cleanMsg,
       highlights: (cached.highlights || []).map((h) => cleanAiPatterns(h)),
-      products: hydrated,
+      products: nonProductCached ? [] : hydrated,
       suggestedLinks: cached.suggestedLinks || [{ label: "Browse Full Catalog", href: "/shop" }],
       followUpChips: (cached.followUpChips || []).map((c) => cleanAiPatterns(c)),
       whatsappNumber: snapshot.whatsappNumber,
@@ -587,6 +593,14 @@ export async function runCustomerConcierge(
       engineLabel: "Claude Haiku 5.5 • Instant Cache",
     };
   }
+
+  // Pre-classify current message intent BEFORE invoking Claude or scanning catalog products (Phase A)
+  const preCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
+  const preClassifiedNonProduct = isNonProductQueryIntent(preCheck.intent);
+  pushStep(
+    "Classified visitor turn intent",
+    `preIntent=${preCheck.intent}, requiresProductLookup=${!preClassifiedNonProduct}`
+  );
 
   pushStep(
     hasConversationContext
@@ -621,7 +635,7 @@ export async function runCustomerConcierge(
       claudeTurns.shift();
     }
     const finalUserMsg = hasConversationContext
-      ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.]\nVisitor follow-up: "${cleanQuery}"`
+      ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"`
       : `Customer input: "${cleanQuery}"`;
     if (claudeTurns.length > 0 && claudeTurns[claudeTurns.length - 1].role === "user") {
       claudeTurns[claudeTurns.length - 1].content = `${claudeTurns[claudeTurns.length - 1].content}\n\n${finalUserMsg}`;
@@ -631,7 +645,7 @@ export async function runCustomerConcierge(
 
     const aiRes = await callClaudeHaiku({
       scope: "client",
-      useCatalogSystemCache: true,
+      useCatalogSystemCache: !preClassifiedNonProduct,
       maxTokens: 550,
       temperature: 0.25,
       conversationMessages: claudeTurns,
@@ -647,12 +661,15 @@ CONVERSATION CONTINUITY & ANTI-REPETITION RULES:
   * "product_match": They want a product, gift, or venue setup (or are refining an earlier product request). Pick 1 to 4 genuinely relevant slugs from Section 4.
   * "role_clarify": They ONLY state their job/role or a vague problem without saying what item they want. Ask 1 short, friendly clarifying question and set "recommendations": [] and "highlights": [].
   * "greeting": Greeting or question about you/which AI model is used (confirm you are ACRIO powered by Claude Haiku 5.5). Set "recommendations": [] and "highlights": [].
+  * "company_info": Question about our factory location, working hours, pan-India shipping, or what Classic Concepts does. Answer clearly and set "recommendations": [] and "highlights": [].
+  * "topic_reset": They say "I have a different query" or "Let's start over". Invite their new question warmly and set "recommendations": [] and "highlights": [] (do NOT repeat products from earlier turns).
+  * "human_handoff_info": They ask "Whom will you connect me to?". Explain that we connect them to our Classic Concepts Sales & Fabrication Team on WhatsApp, and set "recommendations": [] and "highlights": [].
   * "off_topic": Unrelated topic (weather, food, sports, coding). Politely state that you help with Classic Concepts acrylic products and set "recommendations": [] and "highlights": [].
   * "no_match": Product request that has no matching item in Section 4. Explain honestly, offer custom size options if acrylic-related, and set "recommendations": [] and "highlights": [].
 
 Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with this exact schema:
 {
-  "intent": "product_match | role_clarify | greeting | off_topic | no_match",
+  "intent": "product_match | role_clarify | greeting | company_info | topic_reset | human_handoff_info | off_topic | no_match",
   "message": "Warm, natural 1-3 sentence reply tailored directly to what they typed (max 1 emoji). Zero repetitive slogans.",
   "highlights": ["0 to 2 short catalog facts specific to this query, or empty [] when clarifying/greeting/off_topic"],
   "recommendations": [
@@ -671,18 +688,28 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
       const parsed = extractJsonObject<CachedShape>(aiRes.text);
       if (parsed && parsed.message) {
         const bySlug = new Map(snapshot.products.map((p) => [p.slug, p]));
-        const intent: LocalQueryIntent =
-          parsed.intent &&
-          ["product_match", "role_clarify", "greeting", "off_topic", "no_match", "browse"].includes(
-            parsed.intent
-          )
+        const intent: LocalQueryIntent = preClassifiedNonProduct
+          ? preCheck.intent
+          : parsed.intent &&
+              [
+                "product_match",
+                "role_clarify",
+                "greeting",
+                "company_info",
+                "topic_reset",
+                "human_handoff_info",
+                "off_topic",
+                "no_match",
+                "browse",
+              ].includes(parsed.intent)
             ? parsed.intent
             : Array.isArray(parsed.recommendations) && parsed.recommendations.length > 0
               ? "product_match"
               : "role_clarify";
 
+        const isNonProd = isNonProductQueryIntent(intent);
         const validRecs =
-          intent === "product_match"
+          intent === "product_match" && !isNonProd
             ? (parsed.recommendations || [])
                 .filter((r) => bySlug.has(r.slug))
                 .map((r) => ({
@@ -733,11 +760,8 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
           .filter((x): x is ConciergeProductCard => Boolean(x));
 
         // Only backfill if Claude explicitly classified as product_match AND local also confirms a real product match
-        if (intent === "product_match" && finalProducts.length === 0) {
-          const localCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
-          if (localCheck.intent === "product_match") {
-            finalProducts = localCheck.products.map((p) => toCard(p));
-          }
+        if (intent === "product_match" && finalProducts.length === 0 && preCheck.intent === "product_match") {
+          finalProducts = preCheck.products.map((p) => toCard(p));
         }
 
         pushStep(
@@ -752,22 +776,24 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
           effort: "medium",
           outcomeSource: "LIVE_AI",
           responseCacheStatus: hasConversationContext ? "BYPASS" : "MISS",
-          catalogCacheStatus: "HIT",
+          catalogCacheStatus: isNonProd ? "BYPASS" : "HIT",
           cacheDetails: hasConversationContext
-            ? "Multi-turn conversation bypassed single-turn response cache; Anthropic prompt cache active"
-            : `concierge:v2 MISS -> cached for future identical queries (cacheRead=${aiRes.usage?.cacheReadInputTokens || 0})`,
-          productLookupTriggered: true,
-          productLookupQuery: cleanQuery,
-          productLookupTotalScanned: snapshot.products.length,
-          productsLookedUp: finalProducts.map((p) => ({
-            name: p.name,
-            slug: p.slug,
-            sku: p.sku,
-            brand: "CLASSIC_CONCEPTS",
-            priceInr: p.effectivePrice,
-            url: `/shop/${p.slug}`,
-            reason: p.reason || null,
-          })),
+            ? `Multi-turn conversation (intent=${intent})`
+            : `concierge:v2 MISS -> cached (intent=${intent}, cacheRead=${aiRes.usage?.cacheReadInputTokens || 0})`,
+          productLookupTriggered: !isNonProd,
+          productLookupQuery: isNonProd ? "" : cleanQuery,
+          productLookupTotalScanned: isNonProd ? 0 : snapshot.products.length,
+          productsLookedUp: isNonProd
+            ? []
+            : finalProducts.map((p) => ({
+                name: p.name,
+                slug: p.slug,
+                sku: p.sku,
+                brand: "CLASSIC_CONCEPTS",
+                priceInr: p.effectivePrice,
+                url: `/shop/${p.slug}`,
+                reason: p.reason || null,
+              })),
           steps,
           response: safeToCache.message,
           durationMs: Date.now() - startedAt,
@@ -806,7 +832,8 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
   }
 
   // 3. Seamless Non-Blocking Smart Local Fallback (when API key is not yet set or transient failure)
-  const local = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
+  const local = preCheck;
+  const localIsNonProd = isNonProductQueryIntent(local.intent);
 
   let engineLabel = "Local Catalog Match";
   let aiDiagnostic: string | undefined;
@@ -840,10 +867,10 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
       ? `ACRIO is configured for Claude Haiku 5.5, and right now it is answering in ${engineLabel} mode.`
       : local.advisoryMessage;
 
-  const fallbackCards = local.products.map((p) => toCard(p));
+  const fallbackCards = localIsNonProd ? [] : local.products.map((p) => toCard(p));
   pushStep(
     "Served deterministic local catalog match fallback",
-    `engine="${engineLabel}", matchedProducts=${fallbackCards.length}`,
+    `engine="${engineLabel}", intent=${local.intent}, matchedProducts=${fallbackCards.length}`,
     lastAiError ? "WARN" : "OK"
   );
   logClassicConceptsAiTrace({
@@ -853,11 +880,11 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
     model: "local-catalog",
     outcomeSource: "LOCAL_FALLBACK",
     responseCacheStatus: hasConversationContext ? "BYPASS" : "MISS",
-    catalogCacheStatus: "HIT",
-    cacheDetails: engineLabel,
-    productLookupTriggered: true,
-    productLookupQuery: cleanQuery,
-    productLookupTotalScanned: snapshot.products.length,
+    catalogCacheStatus: localIsNonProd ? "BYPASS" : "HIT",
+    cacheDetails: `${engineLabel} (intent=${local.intent})`,
+    productLookupTriggered: !localIsNonProd,
+    productLookupQuery: localIsNonProd ? "" : cleanQuery,
+    productLookupTotalScanned: localIsNonProd ? 0 : snapshot.products.length,
     productsLookedUp: fallbackCards.map((p) => ({
       name: p.name,
       slug: p.slug,
@@ -927,50 +954,44 @@ export async function runSmartCatalogSearch(
       ? "Local Catalog Match • AI Paused"
       : "Local Catalog Match";
 
-  // For role introductions, greetings, or obvious off-topic inputs when typing in instant search, return cleanly with 0 products
-  if (
-    localResult.intent === "role_clarify" ||
-    localResult.intent === "greeting" ||
-    localResult.intent === "off_topic"
-  ) {
-    if (!options?.useAi) {
-      if (cleanQuery) {
-        logClassicConceptsAiTrace({
-          feature: "Website Smart Search Bar",
-          actor: "Website Visitor",
-          question: cleanQuery,
-          model: "local-catalog",
-          outcomeSource: "LOCAL_FALLBACK",
-          responseCacheStatus: "LOCAL_ONLY",
-          catalogCacheStatus: "HIT",
-          cacheDetails: `Instant non-product intent (${localResult.intent})`,
-          productLookupTriggered: true,
-          productLookupQuery: cleanQuery,
-          productLookupTotalScanned: snapshot.products.length,
-          productsLookedUp: [],
-          steps: [
-            {
-              stepNumber: 1,
-              label: "Detected greeting/role/off-topic query in instant search",
-              detail: `intent=${localResult.intent}`,
-              durationMs: Date.now() - startedAt,
-              status: "OK",
-            },
-          ],
-          response: localResult.advisoryMessage,
-          durationMs: Date.now() - startedAt,
-        });
-      }
-      return {
-        intent: localResult.intent,
-        products: [],
-        summary: localResult.advisoryMessage,
-        matchedCategories: [],
-        source: "smart-local",
-        modelUsed: "local-catalog",
-        engineLabel: localEngineLabel,
-      };
+  // For role introductions, greetings, company info, topic reset, or obvious off-topic inputs, return cleanly with 0 products and productLookupTriggered=false
+  if (isNonProductQueryIntent(localResult.intent)) {
+    if (cleanQuery) {
+      logClassicConceptsAiTrace({
+        feature: "Website Smart Search Bar",
+        actor: "Website Visitor",
+        question: cleanQuery,
+        model: "local-catalog",
+        outcomeSource: "LOCAL_FALLBACK",
+        responseCacheStatus: "LOCAL_ONLY",
+        catalogCacheStatus: "BYPASS",
+        cacheDetails: `Skipped catalog scan for non-product intent (${localResult.intent})`,
+        productLookupTriggered: false,
+        productLookupQuery: "",
+        productLookupTotalScanned: 0,
+        productsLookedUp: [],
+        steps: [
+          {
+            stepNumber: 1,
+            label: "Classified non-product query in smart search (skipped product lookup)",
+            detail: `intent=${localResult.intent}`,
+            durationMs: Date.now() - startedAt,
+            status: "OK",
+          },
+        ],
+        response: localResult.advisoryMessage,
+        durationMs: Date.now() - startedAt,
+      });
     }
+    return {
+      intent: localResult.intent,
+      products: [],
+      summary: localResult.advisoryMessage,
+      matchedCategories: [],
+      source: "smart-local",
+      modelUsed: "local-catalog",
+      engineLabel: localEngineLabel,
+    };
   }
 
   // For empty or 1-word exact SKU/keyword queries when useAi isn't explicitly requested, local match is instant (<1ms)
