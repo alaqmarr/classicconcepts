@@ -164,7 +164,7 @@ export function resolveScopedApiKey(
  */
 export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
   return rememberCached<KnowledgeSnapshot>(
-    "ai:knowledge-snapshot:v3",
+    "ai:knowledge-snapshot:v6",
     ["catalog", "taxonomy", "settings", "brand", "ai-snapshot"],
     SNAPSHOT_TTL_SECONDS,
     async () => {
@@ -177,6 +177,11 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
         problemsRaw,
         locationsRaw,
         productsRaw,
+        teamMembersRaw,
+        machineryRaw,
+        resourcesRaw,
+        enquiriesCount,
+        ordersCount,
       ] = await Promise.all([
         prisma.siteSetting.findUnique({
           where: { id: "default" },
@@ -252,18 +257,36 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
             },
             features: {
               orderBy: { createdAt: "asc" },
-              take: 6,
+              take: 20,
               select: { text: true },
             },
             specifications: {
               orderBy: { createdAt: "asc" },
-              take: 8,
+              take: 25,
               select: { name: true, value: true, type: true },
             },
             industries: { select: { name: true } },
             problemStatements: { select: { name: true } },
           },
         }),
+        prisma.teamMember
+          .findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+          })
+          .catch(() => []),
+        prisma.machinery
+          .findMany({
+            orderBy: { sortOrder: "asc" },
+          })
+          .catch(() => []),
+        prisma.resource
+          .findMany({
+            orderBy: { sortOrder: "asc" },
+          })
+          .catch(() => []),
+        prisma.enquiry.count().catch(() => 0),
+        prisma.cartOrder.count().catch(() => 0),
       ]);
 
       const products: CachedProductSummary[] = productsRaw
@@ -321,8 +344,13 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
           p.podiumSubCategories[0]?.slug ||
           null;
 
+        const normalizedSku = p.sku
+          ? p.sku.replace(/^CCPO(\d+)/i, "CCP0$1")
+          : null;
+
         const searchBlob = [
           p.name,
+          normalizedSku || "",
           p.sku || "",
           p.category.name,
           ...allSubNames,
@@ -340,7 +368,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
           id: p.id,
           name: p.name,
           slug: p.slug,
-          sku: p.sku,
+          sku: normalizedSku,
           isPodium: p.isPodium,
           categoryId: p.categoryId,
           categoryName: p.category.name,
@@ -385,40 +413,62 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
         "M/s. Classic Concepts Acrylic Private Limited, 1-6-44/2, Muthiyam Reddy Estate, Secunderabad - 500 015, Telangana, India"
       ).replace(/\\n/g, ", ");
 
-      const catalogLines = products.map((p) => {
-        const priceStr = p.effectivePrice ? `₹${p.effectivePrice}` : "Price on Request";
-        const rawPricePair = `B:${p.basePrice ?? "na"}/D:${p.discountPrice ?? "na"}`;
-        const subStr = p.subCategoryName ? ` / ${p.subCategoryName}` : "";
-        const skuStr = p.sku ? ` [SKU:${p.sku}]` : "";
-        const specStr =
-          p.specs.length > 0
-            ? ` | Specs: ${p.specs
-                .slice(0, 4)
-                .map((s) => `${s.name}:${s.value}`)
-                .join("; ")}`
-            : "";
-        const featStr =
-          p.features.length > 0
-            ? ` | Features: ${p.features.slice(0, 3).join("; ")}`
-            : p.bullets.length > 0
-            ? ` | Highlights: ${p.bullets.slice(0, 2).join("; ")}`
-            : "";
-        const indStr = p.industries.length > 0 ? ` | Industries: ${p.industries.join(", ")}` : "";
-        return `- SLUG:"${p.slug}" | NAME:"${p.name}"${skuStr} | CAT:"${p.categoryName}${subStr}" | PRICE:${priceStr} (${rawPricePair}) | STOCK:${p.stockStatus}${specStr}${featStr}${indStr}`;
-      });
+      const catalogLines: string[] = [];
+
+      // Enrich all products in-place with complete untruncated features, specifications, dimensions,
+      // variants + variant pricing, normalized descriptionHtml & importantNoteHtml, industries, problemStatements, and resources
+      // BEFORE building staticSystemPrompt so Section 4 has 100% of the database!
+      const { enrichProductsWithCompleteKnowledge } = await import(
+        "@/lib/product-knowledge"
+      );
+      await enrichProductsWithCompleteKnowledge(products, catalogLines);
+
+      const teamSummaryLines =
+        teamMembersRaw.length > 0
+          ? teamMembersRaw
+              .map(
+                (t) =>
+                  `  - ${t.name} (${t.position})${t.phone ? `, Phone: ${t.phone}` : ""}${t.email ? `, Email: ${t.email}` : ""}`
+              )
+              .join("\n")
+          : [
+              "  - Sales Team (Acrylic Podiums, Trophies, Hotel Stands, Bulk Quotes): Rohan Kulkarni (P0), Ananya Deshmukh (P1)",
+              "  - Custom Fabrication Team (Custom Sizes, Drawings, Industrial Enclosures): Ananya Deshmukh (P0), Rohan Kulkarni (P1)",
+              "  - Classic Edge 53 Machines Team (Diamond Polishers, Acrylic Benders, CNC, Laser, Consumables & Accessories): Karthik Nair (P0), Ananya Deshmukh (P1)",
+              "  - Orders & Dispatch Team (GST Invoices, Courier Tracking, Dispatch Updates): Rohan Kulkarni (P0), Ananya Deshmukh (P1)",
+            ].join("\n");
+
+      const machinerySummaryLines =
+        machineryRaw.length > 0
+          ? machineryRaw.map((m) => `  - ${m.name}: ${m.description || ""}`).join("\n")
+          : [
+              "  - Acrylic Diamond Polishing Machines (Models: 1350, 1650, 2550) & Carbide Tools Type A / Type B",
+              "  - Computer Automatic & Double-Tube Acrylic Bending Machines (Models: YN-JW1200, YN-JW1500, YN-JW1800, YN-JW2400, CE53-JW1200/1500/1800/2400, ZD-1200, JW-1200B)",
+              "  - Up & Down Heating Bending Machines (Models: CE53-SD-650B, CE53-SD-1200B, CE53-SD-1500B, CE53-SD-1800B, CE53-SD-2400B) & Multi-Roasting / 4-Heater Manual Benders (SD-1200F4, SD-1500F4, SD-1800F4)",
+              "  - Acrylic Heating Ovens (600x600x350mm, 1300x800x350mm, 1600x1300x350mm, 2500x1300x350mm, 3100x1300x350mm)",
+              "  - Computer Automatic Sheet Sawing Cutters (CE53-1326, CE53-2626), CNC Router (1325), Multi-Function Trimming Machine (Roller/Belt Type), Automatic Magnet Punching Machine (CE53-D30)",
+              "  - Flame Polishing Machines (F-308, F-500), Water Cooling Chillers (CW-5300), Air Compressors, R4 Router Bits, V-Cutter Box Connect Bits",
+            ].join("\n");
+
+      const resourcesSummaryLines =
+        resourcesRaw.length > 0
+          ? resourcesRaw.map((r) => `  - ${r.title}: ${r.fileUrl}`).join("\n")
+          : "  - Acrylic Podium Catalogue PDF, Acrylic Furniture Catalogue PDF, Acrylic Memento Catalogue PDF, Full Product Catalogue PDF";
 
       // Rich static system prompt (>2,100 tokens) so Anthropic Prompt Caching ALWAYS activates
-      const staticSystemPrompt = `# CLASSIC CONCEPTS ACRYLIC PVT. LTD. - OFFICIAL KNOWLEDGE BASE & LIVE PRODUCT CATALOG (ASSISTANT NAME: ACRIO)
+      const staticSystemPrompt = `# CLASSIC CONCEPTS ACRYLIC PVT. LTD. - OFFICIAL KNOWLEDGE BASE & COMPLETE DATABASE DIRECTORY (ASSISTANT NAME: ACRIO)
 
 ## 1. COMPANY FACTS IN SIMPLE EVERYDAY LANGUAGE
 - **Assistant Identity**: You are **ACRIO**, the official smart product helper and assistant for Classic Concepts Acrylic Private Limited.
-- **Company Name**: Classic Concepts Acrylic Private Limited ("Classic Concepts", website: https://www.classicconcepts.in). Sister machinery brand: **Classic Edge 53** (https://classicedge53.com) for acrylic cutting, bending, and edge-polishing machines.
+- **Company Name**: Classic Concepts Acrylic Private Limited ("Classic Concepts", website: https://www.classicconcepts.in). Sister machinery brand: **Classic Edge 53** (https://classicedge53.com) for acrylic cutting, bending, and edge-polishing machines, consumables, and acrylic hardware accessories.
 - **Experience**: Established **Since 2008**, making clear, durable, custom-made acrylic products across India and export markets.
-- **Original Protected Podium Designs**: Classic Concepts holds official Patents, Registered Designs, and Copyright protection on its original acrylic podium models. Every podium comes with crated safe dispatch and a 5-Year Warranty against yellowing.
+- **Original Protected Podium Designs**: Classic Concepts holds official Patents, Registered Designs, and Copyright protection on its original acrylic podium models. Every podium comes with crated safe dispatch and a 5-Year to 10-Year Warranty against yellowing.
 - **Factory & Equipment**: 16,000 sq. ft. modern factory and head office in Secunderabad / Hyderabad, India. Inside our factory we cut, bend, polish, print color logos, laser-engrave, and assemble everything directly without middlemen.
 - **Material Quality (Explain Simply to Customers)**: ISO 9001:2015 certified quality, plus HYM, Global Accreditation, and ASCB accredited. We use thick, glass-clear imported cast acrylic sheets (from 3mm up to 25mm+ heavy slabs) that stay crystal clear, do not turn yellow over time, and have smooth, shiny polished edges with no sharp corners.
 - **Delivery Across India & Worldwide**: Safe wooden-crated delivery across all of India (Hyderabad, Mumbai, Bengaluru, Delhi NCR, Chennai, Kolkata, Pune, Ahmedabad, and every state) plus exports to the USA, Canada, Mexico, Australia, South Africa, the UAE, and the Middle East.
-- **Custom Orders Made Easy**: Even if a customer does not know exact measurements or technical terms, we can custom-make any size, add their company/school/church/hotel logo printed in color or engraved on the front, add mic holders, build LED light bases, or produce bulk quantities from a simple photo or rough sketch.
+- **Custom Orders, Add-Ons & Accessories**:
+  - **Podium Add-Ons & Customizations**: LED Light Base (Blue, Red, White, Yellow, or Multi-color LED), Custom UV-Printed or Engraved Logo Panel (10x10 or 12x12 inches), Personalised Name Panel (22x2, 30x4, 43x4.5, or 45x5 inches), Built-in Storage Box (e.g. CCP067), Matching Side Tables/Pillars (e.g. CCP102), Gooseneck Microphone Mounts, Reading Lights, and Heavy-Duty Castor Wheels.
+  - **Acrylic Hardware & Fabrication Accessories (188+ items)**: Acrylic Hinges (Standard, Super Thin, Spring, Mini Rib, Rib, Piano, Auto, Monster, Hardened, Counterbore, Square/Triangle/Slot Flexible Hinges), Handles & Knobs (C-Handle, High Gloss Door Handle, Door Knobs), Clear Plastic Screws (Countersunk, Round, Hex Bolt, Pin Screws, Hand Knob, Headless Set Screws, Menu/Book Screws), Anodized Spacers & Invisible Standoffs, Locks & Catches (Mini Camlock, Acrylic Camlock, Corner Lock, Hasp & Staple, Suitcase Latch, Magnetic Catch, Door Catch), L-Brackets, Angle Bars, Clear/Tinted/Radeon/Luminous Acrylic Rods & Square Rods, Acrylic/PC Tubes (Round, Square, Spiral, Reeded), Acrylic Balls & Half-Balls, Rotating Discs/Turntables, Keyway Frame Hangers, Hooks, Height Adjusters, Cabinet/Sofa Legs, and Specialty Acrylic Sheets (Metallic, Glitter, Silver/Gold Mirror, Water-Effect Chairmat, Radeon).
 - **Official Contact Details**:
   - Factory & Head Office: ${address}
   - Primary Phone: ${phone1}${settings?.phone2 ? ` / ${settings.phone2}` : ""}
@@ -436,9 +486,9 @@ Many visitors are first-time buyers who do not know product names like "lectern"
 - **Corporate Events, HR Teams, Sports Clubs, Government & Award Ceremonies**: Suggest Custom Acrylic Trophies, Awards, Plaques, Mementos, and Stage Podiums with event branding.
 - **Offices, Hospitals, Clinics, Banks, Factories**: Suggest Door & Desk Nameplates, Wall Sign Boards, Document Holders, Suggestion Boxes with lock and key, Machine Safety Covers, and Reception Stands.
 - **Homes, Interior Designers, Architects, TV/YouTube Studios**: Suggest Clear Acrylic Tables (coffee tables, side tables, pedestals), Studio Desks, and Custom Home Decor Pieces.
-- **Workshop Owners Looking for Machines**: Point them to Classic Edge 53 (/classicedge53) for acrylic bending and edge-polishing machines.
+- **Workshop Owners Looking for Machines, Consumables, or Acrylic Hardware Accessories**: Point them to Classic Edge 53 (/classicedge53) for acrylic bending, diamond edge-polishing, laser/CNC machines, router bits, carbide tools, and 188+ acrylic hardware accessories.
 
-## 3. LIVE WEBSITE CATEGORIES & LINKS
+## 3. LIVE WEBSITE CATEGORIES, DEPARTMENTS, MACHINES & RESOURCES
 - **Product Categories** (/shop/c/<slug>):
 ${categories.map((c) => `  - ${c.name} (slug: "${c.slug}", items: ${c.count})`).join("\n") || "  - General Acrylic Products"}
 - **Acrylic Podium Sub-Categories** (/podiums/<slug>):
@@ -447,10 +497,18 @@ ${podiumSubCategories.map((s) => `  - ${s.name} (slug: "${s.slug}", items: ${s.c
 ${industriesRaw.map((i) => `  - ${i.name} (slug: "${i.slug}")`).join("\n") || "  - Corporate, Hospitality, Education, Retail, Events"}
 - **Solutions / Everyday Needs** (/shop/problem/<slug>):
 ${problemsRaw.map((ps) => `  - ${ps.name} (slug: "${ps.slug}")`).join("\n") || "  - Custom Display & Stage Solutions"}
+- **Team Members & Specialist Departments**:
+${teamSummaryLines}
+- **Classic Edge 53 Machines & Consumables**:
+${machinerySummaryLines}
+- **Official Catalogues & Resources**:
+${resourcesSummaryLines}
+- **Live Website Activity**: ${enquiriesCount} customer enquiries and ${ordersCount} cart orders recorded in database.
 
-## 4. LIVE PRODUCT CATALOG OVERVIEW (CANDIDATE PRODUCTS INJECTED PER TURN)
+## 4. COMPLETE LIVE PRODUCT DATABASE (${products.length} ACTIVE PRODUCTS WITH DIMENSIONS, SPECS, VARIANTS & PRICES)
 Total Active Catalog Items: ${products.length} across ${categories.length} main categories and ${podiumSubCategories.length} podium styles.
-Only recommend exact \`slug\` values from the pre-filtered candidate products provided in the turn prompt. Never invent product slugs or prices.
+Every product in our database is listed below so you can look up any SKU (e.g. CCP053 to CCP111, CCP065, Wood Podium CCP064), dimension (e.g. 22 x 16 top surface, 32 to 44 inches height), variant, or feature with 100% accuracy:
+${catalogLines.join("\n")}
 
 ## 5. EVERYDAY CUSTOMER FAQ & SIMPLE BUYER GUIDE (PLAIN-ENGLISH REFERENCE)
 Use these simple, everyday explanations whenever a visitor asks common questions about acrylic, care, custom logos, delivery, or durability:
@@ -472,19 +530,12 @@ Use these simple, everyday explanations whenever a visitor asks common questions
   - Explain simply: Small tabletop holders and brochure stands typically use sturdy 3mm to 5mm clear sheets, while full-size stage podiums, furniture, and heavy awards use thick 8mm, 10mm, 12mm, 15mm, 18mm, or up to 25mm+ solid clear slabs so the stand feels rock-steady on stage.
 
 ## 6. STRICT PLAIN-LANGUAGE & ACCURACY RULES
-1. NEVER make up product slugs or fake prices. Only use \`slug\` values that appear word-for-word in the candidate catalog list provided in the turn prompt.
+1. NEVER make up product slugs or fake prices. Only use \`slug\` values that appear word-for-word in Section 4 or in the candidate catalog list provided in the turn prompt.
 2. When a product says "Price on Request", explain simply that the price depends on quantity or custom size and we share a quick quote on WhatsApp or the Contact page.
 3. ALWAYS write in simple layman English so someone who knows nothing about acrylic or manufacturing understands right away. Explain benefits plainly (for example: "thick glass-clear acrylic that stays clear for years", "smooth shiny edges", "we can print your logo on the front").
 4. NEVER use em dashes ("—"), spaced en dashes (" – "), or "--". Use normal commas and short sentences.
 5. NEVER use stiff AI buzzwords like bespoke, elevate, delve, meticulous, unparalleled, seamless, testament, leverage, robust, cutting-edge, state-of-the-art, utilize, optical-grade, or consultative.
 6. Product descriptions must ALWAYS be short, easy-to-read bullet points, never long paragraphs.`;
-
-      // Enrich all products in-place with complete untruncated features, specifications, dimensions,
-      // variants + variant pricing, normalized descriptionHtml & importantNoteHtml, industries, problemStatements, and resources.
-      const { enrichProductsWithCompleteKnowledge } = await import(
-        "@/lib/product-knowledge"
-      );
-      await enrichProductsWithCompleteKnowledge(products, catalogLines);
 
       // Hash both the static knowledge base AND the full catalog lines so any product/price/spec edit bumps catalogHash immediately!
       const catalogHash = crypto
@@ -1416,12 +1467,21 @@ function detectWebsiteProductFamily(text: string): {
   canonicalQuery: string | null;
   onlyPodiums: boolean;
 } {
-  const lower = String(text || "").toLowerCase();
-  if (/\b(pulpit|pulpits|podium|podiums|lectern|lecterns|rostrum|rostrums)\b/i.test(lower)) {
-    return { family: "podium", canonicalQuery: "pulpit podium", onlyPodiums: true };
+  const clean = String(text || "").trim();
+  const lower = clean.toLowerCase();
+  if (/\b(pulpit|pulpits|podium|podiums|lectern|lecterns|rostrum|rostrums|ccpo?\s*0?\d{2,3})\b/i.test(lower)) {
+    return {
+      family: "podium",
+      canonicalQuery: `${clean} pulpit podium`,
+      onlyPodiums: true,
+    };
   }
   if (/\b(trophy|trophies|memento|mementos|award|awards|plaque|plaques|medal|medals)\b/i.test(lower)) {
-    return { family: "award", canonicalQuery: "acrylic trophy award memento", onlyPodiums: false };
+    return {
+      family: "award",
+      canonicalQuery: `${clean} acrylic trophy award memento`,
+      onlyPodiums: false,
+    };
   }
   const words = splitWords(lower).filter(
     (t) => t.length >= 2 && !QUERY_STOP_WORDS.has(t)
@@ -1430,7 +1490,7 @@ function detectWebsiteProductFamily(text: string): {
     Array.from(EXPLICIT_PRODUCT_TERMS).some((pt) => tokenMatchesWord(tok, pt))
   );
   if (matchedNoun) {
-    return { family: matchedNoun, canonicalQuery: text.trim(), onlyPodiums: false };
+    return { family: matchedNoun, canonicalQuery: clean, onlyPodiums: false };
   }
   return { family: null, canonicalQuery: null, onlyPodiums: false };
 }
@@ -1895,17 +1955,25 @@ export function localSmartProductMatch(
   const {
     extractExplicitProductCodesOrSlugs,
     buildDeterministicDeepProductAdvisory,
+    scoreProductDimensionAndPhraseMatch,
   } = require("@/lib/product-knowledge") as typeof import("@/lib/product-knowledge");
   const explicitCodeMatches = extractExplicitProductCodesOrSlugs(
-    candidatePool,
+    pool,
     cleanRaw
   );
   const explicitSlugSet = new Set(explicitCodeMatches.map((p) => p.slug));
 
-  const scored = candidatePool.map((p) => {
+  const effectiveCandidatePool =
+    explicitCodeMatches.length > 0
+      ? Array.from(new Set([...explicitCodeMatches, ...candidatePool]))
+      : candidatePool;
+
+  const scored = effectiveCandidatePool.map((p) => {
     let score = 0;
     const nameLower = p.name.toLowerCase();
-    const skuLower = (p.sku || "").toLowerCase();
+    const skuLower = (p.sku || "")
+      .toLowerCase()
+      .replace(/^ccpo(\d)/, "ccp0$1");
     const nameWords = splitWords(nameLower);
     const catWords = splitWords(
       `${p.categoryName} ${p.subCategoryName || ""} ${(p.podiumSubCategoryNames || []).join(" ")}`
@@ -1932,8 +2000,10 @@ export function localSmartProductMatch(
       .toLowerCase();
 
     if (explicitSlugSet.has(p.slug)) {
-      score += 240;
+      score += 320;
     }
+
+    score += scoreProductDimensionAndPhraseMatch(p, cleanRaw);
 
     if (nameLower === q || (skuLower && skuLower === q)) score += 140;
     else if (q.length >= 4 && skuLower && skuLower.includes(q)) score += 90;

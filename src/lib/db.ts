@@ -59,6 +59,11 @@ if (!globalForPrisma.sqliteInitialized) {
       await prisma.$executeRawUnsafe("PRAGMA busy_timeout = 10000;");
       await prisma.$executeRawUnsafe("PRAGMA cache_size = -16000;"); // Cap SQLite cache to ~16MB
       await prisma.$executeRawUnsafe("PRAGMA temp_store = MEMORY;");
+      await prisma
+        .$executeRawUnsafe(
+          "UPDATE Product SET sku = REPLACE(sku, 'CCPO', 'CCP0') WHERE sku LIKE 'CCPO%';"
+        )
+        .catch(() => {});
     })
     .catch(() => {
       // Safe fallback if connection initializes lazily

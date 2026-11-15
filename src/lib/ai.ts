@@ -540,7 +540,7 @@ export async function runCustomerConcierge(
 
   const cached = !hasConversationContext
     ? await getCachedAiResponse<CachedShape>(
-        "concierge:v2",
+        "concierge:v4",
         normalizedKey,
         snapshot.catalogHash
       )
@@ -612,11 +612,11 @@ export async function runCustomerConcierge(
 
   // Pre-classify current message intent BEFORE invoking Claude or scanning catalog products (Phase A + Phase B multi-turn state + Phase H deep retrieval)
   const webState = deriveWebsiteConversationState(cleanHistory, cleanQuery);
-  const directPreCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
+  const directPreCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 12 });
   const preCheck =
     !isNonProductQueryIntent(directPreCheck.intent) && webState.isFollowUpRefinement
       ? localSmartProductMatch(snapshot, webState.effectiveSearchQuery, {
-          limit: 4,
+          limit: 12,
           onlyPodiums: webState.onlyPodiums,
           maxPrice: webState.maxPrice,
           minPrice: webState.minPrice,
@@ -627,7 +627,7 @@ export async function runCustomerConcierge(
           webState.minPrice !== null ||
           webState.preferences.includes("premium"))
       ? localSmartProductMatch(snapshot, cleanQuery, {
-          limit: 4,
+          limit: 12,
           onlyPodiums: webState.onlyPodiums,
           maxPrice: webState.maxPrice,
           minPrice: webState.minPrice,
@@ -826,7 +826,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
 
         if (!hasConversationContext && normalizedKey) {
           await setCachedAiResponse(
-            "concierge:v2",
+            "concierge:v4",
             normalizedKey,
             cleanQuery,
             snapshot.catalogHash,
@@ -858,7 +858,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
 
         // Only backfill if Claude explicitly classified as product_match AND local also confirms a real product match
         if (intent === "product_match" && finalProducts.length === 0 && preCheck.intent === "product_match") {
-          finalProducts = preCheck.products.map((p) => toCard(p));
+          finalProducts = preCheck.products.slice(0, 4).map((p) => toCard(p));
         }
 
         pushStep(
@@ -960,7 +960,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
 
   const message = local.advisoryMessage;
 
-  const fallbackCards = localIsNonProd ? [] : local.products.map((p) => toCard(p));
+  const fallbackCards = localIsNonProd ? [] : local.products.slice(0, 4).map((p) => toCard(p));
   const contextPrefill =
     local.intent === "human_handoff_info" && webState.primaryProductQuery
       ? `Hi Classic Concepts! Please connect me with the Sales Team regarding ${webState.primaryProductQuery}${activeBudgetLabel ? ` (budget ${activeBudgetLabel})` : ""}${webState.preferences.length ? `, preferences: ${webState.preferences.join(", ")}` : ""}.`

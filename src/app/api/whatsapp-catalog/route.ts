@@ -35,10 +35,10 @@ export async function GET(request: Request) {
     const limitParam = Number(searchParams.get("limit") || "250");
     const limit = Math.min(Math.max(limitParam, 1), 500);
 
-    const [productsRaw, enquiries, globalResources] = await Promise.all([
+    const [productsRaw, enquiries, globalResources, teamMembers, machinery, cartOrders, categories] = await Promise.all([
       prisma.product.findMany({
         orderBy: [{ isPodium: "desc" }, { updatedAt: "desc" }],
-        take: 350,
+        take: 450,
         include: {
           category: { select: { name: true, slug: true } },
           subCategory: { select: { name: true, slug: true } },
@@ -69,14 +69,38 @@ export async function GET(request: Request) {
       }),
       prisma.enquiry.findMany({
         orderBy: { createdAt: "desc" },
-        take: 30,
+        take: 50,
       }),
       prisma.resource
         .findMany({
-          select: { title: true, fileUrl: true, type: true },
-          take: 30,
+          select: { title: true, description: true, fileUrl: true, type: true },
+          take: 50,
         })
-        .catch(() => [] as { title: string; fileUrl: string; type: string }[]),
+        .catch(() => [] as { title: string; description: string | null; fileUrl: string; type: string }[]),
+      prisma.teamMember
+        .findMany({
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+        })
+        .catch(() => []),
+      prisma.machinery
+        .findMany({
+          orderBy: { sortOrder: "asc" },
+        })
+        .catch(() => []),
+      prisma.cartOrder
+        .findMany({
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: { items: true },
+        })
+        .catch(() => []),
+      prisma.category
+        .findMany({
+          orderBy: { sortOrder: "asc" },
+          include: { subCategories: { select: { name: true, slug: true } } },
+        })
+        .catch(() => []),
     ]);
 
     const products = productsRaw.filter((p) => !isDummyProductRow(p));
@@ -135,12 +159,16 @@ export async function GET(request: Request) {
           !isDimensionSpecification({ name: s.name, value: s.value, type: s.type })
       );
 
+      const normalizedSku = p.sku
+        ? p.sku.replace(/^CCPO(\d+)/i, "CCP0$1")
+        : null;
+
       return {
         id: p.id,
         brand: "CLASSIC_CONCEPTS" as const,
         name: p.name,
         slug: p.slug,
-        sku: p.sku,
+        sku: normalizedSku,
         categoryName: p.subCategory
           ? `${p.category.name} - ${p.subCategory.name}`
           : p.category.name,
@@ -198,6 +226,50 @@ export async function GET(request: Request) {
       domain: "https://classicconcepts.in",
       count: mappedProducts.length,
       products: mappedProducts,
+      categories: categories.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        subCategories: c.subCategories.map((sc) => ({ name: sc.name, slug: sc.slug })),
+      })),
+      teamMembers: teamMembers.map((t) => ({
+        id: t.id,
+        name: t.name,
+        position: t.position,
+        phone: t.phone,
+        whatsapp: t.whatsapp,
+        email: t.email,
+        bio: t.bio,
+      })),
+      machinery: machinery.map((m) => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        imageUrl: m.imageUrl,
+      })),
+      resources: globalResources.map((r) => ({
+        name: r.title,
+        description: r.description,
+        url: r.fileUrl,
+        type: r.type,
+      })),
+      cartOrders: cartOrders.map((o) => ({
+        id: o.id,
+        name: o.name,
+        email: o.email,
+        phone: o.phone,
+        city: o.city,
+        state: o.state,
+        total: o.total,
+        status: o.status,
+        items: o.items.map((it) => ({
+          productName: it.productName,
+          productSlug: it.productSlug,
+          price: it.price,
+          quantity: it.quantity,
+        })),
+        createdAt: o.createdAt.toISOString(),
+      })),
       enquiries: enquiries.map((e) => ({
         id: e.id,
         name: e.name,

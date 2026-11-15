@@ -358,16 +358,30 @@ export function extractExplicitProductCodesOrSlugs(
   const matched: CachedProductSummary[] = [];
   const seen = new Set<string>();
 
-  // 1. Check explicit CCP / CC SKU patterns in the query
+  // 1. Check explicit CCP / CC SKU patterns in the query (normalizing CCPO -> CCP0)
   const codeMatches = Array.from(
-    qLower.matchAll(/\b(ccp[-_\s]*\d+[a-z]*|cc[-_\s]*[a-z0-9-]+)\b/gi)
-  ).map((m) => m[1].replace(/[^a-z0-9]/gi, "").toLowerCase());
+    qLower.matchAll(/\b(ccpo?[-_\s]*\d+[a-z]*|cc[-_\s]*[a-z0-9-]+)\b/gi)
+  ).map((m) =>
+    m[1]
+      .replace(/[^a-z0-9]/gi, "")
+      .toLowerCase()
+      .replace(/^ccpo(\d)/, "ccp0$1")
+  );
 
   for (const code of codeMatches) {
     for (const p of snapshotProducts) {
-      const skuClean = (p.sku || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
-      const slugClean = p.slug.replace(/[^a-z0-9]/gi, "").toLowerCase();
-      const nameClean = p.name.replace(/[^a-z0-9]/gi, "").toLowerCase();
+      const skuClean = (p.sku || "")
+        .replace(/[^a-z0-9]/gi, "")
+        .toLowerCase()
+        .replace(/^ccpo(\d)/, "ccp0$1");
+      const slugClean = p.slug
+        .replace(/[^a-z0-9]/gi, "")
+        .toLowerCase()
+        .replace(/ccpo(\d)/g, "ccp0$1");
+      const nameClean = p.name
+        .replace(/[^a-z0-9]/gi, "")
+        .toLowerCase()
+        .replace(/ccpo(\d)/g, "ccp0$1");
       if (
         (skuClean && skuClean === code) ||
         slugClean.endsWith(code) ||
@@ -453,13 +467,116 @@ export function findSpecValue(
   return found ? found.value : null;
 }
 
+export function normalizeDimensionStringToCompactPairs(raw: string): string {
+  return String(raw || "")
+    .toLowerCase()
+    .replace(
+      /(\d+(?:\.\d+)?)\s*(?:["'”′″]|inch(?:es)?|in|mm|cm|ft)?\s*(?:x|×|by|\*)\s*(\d+(?:\.\d+)?)/gi,
+      (_, a, b) => ` ${a}x${b} ${b}x${a} `
+    )
+    .replace(
+      /(\d+(?:\.\d+)?)\s*(?:["'”′″]|min\.?)?\s*(?:to|–|-)\s*(\d+(?:\.\d+)?)/gi,
+      (_, a, b) => ` ${a}to${b} ${b}to${a} `
+    );
+}
+
+/**
+ * Scores a product against exact dimension pairs (e.g. `22 × 16-inch top surface`, `24 x 20`, `32 to 44 inches`)
+ * and multi-word description/feature phrases so dimension-specific and feature-specific queries rank the exact product #1.
+ */
+export function scoreProductDimensionAndPhraseMatch(
+  p: CachedProductSummary,
+  rawQuery: string
+): number {
+  const q = String(rawQuery || "").toLowerCase();
+  if (!q) return 0;
+
+  let bonus = 0;
+
+  const pairMatches = Array.from(
+    q.matchAll(
+      /\b(\d{1,4}(?:\.\d+)?)\s*(?:["'”′″]|inch(?:es)?|in|mm|cm|ft)?\s*(?:x|×|by|\*)\s*(\d{1,4}(?:\.\d+)?)\b/gi
+    )
+  ).map((m) => `${m[1]}x${m[2]}`.toLowerCase());
+
+  const rangeMatches = Array.from(
+    q.matchAll(
+      /\b(\d{2,4}(?:\.\d+)?)\s*(?:["'”′″]|min\.?)?\s*(?:to|–|-)\s*(\d{2,4}(?:\.\d+)?)\b/gi
+    )
+  ).map((m) => `${m[1]}to${m[2]}`.toLowerCase());
+
+  const asksTop = /\b(top\s*sheet|top\s*surface|reading\s*top|reading\s*surface|top)\b/i.test(q);
+  const asksBottom = /\b(bottom\s*sheet|bottom\s*plate|base)\b/i.test(q);
+  const asksFront = /\b(front\s*panel)\b/i.test(q);
+  const asksShelf = /\b(shelf)\b/i.test(q);
+  const asksLogoOrName = /\b(logo\s*panel|name\s*panel)\b/i.test(q);
+
+  if (pairMatches.length > 0) {
+    const topSpec = findSpecValue(p, /top\s*sheet|reading\s*top|top\s*surface/i) || "";
+    const bottomSpec = findSpecValue(p, /bottom\s*sheet|bottom\s*plate|base/i) || "";
+    const frontSpec = findSpecValue(p, /front\s*panel/i) || "";
+    const shelfSpec = findSpecValue(p, /shelf/i) || "";
+    const logoNameSpec =
+      `${findSpecValue(p, /logo\s*panel/i) || ""} ${findSpecValue(p, /name\s*panel/i) || ""}`;
+    const allSpecsCompact = normalizeDimensionStringToCompactPairs(
+      (p.specs || []).map((s) => `${s.name} ${s.value}`).join(" ")
+    );
+    const descAndFeatsCompact = normalizeDimensionStringToCompactPairs(
+      `${p.descriptionText || ""} ${(p.features || []).join(" ")} ${(p.bullets || []).join(" ")}`
+    );
+
+    const topCompact = normalizeDimensionStringToCompactPairs(topSpec);
+    const bottomCompact = normalizeDimensionStringToCompactPairs(bottomSpec);
+    const frontCompact = normalizeDimensionStringToCompactPairs(frontSpec);
+    const shelfCompact = normalizeDimensionStringToCompactPairs(shelfSpec);
+    const logoNameCompact = normalizeDimensionStringToCompactPairs(logoNameSpec);
+
+    for (const pair of pairMatches) {
+      const tokenRe = new RegExp(`\\b${pair.replace(".", "\\.")}\\b`, "i");
+      if (asksTop && tokenRe.test(topCompact)) {
+        bonus += 320;
+      } else if (asksBottom && tokenRe.test(bottomCompact)) {
+        bonus += 300;
+      } else if (asksFront && tokenRe.test(frontCompact)) {
+        bonus += 300;
+      } else if (asksShelf && tokenRe.test(shelfCompact)) {
+        bonus += 300;
+      } else if (asksLogoOrName && tokenRe.test(logoNameCompact)) {
+        bonus += 300;
+      } else if (tokenRe.test(topCompact)) {
+        bonus += 240;
+      } else if (tokenRe.test(allSpecsCompact)) {
+        bonus += 170;
+      }
+
+      if (tokenRe.test(descAndFeatsCompact)) {
+        bonus += 140;
+      }
+    }
+  }
+
+  if (rangeMatches.length > 0) {
+    const heightCompact = normalizeDimensionStringToCompactPairs(
+      `${findSpecValue(p, /height/i) || ""} ${p.descriptionText || ""}`
+    );
+    for (const rng of rangeMatches) {
+      const rngRe = new RegExp(`\\b${rng.replace(".", "\\.")}\\b`, "i");
+      if (rngRe.test(heightCompact)) {
+        bonus += 240;
+      }
+    }
+  }
+
+  return bonus;
+}
+
 /**
  * Detects whether a customer query is asking for deep product details
  * (dimensions, technical specs, variants, features, comparisons, or unverified specs).
  */
 export function isDeepProductDetailOrComparisonQuery(rawQuery: string): boolean {
   const q = String(rawQuery || "").toLowerCase();
-  return /\b(dimension|dimensions|size|sizes|height|tall|width|wide|wider|widest|depth|top\s*sheet|reading\s*top|reading\s*surface|bottom\s*sheet|base\s*size|front\s*panel|shelf|logo\s*panel|spec|specs|specification|specifications|pillar|pillars|wheel|wheels|weight|heavy|warranty|assembly|fitting|diy|variant|variants|colour|color|colours|colors|finish|finishes|led\s*variant|blue\s*led|red\s*led|white\s*led|yellow\s*led|clear\s*frosted|black\s*frosted|white\s*frosted|compare|comparison|vs\.?|versus|difference|between|which\s+one|which\s+of\s+these|largest|bigger|smaller|feature|features|bullet|note|care\s*instruction|ccp\s*0\d+|20\s*mm|watt|wattage|power\s*consumption|voltage)\b/i.test(
+  return /\b(dimension|dimensions|size|sizes|height|tall|width|wide|wider|widest|depth|top\s*sheet|reading\s*top|reading\s*surface|top\s*surface|bottom\s*sheet|base\s*size|front\s*panel|shelf|logo\s*panel|name\s*panel|spec|specs|specification|specifications|pillar|pillars|wheel|wheels|weight|heavy|warranty|assembly|fitting|diy|variant|variants|colour|color|colours|colors|finish|finishes|led\s*variant|blue\s*led|red\s*led|white\s*led|yellow\s*led|clear\s*frosted|black\s*frosted|white\s*frosted|compare|comparison|vs\.?|versus|difference|between|which\s+one|which\s+of\s+these|largest|bigger|smaller|feature|features|bullet|note|care\s*instruction|tell\s+me\s+about|details\s+(?:of|about|for)|info\s+(?:on|about|for)|ccpo?\s*0?\d+|20\s*mm|watt|wattage|power\s*consumption|voltage|\d+\s*[x×]\s*\d+)\b/i.test(
     q
   );
 }
@@ -742,21 +859,35 @@ export function buildDeterministicDeepProductAdvisory(params: {
   }
 
   if (
-    /\b(feature|features|specification|specifications|spec|specs|pillar|pillars|wheel|wheels|warranty|assembly|weight)\b/i.test(
+    /\b(feature|features|specification|specifications|spec|specs|pillar|pillars|wheel|wheels|warranty|assembly|weight|tell\s+me\s+about|details\s+(?:of|about|for)|info\s+(?:on|about|for)|ccpo?[-_\s]*\d+|\d+\s*[x×]\s*\d+)\b/i.test(
       q
     ) &&
     (top.specs.length > 0 || top.features.length > 0)
   ) {
+    const priceLabel = top.effectivePrice
+      ? ` (₹${top.effectivePrice.toLocaleString("en-IN")})`
+      : "";
     const specSummary = top.specs
       .map((s) => `${s.name}: ${s.value}`)
       .join(", ");
+    const varSummary =
+      top.variants && top.variants.length > 0
+        ? top.variants
+            .map((v) =>
+              typeof v.price === "number" && v.price > 0
+                ? `${v.name}: ₹${v.price.toLocaleString("en-IN")}`
+                : v.name
+            )
+            .join(", ")
+        : "";
     const featSummary = top.features.slice(0, 4).join("; ");
     return {
-      advisoryMessage: `Here are the verified specifications and features for ${top.name}: ${specSummary}${featSummary ? `. Key features: ${featSummary}.` : "."}`,
+      advisoryMessage: `Here are the verified details for ${top.name}${priceLabel}: ${specSummary}${varSummary ? `. Available variants: ${varSummary}` : ""}${featSummary ? `. Key features: ${featSummary}.` : "."}`,
       highlights: [
         ...(specSummary ? [`Specs: ${specSummary}`] : []),
+        ...(varSummary ? [`Variants: ${varSummary}`] : []),
         ...(featSummary ? [`Features: ${featSummary}`] : []),
-      ],
+      ].slice(0, 3),
     };
   }
 
