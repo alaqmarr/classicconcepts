@@ -92,7 +92,7 @@ export default async function PrivacyPolicyPage() {
               <strong>track.ccapl.cc</strong> or <strong>track.ccapl.in</strong>
               , sign in or connect through Meta Login dialogs, or message our
               official WhatsApp Business account and customer desk at{" "}
-              <strong>whatsapp.ccapl.cc</strong>.
+              <strong>chat.ccapl.cc</strong>.
             </p>
           </section>
 
