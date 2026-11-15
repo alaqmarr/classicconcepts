@@ -98,7 +98,7 @@ export function logClassicConceptsAiTrace(input: WebsiteAiLogInput): void {
 
   // 1. Write locally to classicconcepts/ai.logs for durability
   try {
-    const logPath = path.join(process.cwd(), "ai.logs");
+    const logPath = path.join(/*turbopackIgnore: true*/ process.cwd(), "ai.logs");
     const indent = (s: string) =>
       String(s || "(empty)")
         .replace(/\r\n/g, "\n")
