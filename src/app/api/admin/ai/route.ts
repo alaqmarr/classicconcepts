@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  buildDeterministicSeoMetadata,
   callClaudeHaiku,
+  extractVerifiedAdminFacts,
   runAdminDraftEnquiryReply,
   runAdminInlineRewrite,
   runAdminProductAutofill,
+  sanitizeAdminUntrustedInput,
 } from "@/lib/ai";
 import {
   getAiRuntimeSettings,
@@ -50,7 +53,7 @@ export async function POST(req: Request) {
         taskSystemInstruction:
           requestedScope === "client"
             ? "Reply in one short sentence confirming ACRIO (Classic Concepts Client Assistant on claude-haiku-5-5) and the Catalog Cache are online."
-            : "Reply in one short sentence confirming ACRIO Admin Co-Pilot (claude-haiku-5-5) and the Catalog Cache are online.",
+            : "Reply in one short sentence confirming ACRO (Classic Concepts Admin Co-Pilot on claude-haiku-5-5) and the Catalog Cache are online.",
         userPrompt: "Ping status check.",
       });
 
@@ -155,10 +158,61 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         ok: true,
+        agentName: res.agentName || "ACRO (Admin Co-Pilot)",
+        warning: res.warning,
+        injectionWarning: res.injectionWarning,
         data: {
           ...res.data,
           matchedIndustryIds,
           matchedProblemIds,
+        },
+      });
+    }
+
+    if (action === "seo_generate") {
+      const sanitizedName = sanitizeAdminUntrustedInput(String(body?.name || ""));
+      if (!sanitizedName.sanitized) {
+        return NextResponse.json(
+          { ok: false, error: "Please enter a product name first." },
+          { status: 400 }
+        );
+      }
+      const verifiedFacts = extractVerifiedAdminFacts({
+        name: sanitizedName.sanitized,
+        sku: body?.sku ? String(body.sku) : undefined,
+        existingDescription: body?.existingDescription ? String(body.existingDescription) : undefined,
+        existingSpecs: Array.isArray(body?.existingSpecs) ? body.existingSpecs : undefined,
+        customNotes: body?.customNotes ? String(body.customNotes) : undefined,
+      });
+      const seo = buildDeterministicSeoMetadata({
+        name: sanitizedName.sanitized,
+        categoryName: body?.categoryName ? String(body.categoryName) : undefined,
+        isPodium: Boolean(body?.isPodium),
+        sku: body?.sku ? String(body.sku) : undefined,
+        verifiedFacts,
+      });
+      return NextResponse.json({
+        ok: true,
+        agentName: "ACRO (Admin Co-Pilot)",
+        previewOnly: true,
+        data: {
+          ...seo,
+          missingAttributesWarning: verifiedFacts.missingAttributesWarning,
+          groundingStatus:
+            verifiedFacts.missingAttributesWarning.length === 0
+              ? "VERIFIED_INPUTS"
+              : "NEEDS_ADMIN_CONFIRMATION",
+          fieldDiffPreview: {
+            seoTitle: { current: String(body?.currentSeoTitle || ""), proposed: seo.seoTitle },
+            metaDescription: {
+              current: String(body?.currentMetaDescription || ""),
+              proposed: seo.metaDescription,
+            },
+            searchKeywords: {
+              current: String(body?.currentSearchKeywords || ""),
+              proposed: seo.searchKeywords,
+            },
+          },
         },
       });
     }

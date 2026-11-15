@@ -190,6 +190,9 @@ interface ParsedProductPayload {
   description: string | null;
   descriptionHtml: string | null;
   importantNoteHtml: string | null;
+  seoTitle: string | null;
+  metaDescription: string | null;
+  searchKeywords: string | null;
   imageCreates: { url: string; isMain: boolean }[];
   featureCreates: { text: string }[];
   specCreates: { name: string; value: string; type: string }[];
@@ -318,6 +321,13 @@ export function parseProductFormData(formData: FormData): {
     formData.get("importantNoteHtml") as string | null
   );
 
+  const seoTitle =
+    ((formData.get("seoTitle") as string) || "").trim() || null;
+  const metaDescription =
+    ((formData.get("metaDescription") as string) || "").trim() || null;
+  const searchKeywords =
+    ((formData.get("searchKeywords") as string) || "").trim() || null;
+
   const mainImage = ((formData.get("mainImage") as string) || "").trim() || null;
   const galleryImages = (formData.getAll("galleryImages[]") as string[])
     .map((u) => (u || "").trim())
@@ -439,6 +449,9 @@ export function parseProductFormData(formData: FormData): {
       description,
       descriptionHtml,
       importantNoteHtml,
+      seoTitle,
+      metaDescription,
+      searchKeywords,
       imageCreates,
       featureCreates,
       specCreates,
@@ -618,6 +631,9 @@ export async function createCatalogItem(
           description: d.description,
           descriptionHtml: d.descriptionHtml,
           importantNoteHtml: d.importantNoteHtml,
+          seoTitle: d.seoTitle,
+          metaDescription: d.metaDescription,
+          searchKeywords: d.searchKeywords,
           images: d.imageCreates.length > 0 ? { create: d.imageCreates } : undefined,
           features: d.featureCreates.length > 0 ? { create: d.featureCreates } : undefined,
           specifications: d.specCreates.length > 0 ? { create: d.specCreates } : undefined,
@@ -731,6 +747,9 @@ export async function updateCatalogItem(
           description: d.description,
           descriptionHtml: d.descriptionHtml,
           importantNoteHtml: d.importantNoteHtml,
+          seoTitle: formData.has("seoTitle") ? d.seoTitle : undefined,
+          metaDescription: formData.has("metaDescription") ? d.metaDescription : undefined,
+          searchKeywords: formData.has("searchKeywords") ? d.searchKeywords : undefined,
           images: d.imageCreates.length > 0 ? { create: d.imageCreates } : undefined,
           features: d.featureCreates.length > 0 ? { create: d.featureCreates } : undefined,
           specifications: d.specCreates.length > 0 ? { create: d.specCreates } : undefined,
