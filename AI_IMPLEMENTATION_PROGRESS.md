@@ -8,7 +8,7 @@
 - [x] **Phase C — Product Search Relevance, Synonym Grounding & Strict Category Isolation** *(Completed)*
 - [x] **Phase D — Response Relevance, WhatsApp Handoff & Human Takeover** *(Completed)*
 - [x] **Phase E — Upgrade & Formalize ACRO Administrator Assistant Across Classic Concepts & Classic Edge 53** *(Completed)*
-- [ ] **Phase F — Complete End-to-End `ai.logs` & `/dashboard/ai-logs` Observability & Cross-App Cache Sync** *(Pending)*
+- [x] **Phase F — Database Caching, Prompt-Cache Efficiency, Token Costs & ACRO-to-ACRIO Catalog Synchronization** *(Completed)*
 - [ ] **Phase G — Add Evaluation & Regression Test Suite** *(Pending)*
 
 ---
@@ -206,3 +206,42 @@
 - `npx tsx scripts/test-phase-a-intent-routing.ts` in `classicconcepts`: **PASS**
 - `npx tsx scripts/test-phase-c-search.ts` in `classicedge`: **PASS**
 - `npx tsc --noEmit` in `classicconcepts` and `classicedge`: **PASS (0 errors)**
+
+---
+
+## Phase F — Database Caching, Prompt-Cache Efficiency, Token Costs & ACRO-to-ACRIO Catalog Synchronization — Completed Summary
+
+### What Was Fixed
+1. **Prompt-Cache Efficiency & >90% Token Cost Reduction (`classicconcepts`)**:
+   - Replaced the ~33,753-token (~135 KB) 189-product raw dump inside `staticSystemPrompt` (`src/lib/ai-context.ts`) with a compact, high-hit-rate Company, Buyer Guide & Taxonomy Knowledge Base (**`10,040 chars` / `~2,510 tokens`** — well above Anthropic's `1,024`-token prompt-cache minimum while cutting static system prompt size by **92.5%**).
+   - Added `formatCandidateProductsForPrompt(candidates, 15)` in `src/lib/ai-context.ts` and wired it into `runCustomerConcierge()` and `runSmartCatalogSearch()` in `src/lib/ai.ts` so only the top-K pre-retrieved candidate products (`~720 tokens` for 6 matching podiums) are injected into product-seeking turns.
+   - Set `useCatalogSystemCache: false` and `effort: "low"` on `runAdminInlineRewrite()` (inline text/bullet rewrites do not need the product catalog snapshot), and routed non-product visitor turns (`greeting`, `role_clarify`, `topic_reset`, `human_handoff_info`, `off_topic`) to `effort: "low"` without catalog injection.
+2. **Deterministic `catalogHash` Fingerprinting & Instant `AiResponseCache` Invalidation (`classicconcepts`)**:
+   - Updated `getKnowledgeSnapshot()` in `src/lib/ai-context.ts` so `catalogHash` hashes both `staticSystemPrompt` and the full product fingerprint (`SLUG`, `NAME`, `SKU`, `basePrice`, `discountPrice`, `effectivePrice`, `stockStatus`, `specs`, `features`, `industries`).
+   - Any admin or ACRO product price/spec/description update immediately bumps `catalogHash` (verified: `f6e347db29a3bce0 -> 537267ec9785cd0a`), automatically invalidating stale `AiResponseCache` entries.
+3. **Cross-System `ACRO -> ACRIO` Catalog Cache Synchronization (`classicconcepts` & `classicedge` -> `ccwhatsapp`)**:
+   - Upgraded `syncEcosystemRedisCache(options?: { brand?: "CLASSIC_CONCEPTS" | "CLASSIC_EDGE_53" | "ALL" })` in `ccwhatsapp/packages/connections/src/index.ts` to support selective brand tag invalidation (`["cc-products", "acrio-replies"]` vs `["ce53-machines", "acrio-replies"]`) and immediate cache warming.
+   - Updated `POST /api/cache/sync` in `ccwhatsapp/apps/web/src/app/api/cache/sync/route.ts` to accept authenticated internal ecosystem bridge requests (`x-cc-bridge-key` / `x-bridge-secret`) for cache invalidation while strictly blocking `action: "save_ai_key"` (`403 Forbidden`) unless an authenticated `DEV` / `SUPERADMIN` / `ADMIN` session is present.
+   - Added `notifyWhatsAppHubCatalogSync()` in `classicconcepts/src/lib/whatsapp-bridge.ts` and wired it into `revalidateCatalogPaths()` (`classicconcepts/src/lib/product-mutations.ts`).
+   - Added `notifyWhatsAppHubCatalogSync()` in `classicedge/src/lib/whatsapp-bridge.ts` and wired it into `classicedge/src/app/api/admin/products/route.ts`, `classicedge/src/app/api/admin/products/[id]/route.ts`, `classicedge/src/app/actions/product.ts`, and `classicedge/src/app/actions/consumable.ts`.
+
+### Changed Files in Phase F
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\ai-context.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\ai.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\whatsapp-bridge.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\src\lib\product-mutations.ts`
+- `c:\Users\DELL\Desktop\classicconcepts\scripts\test-phase-f-cache-and-tokens.ts`
+- `C:\Users\DELL\Desktop\classicedge\src\lib\whatsapp-bridge.ts`
+- `C:\Users\DELL\Desktop\classicedge\src\app\api\admin\products\route.ts`
+- `C:\Users\DELL\Desktop\classicedge\src\app\api\admin\products\[id]\route.ts`
+- `C:\Users\DELL\Desktop\classicedge\src\app\actions\product.ts`
+- `C:\Users\DELL\Desktop\classicedge\src\app\actions\consumable.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\packages\connections\src\index.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\apps\web\src\app\api\cache\sync\route.ts`
+- `C:\Users\DELL\Downloads\ccwhatsapp\scripts\test-phase-f-cache-sync.ts`
+
+### Verification & Regression Tests Run
+- `npx tsx scripts/test-phase-f-cache-and-tokens.ts` in `classicconcepts`: **PASS** (`staticSystemPrompt` = `10,040 chars` / `~2,510 tokens`; candidate block = `2,878 chars` / `~720 tokens`; `catalogHash` bump & stale cache eviction verified)
+- `npx tsx scripts/test-phase-f-cache-sync.ts` in `ccwhatsapp`: **PASS** (4/4 assertions: selective brand sync, unauthenticated `403`, bridge-authorized `200`, and `save_ai_key` bridge block `403`)
+- `npx tsx` on all Phase A, B, C, D, and E regression suites across `ccwhatsapp`, `classicconcepts`, and `classicedge`: **ALL PASSED**
+- `npx tsc --noEmit` across `ccwhatsapp/apps/web`, `classicconcepts`, and `classicedge`: **PASS (0 errors)**

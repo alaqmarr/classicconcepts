@@ -387,6 +387,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
 
       const catalogLines = products.map((p) => {
         const priceStr = p.effectivePrice ? `₹${p.effectivePrice}` : "Price on Request";
+        const rawPricePair = `B:${p.basePrice ?? "na"}/D:${p.discountPrice ?? "na"}`;
         const subStr = p.subCategoryName ? ` / ${p.subCategoryName}` : "";
         const skuStr = p.sku ? ` [SKU:${p.sku}]` : "";
         const specStr =
@@ -403,7 +404,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
             ? ` | Highlights: ${p.bullets.slice(0, 2).join("; ")}`
             : "";
         const indStr = p.industries.length > 0 ? ` | Industries: ${p.industries.join(", ")}` : "";
-        return `- SLUG:"${p.slug}" | NAME:"${p.name}"${skuStr} | CAT:"${p.categoryName}${subStr}" | PRICE:${priceStr} | STOCK:${p.stockStatus}${specStr}${featStr}${indStr}`;
+        return `- SLUG:"${p.slug}" | NAME:"${p.name}"${skuStr} | CAT:"${p.categoryName}${subStr}" | PRICE:${priceStr} (${rawPricePair}) | STOCK:${p.stockStatus}${specStr}${featStr}${indStr}`;
       });
 
       // Rich static system prompt (>2,100 tokens) so Anthropic Prompt Caching ALWAYS activates
@@ -447,9 +448,9 @@ ${industriesRaw.map((i) => `  - ${i.name} (slug: "${i.slug}")`).join("\n") || " 
 - **Solutions / Everyday Needs** (/shop/problem/<slug>):
 ${problemsRaw.map((ps) => `  - ${ps.name} (slug: "${ps.slug}")`).join("\n") || "  - Custom Display & Stage Solutions"}
 
-## 4. LIVE PRODUCT CATALOG (ONLY USE EXACT SLUGS FROM THIS LIST)
-Total Active Catalog Items: ${products.length}
-${catalogLines.join("\n")}
+## 4. LIVE PRODUCT CATALOG OVERVIEW (CANDIDATE PRODUCTS INJECTED PER TURN)
+Total Active Catalog Items: ${products.length} across ${categories.length} main categories and ${podiumSubCategories.length} podium styles.
+Only recommend exact \`slug\` values from the pre-filtered candidate products provided in the turn prompt. Never invent product slugs or prices.
 
 ## 5. EVERYDAY CUSTOMER FAQ & SIMPLE BUYER GUIDE (PLAIN-ENGLISH REFERENCE)
 Use these simple, everyday explanations whenever a visitor asks common questions about acrylic, care, custom logos, delivery, or durability:
@@ -471,16 +472,17 @@ Use these simple, everyday explanations whenever a visitor asks common questions
   - Explain simply: Small tabletop holders and brochure stands typically use sturdy 3mm to 5mm clear sheets, while full-size stage podiums, furniture, and heavy awards use thick 8mm, 10mm, 12mm, 15mm, 18mm, or up to 25mm+ solid clear slabs so the stand feels rock-steady on stage.
 
 ## 6. STRICT PLAIN-LANGUAGE & ACCURACY RULES
-1. NEVER make up product slugs or fake prices. Only use \`slug\` values that appear word-for-word in Section 4 above.
+1. NEVER make up product slugs or fake prices. Only use \`slug\` values that appear word-for-word in the candidate catalog list provided in the turn prompt.
 2. When a product says "Price on Request", explain simply that the price depends on quantity or custom size and we share a quick quote on WhatsApp or the Contact page.
 3. ALWAYS write in simple layman English so someone who knows nothing about acrylic or manufacturing understands right away. Explain benefits plainly (for example: "thick glass-clear acrylic that stays clear for years", "smooth shiny edges", "we can print your logo on the front").
 4. NEVER use em dashes ("—"), spaced en dashes (" – "), or "--". Use normal commas and short sentences.
 5. NEVER use stiff AI buzzwords like bespoke, elevate, delve, meticulous, unparalleled, seamless, testament, leverage, robust, cutting-edge, state-of-the-art, utilize, optical-grade, or consultative.
 6. Product descriptions must ALWAYS be short, easy-to-read bullet points, never long paragraphs.`;
 
+      // Hash both the static knowledge base AND the full catalog lines so any product/price/spec edit bumps catalogHash immediately!
       const catalogHash = crypto
         .createHash("sha256")
-        .update(staticSystemPrompt)
+        .update(`${staticSystemPrompt}\n---\n${catalogLines.join("\n")}`)
         .digest("hex")
         .slice(0, 16);
 
@@ -499,6 +501,40 @@ Use these simple, everyday explanations whenever a visitor asks common questions
       };
     }
   );
+}
+
+/**
+ * Formats only the top-K pre-retrieved candidate products into a compact prompt section (~300-900 tokens)
+ * instead of dumping all 189 catalog products (~32,000 tokens) into every LLM turn.
+ */
+export function formatCandidateProductsForPrompt(
+  candidates: CachedProductSummary[],
+  maxItems = 15
+): string {
+  const slice = candidates.slice(0, maxItems);
+  if (slice.length === 0) {
+    return "### CANDIDATE CATALOG PRODUCTS FOR THIS QUERY\n(0 exact catalog products matched the visitor's current filters/budget.)";
+  }
+  const lines = slice.map((p) => {
+    const priceStr = p.effectivePrice ? `₹${p.effectivePrice}` : "Price on Request";
+    const subStr = p.subCategoryName ? ` / ${p.subCategoryName}` : "";
+    const skuStr = p.sku ? ` [SKU:${p.sku}]` : "";
+    const specStr =
+      p.specs.length > 0
+        ? ` | Specs: ${p.specs
+            .slice(0, 3)
+            .map((s) => `${s.name}:${s.value}`)
+            .join("; ")}`
+        : "";
+    const featStr =
+      p.features.length > 0
+        ? ` | Features: ${p.features.slice(0, 2).join("; ")}`
+        : p.bullets.length > 0
+        ? ` | Highlights: ${p.bullets.slice(0, 2).join("; ")}`
+        : "";
+    return `- SLUG:"${p.slug}" | NAME:"${p.name}"${skuStr} | CAT:"${p.categoryName}${subStr}" | PRICE:${priceStr} | STOCK:${p.stockStatus}${specStr}${featStr}`;
+  });
+  return `### CANDIDATE CATALOG PRODUCTS FOR THIS QUERY (ONLY PICK SLUGS FROM THIS LIST)\n${lines.join("\n")}`;
 }
 
 /**

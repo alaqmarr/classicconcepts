@@ -9,6 +9,7 @@ import {
   isNonProductQueryIntent,
   deriveWebsiteConversationState,
   extractWebsiteBudgetConstraints,
+  formatCandidateProductsForPrompt,
   type CachedProductSummary,
   type LocalQueryIntent,
 } from "@/lib/ai-context";
@@ -169,6 +170,7 @@ export async function callClaudeHaiku(options: {
   conversationMessages?: { role: "user" | "assistant"; content: string }[];
   maxTokens?: number;
   temperature?: number;
+  effort?: "low" | "medium";
   useCatalogSystemCache?: boolean;
 }): Promise<AnthropicCallResult> {
   const settings = await getAiRuntimeSettings();
@@ -252,7 +254,7 @@ export async function callClaudeHaiku(options: {
       };
       if (isHaiku55) {
         requestBody.thinking = { type: "adaptive" };
-        requestBody.output_config = { effort: "medium" };
+        requestBody.output_config = { effort: options.effort || "medium" };
       } else {
         requestBody.temperature = options.temperature ?? 0.25;
       }
@@ -671,9 +673,12 @@ export async function runCustomerConcierge(
       hasConversationContext && !preClassifiedNonProduct && webState.primaryProductQuery
         ? ` Active visitor requirements from conversation: product="${webState.primaryProductQuery}"${activeBudgetLabel ? `, budget="${activeBudgetLabel}"` : ""}${webState.preferences.length ? `, preferences=[${webState.preferences.join(", ")}]` : ""}. Preserve the product category and enforce the active budget ceiling strictly.`
         : "";
+    const candidateProductsBlock = !preClassifiedNonProduct
+      ? `\n\n${formatCandidateProductsForPrompt(preCheck.products, 15)}`
+      : "";
     const finalUserMsg = hasConversationContext
-      ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${stateHint}${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"`
-      : `Customer input: "${cleanQuery}"`;
+      ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${stateHint}${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"${candidateProductsBlock}`
+      : `Customer input: "${cleanQuery}"${candidateProductsBlock}`;
     if (preClassifiedNonProduct) {
       claudeTurns.length = 0;
       claudeTurns.push({ role: "user", content: finalUserMsg });
@@ -685,7 +690,8 @@ export async function runCustomerConcierge(
 
     const aiRes = await callClaudeHaiku({
       scope: "client",
-      useCatalogSystemCache: !preClassifiedNonProduct,
+      useCatalogSystemCache: !preClassifiedNonProduct || preCheck.intent === "company_info",
+      effort: preClassifiedNonProduct ? "low" : "medium",
       maxTokens: 550,
       temperature: 0.25,
       conversationMessages: claudeTurns,
@@ -1207,8 +1213,8 @@ Given a visitor's search query${options?.onlyPodiums ? " (restricted ONLY to Pod
     { "slug": "exact-slug-from-section-4", "reason": "Short 5-8 word everyday reason" }
   ]
 }
-If the input is a role introduction ("I am an engineer"), greeting, or off-topic query, set "matches": [] and write a polite clarifying or helpful summary. Otherwise select up to ${Math.min(limit, 8)} best-matching slugs from Section 4.`,
-      userPrompt: `Search query: "${cleanQuery}"`,
+If the input is a role introduction ("I am an engineer"), greeting, or off-topic query, set "matches": [] and write a polite clarifying or helpful summary. Otherwise select up to ${Math.min(limit, 8)} best-matching slugs from the candidate list below.`,
+      userPrompt: `Search query: "${cleanQuery}"\n\n${formatCandidateProductsForPrompt(localResult.products, 15)}`,
     });
 
     if (aiRes.ok) {
@@ -1621,7 +1627,8 @@ export async function runAdminInlineRewrite(params: {
 
   const aiRes = await callClaudeHaiku({
     scope: "admin",
-    useCatalogSystemCache: true,
+    useCatalogSystemCache: false,
+    effort: "low",
     maxTokens: 700,
     temperature: 0.35,
     taskSystemInstruction: `You are ACRO, Classic Concepts' Administrator Co-Pilot, Plain-Language Website Writer & Brand Design Editor.

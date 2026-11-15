@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 import { invalidateAiCatalogCache } from "@/lib/ai-context";
 import { invalidateCacheTags } from "@/lib/redis-cache";
+import { notifyWhatsAppHubCatalogSync } from "@/lib/whatsapp-bridge";
 import {
   bulletsToCleanHtml,
   bulletsToPlainSummary,
@@ -148,6 +149,7 @@ export function revalidateCatalogPaths(slug?: string) {
     ["catalog", "taxonomy", "ai-snapshot", "ai-responses"],
     { paths: slug ? [`/shop/p/${slug}`] : undefined }
   );
+  void notifyWhatsAppHubCatalogSync(slug ? `product:${slug}` : "catalog_mutation");
   try {
     revalidatePath("/", "layout");
     revalidatePath("/shop");
