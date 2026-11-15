@@ -1695,7 +1695,7 @@ export function localSmartProductMatch(
       products: [],
       matchedCategories: [],
       advisoryMessage:
-        "Classic Concepts manufactures cast-acrylic stage podiums, awards, hotel and retail display stands, and custom acrylic boxes from our Mumbai facility, with pan-India delivery and full GST billing.",
+        "Classic Concepts manufactures cast-acrylic stage podiums, awards, hotel and retail display stands, and custom acrylic boxes from our Secunderabad / Hyderabad factory, with pan-India delivery and full GST billing.",
       highlights: [],
       followUpChips: [
         "Explore stage podiums",

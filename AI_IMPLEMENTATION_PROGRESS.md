@@ -9,7 +9,7 @@
 - [x] **Phase D — Response Relevance, WhatsApp Handoff & Human Takeover** *(Completed)*
 - [x] **Phase E — Upgrade & Formalize ACRO Administrator Assistant Across Classic Concepts & Classic Edge 53** *(Completed)*
 - [x] **Phase F — Database Caching, Prompt-Cache Efficiency, Token Costs & ACRO-to-ACRIO Catalog Synchronization** *(Completed)*
-- [ ] **Phase G — Add Evaluation & Regression Test Suite** *(Pending)*
+- [x] **Phase G — Add Evaluation & Regression Test Suite & Final Integration Review** *(Completed)*
 
 ---
 
@@ -245,3 +245,22 @@
 - `npx tsx scripts/test-phase-f-cache-sync.ts` in `ccwhatsapp`: **PASS** (4/4 assertions: selective brand sync, unauthenticated `403`, bridge-authorized `200`, and `save_ai_key` bridge block `403`)
 - `npx tsx` on all Phase A, B, C, D, and E regression suites across `ccwhatsapp`, `classicconcepts`, and `classicedge`: **ALL PASSED**
 - `npx tsc --noEmit` across `ccwhatsapp/apps/web`, `classicconcepts`, and `classicedge`: **PASS (0 errors)**
+
+---
+
+## Phase G — End-to-End Evaluation, Regression Test Suite & Final Integration Review
+
+**Status**: Completed & Verified
+
+### What Was Done & Verified
+1. **Added End-to-End Integration & Master Ecosystem Regression Suites**:
+   - `ccwhatsapp/scripts/test-phase-g-ecosystem-regression.ts`: Runs all **20 end-to-end ACRIO & cross-system scenarios** covering greetings, identity (`ACRIO`), factory location (`Secunderabad / Hyderabad`), role introductions, off-topic deflections, pulpits under `₹25,000`, follow-up budget raise to `₹30,000` (unlocking `₹25k-₹30k` podiums), quality/finish refinements (`most premium transparent ones`), zero prior-link leakage on meta turns, informational handoff vs explicit `"Connect me to a human"` with Sales context summary, tight-budget `₹5,000` floor-price honesty, `CLASSIC_EDGE_53` machine routing, negation (`"not looking for tools, just machines"` -> 0 consumables), category isolation for Awards & Trophies, explicit `TOPIC_RESET`, brand/topic switches, production public URL invariants (zero `localhost:3002`/`3003` leaks), and authenticated vs unauthorized `/api/cache/sync` bridge enforcement.
+   - `classicconcepts/scripts/test-phase-g-end-to-end.ts`: Runs full website end-to-end checks across ACRIO Website Concierge multi-turn budget escalation/resets/handoff prefill, plain-language & anti-AI-pattern enforcement, and ACRO Admin Assistant sparse/verified autofill, prompt-injection neutralization, and grounding.
+2. **Integration Fixes Discovered & Resolved During Phase G Review**:
+   - **Budget-Raise Prioritization in `ccwhatsapp/packages/connections/src/index.ts`**: Updated `runAcrioAutonomousTurn` so when a customer explicitly raises their budget ceiling (e.g., from `₹25,000` to `₹30,000`), newly unlocked higher-budget models (`price > prevMaxPrice`) are surfaced at the top instead of repeating cheaper sub-`₹25,000` models.
+   - **Factory Location Consistency (`Secunderabad / Hyderabad`)**: Fixed stale `Mumbai` factory location strings in `ccwhatsapp/packages/connections/src/index.ts` (prompt instruction, local reply, and offline fallback) and `classicconcepts/src/lib/ai-context.ts` so all ACRIO channels consistently report our Secunderabad / Hyderabad factory.
+
+### Final Cross-Repo Verification Results
+- `ccwhatsapp` (`scripts/test-phase-a` through `test-phase-g`, **6 suites including 20/20 Phase G scenarios**) + `apps/web npx tsc --noEmit`: **PASS (0 errors)**
+- `classicconcepts` (`scripts/test-phase-a` through `test-phase-g`, **7 suites**) + `npx tsc --noEmit`: **PASS (0 errors)**
+- `classicedge` (`scripts/test-phase-c-search.ts`, `scripts/test-phase-e-acro-admin.ts`, **2 suites**) + `npx tsc --noEmit`: **PASS (0 errors)**
