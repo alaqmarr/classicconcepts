@@ -20,17 +20,27 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
+function resolvePublicClassicConceptsOrigin(candidate?: string | null): string {
+  const clean = String(candidate || "").trim().replace(/\/+$/, "");
+  if (
+    !clean ||
+    /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(clean)
+  ) {
+    return "https://classicconcepts.in";
+  }
+  return clean;
+}
+
 export async function GET(req: NextRequest) {
   try {
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      req.nextUrl.origin ||
-      "https://classicconcepts.in";
+    const origin = resolvePublicClassicConceptsOrigin(
+      process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin
+    );
 
     const customerQuery = (req.nextUrl.searchParams.get("customer") || "").trim();
 
     const catalogPayload = await rememberCached(
-      "whatsapp-sync:catalog:v1",
+      "whatsapp-sync:catalog:v2",
       ["catalog", "taxonomy", "brand"],
       3600,
       async () => {
