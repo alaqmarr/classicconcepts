@@ -7,6 +7,7 @@ import {
   normalizeQueryForCache,
   localSmartProductMatch,
   isNonProductQueryIntent,
+  deriveWebsiteConversationState,
   type CachedProductSummary,
   type LocalQueryIntent,
 } from "@/lib/ai-context";
@@ -594,12 +595,43 @@ export async function runCustomerConcierge(
     };
   }
 
-  // Pre-classify current message intent BEFORE invoking Claude or scanning catalog products (Phase A)
-  const preCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
+  // Pre-classify current message intent BEFORE invoking Claude or scanning catalog products (Phase A + Phase B multi-turn state)
+  const webState = deriveWebsiteConversationState(cleanHistory, cleanQuery);
+  const directPreCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
+  const preCheck =
+    !isNonProductQueryIntent(directPreCheck.intent) && webState.isFollowUpRefinement
+      ? localSmartProductMatch(snapshot, webState.effectiveSearchQuery, {
+          limit: 4,
+          onlyPodiums: webState.onlyPodiums,
+          maxPrice: webState.maxPrice,
+          minPrice: webState.minPrice,
+          preferPremium: webState.preferences.includes("premium"),
+        })
+      : !isNonProductQueryIntent(directPreCheck.intent) &&
+        (webState.maxPrice !== null ||
+          webState.minPrice !== null ||
+          webState.preferences.includes("premium"))
+      ? localSmartProductMatch(snapshot, cleanQuery, {
+          limit: 4,
+          onlyPodiums: webState.onlyPodiums,
+          maxPrice: webState.maxPrice,
+          minPrice: webState.minPrice,
+          preferPremium: webState.preferences.includes("premium"),
+        })
+      : directPreCheck;
   const preClassifiedNonProduct = isNonProductQueryIntent(preCheck.intent);
+  const activeBudgetLabel =
+    webState.maxPrice !== null && webState.minPrice !== null
+      ? `₹${webState.minPrice.toLocaleString("en-IN")} to ₹${webState.maxPrice.toLocaleString("en-IN")}`
+      : webState.maxPrice !== null
+      ? `<= ₹${webState.maxPrice.toLocaleString("en-IN")}`
+      : webState.minPrice !== null
+      ? `>= ₹${webState.minPrice.toLocaleString("en-IN")}`
+      : null;
+
   pushStep(
-    "Classified visitor turn intent",
-    `preIntent=${preCheck.intent}, requiresProductLookup=${!preClassifiedNonProduct}`
+    "Classified visitor turn intent & state",
+    `preIntent=${preCheck.intent}, requiresProductLookup=${!preClassifiedNonProduct}, effectiveQuery="${webState.effectiveSearchQuery}"${activeBudgetLabel ? `, budget="${activeBudgetLabel}"` : ""}`
   );
 
   pushStep(
@@ -634,8 +666,12 @@ export async function runCustomerConcierge(
     while (claudeTurns.length > 0 && claudeTurns[0].role !== "user") {
       claudeTurns.shift();
     }
+    const stateHint =
+      hasConversationContext && !preClassifiedNonProduct && webState.primaryProductQuery
+        ? ` Active visitor requirements from conversation: product="${webState.primaryProductQuery}"${activeBudgetLabel ? `, budget="${activeBudgetLabel}"` : ""}${webState.preferences.length ? `, preferences=[${webState.preferences.join(", ")}]` : ""}. Preserve the product category and enforce the active budget ceiling strictly.`
+        : "";
     const finalUserMsg = hasConversationContext
-      ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"`
+      ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${stateHint}${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"`
       : `Customer input: "${cleanQuery}"`;
     if (claudeTurns.length > 0 && claudeTurns[claudeTurns.length - 1].role === "user") {
       claudeTurns[claudeTurns.length - 1].content = `${claudeTurns[claudeTurns.length - 1].content}\n\n${finalUserMsg}`;
@@ -755,7 +791,18 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
         let finalProducts = validRecs
           .map((r) => {
             const p = bySlug.get(r.slug);
-            return p ? toCard(p, r.reason) : null;
+            if (!p) return null;
+            if (
+              webState.maxPrice !== null &&
+              typeof p.effectivePrice === "number" &&
+              p.effectivePrice > webState.maxPrice
+            ) {
+              return null;
+            }
+            if (webState.onlyPodiums && !p.isPodium) {
+              return null;
+            }
+            return toCard(p, r.reason);
           })
           .filter((x): x is ConciergeProductCard => Boolean(x));
 

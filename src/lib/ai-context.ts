@@ -1283,6 +1283,217 @@ function splitWords(text: string): string[] {
     .filter(Boolean);
 }
 
+export function extractWebsiteBudgetConstraints(rawQuery: string): {
+  minPrice: number | null;
+  maxPrice: number | null;
+} {
+  const q = String(rawQuery || "")
+    .toLowerCase()
+    .replace(/,/g, "");
+
+  const parseAmount = (numStr: string, kSuffix?: string): number | null => {
+    const val = Number.parseFloat(numStr);
+    if (!Number.isFinite(val) || val <= 0) return null;
+    if (kSuffix && kSuffix.toLowerCase() === "k") return Math.round(val * 1000);
+    return Math.round(val);
+  };
+
+  const rangeMatches = Array.from(
+    q.matchAll(
+      /\b(?:between|from)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\s*(?:and|to|-)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\b/gi
+    )
+  );
+  if (rangeMatches.length > 0) {
+    const lastRange = rangeMatches[rangeMatches.length - 1];
+    const low = parseAmount(lastRange[1], lastRange[2]);
+    const high = parseAmount(lastRange[3], lastRange[4]);
+    if (low !== null && high !== null) {
+      return {
+        minPrice: Math.min(low, high),
+        maxPrice: Math.max(low, high),
+      };
+    }
+  }
+
+  let maxPrice: number | null = null;
+  let minPrice: number | null = null;
+
+  const maxMatches = Array.from(
+    q.matchAll(
+      /\b(?:under|below|less\s*than|upto|up\s*to|within|max|maximum|not\s*more\s*than|(?:increase|raise|extend|stretch|bump|change|update|set|keep)\s+(?:the\s+|my\s+|our\s+)?budget\s*(?:to|up\s*to|at|around|under|within)?|budget(?:\s*of|\s*is|\s*to|\s*up\s*to|\s*around|\s*under|\s*within)?|(?:make|keep)\s+it(?:\s+under|\s+up\s*to|\s+to)?|around|till)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\b/gi
+    )
+  );
+  for (const m of maxMatches) {
+    const parsed = parseAmount(m[1], m[2]);
+    if (parsed !== null && parsed >= 100) {
+      maxPrice = parsed;
+    }
+  }
+
+  const minMatches = Array.from(
+    q.matchAll(
+      /\b(?:above|over|more\s*than|min|minimum|starting\s*from|at\s*least)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\b/gi
+    )
+  );
+  for (const m of minMatches) {
+    const parsed = parseAmount(m[1], m[2]);
+    if (parsed !== null && parsed >= 100) {
+      minPrice = parsed;
+    }
+  }
+
+  return { minPrice, maxPrice };
+}
+
+export interface WebsiteConversationState {
+  primaryProductQuery: string | null;
+  productFamily: string | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+  preferences: string[];
+  onlyPodiums: boolean;
+  isFollowUpRefinement: boolean;
+  effectiveSearchQuery: string;
+}
+
+function detectWebsiteProductFamily(text: string): {
+  family: string | null;
+  canonicalQuery: string | null;
+  onlyPodiums: boolean;
+} {
+  const lower = String(text || "").toLowerCase();
+  if (/\b(pulpit|pulpits|podium|podiums|lectern|lecterns|rostrum|rostrums)\b/i.test(lower)) {
+    return { family: "podium", canonicalQuery: "pulpit podium", onlyPodiums: true };
+  }
+  if (/\b(trophy|trophies|memento|mementos|award|awards|plaque|plaques|medal|medals)\b/i.test(lower)) {
+    return { family: "award", canonicalQuery: "acrylic trophy award memento", onlyPodiums: false };
+  }
+  const words = splitWords(lower).filter(
+    (t) => t.length >= 2 && !QUERY_STOP_WORDS.has(t)
+  );
+  const matchedNoun = words.find((tok) =>
+    Array.from(EXPLICIT_PRODUCT_TERMS).some((pt) => tokenMatchesWord(tok, pt))
+  );
+  if (matchedNoun) {
+    return { family: matchedNoun, canonicalQuery: text.trim(), onlyPodiums: false };
+  }
+  return { family: null, canonicalQuery: null, onlyPodiums: false };
+}
+
+export function deriveWebsiteConversationState(
+  history: { role: "user" | "assistant"; text: string }[] | undefined,
+  currentQuery: string
+): WebsiteConversationState {
+  const cleanCurrent = String(currentQuery || "").trim();
+  const userTurns = (history || [])
+    .filter((h) => h.role === "user" && Boolean(String(h.text || "").trim()))
+    .map((h) => String(h.text).trim());
+
+  if (userTurns.length > 0 && userTurns[userTurns.length - 1] === cleanCurrent) {
+    userTurns.pop();
+  }
+
+  let primaryProductQuery: string | null = null;
+  let productFamily: string | null = null;
+  let minPrice: number | null = null;
+  let maxPrice: number | null = null;
+  let preferences: string[] = [];
+  let onlyPodiums = false;
+
+  const extractPrefs = (txt: string): string[] => {
+    const l = txt.toLowerCase();
+    const out: string[] = [];
+    if (/\b(most\s*premium|premium|high\s*end|flagship|best|luxury)\b/i.test(l)) out.push("premium");
+    if (/\b(transparent|clear|crystal\s*clear)\b/i.test(l)) out.push("transparent");
+    if (/\b(frosted|matte)\b/i.test(l)) out.push("frosted");
+    if (/\b(wooden|wood|black|white|gold|led)\b/i.test(l)) {
+      const m = l.match(/\b(wooden|wood|black|white|gold|led)\b/i);
+      if (m) out.push(m[1].toLowerCase());
+    }
+    return out;
+  };
+
+  const applyTurn = (turnText: string) => {
+    const lower = turnText.toLowerCase();
+    const det = detectWebsiteProductFamily(turnText);
+    const isTopicReset =
+      !det.family &&
+      /\b(different\s*(?:query|question|requirement|topic)|another\s*(?:query|question|topic)|something\s*else|forget\s*(?:that|it)|start\s*over|new\s*(?:query|question|topic)|i\s+have\s+a\s+(?:query|question|doubt))\b/i.test(
+        lower
+      );
+    if (isTopicReset) {
+      primaryProductQuery = null;
+      productFamily = null;
+      minPrice = null;
+      maxPrice = null;
+      preferences = [];
+      onlyPodiums = false;
+      return;
+    }
+
+    const b = extractWebsiteBudgetConstraints(turnText);
+    const prefs = extractPrefs(turnText);
+
+    if (det.family && productFamily && det.family !== productFamily) {
+      productFamily = det.family;
+      primaryProductQuery = det.canonicalQuery || turnText;
+      onlyPodiums = det.onlyPodiums;
+      minPrice = b.minPrice;
+      maxPrice = b.maxPrice;
+      preferences = prefs;
+      return;
+    }
+
+    if (det.family) {
+      productFamily = det.family;
+      primaryProductQuery = det.canonicalQuery || turnText;
+      onlyPodiums = det.onlyPodiums;
+    }
+    if (b.maxPrice !== null || b.minPrice !== null) {
+      maxPrice = b.maxPrice;
+      minPrice = b.minPrice;
+    }
+    if (prefs.length > 0) {
+      preferences = Array.from(new Set([...preferences, ...prefs]));
+    }
+  };
+
+  for (const u of userTurns) {
+    applyTurn(u);
+  }
+
+  const currentDet = detectWebsiteProductFamily(cleanCurrent);
+  const currentBudget = extractWebsiteBudgetConstraints(cleanCurrent);
+  const currentPrefs = extractPrefs(cleanCurrent);
+  const isFollowUpRefinement =
+    Boolean(primaryProductQuery) &&
+    !currentDet.family &&
+    (currentBudget.maxPrice !== null ||
+      currentBudget.minPrice !== null ||
+      currentPrefs.length > 0 ||
+      /\b(budget|price|cost|under|below|above|around|increase|raise|stretch|extend|premium|transparent|clear|frosted|show\s*more|other\s*options|compare|first\s*two)\b/i.test(
+        cleanCurrent
+      ));
+
+  applyTurn(cleanCurrent);
+
+  const nonGenericPrefs = preferences.filter((p) => p !== "premium");
+  const effectiveSearchQuery = isFollowUpRefinement && primaryProductQuery
+    ? [primaryProductQuery, ...nonGenericPrefs].join(" ").trim()
+    : cleanCurrent;
+
+  return {
+    primaryProductQuery,
+    productFamily,
+    minPrice,
+    maxPrice,
+    preferences,
+    onlyPodiums,
+    isFollowUpRefinement,
+    effectiveSearchQuery,
+  };
+}
+
 /**
  * Instant, zero-credit local synonym & intent matcher.
  * Powers <1ms search AND guarantees non-blocking customer UX from the 100MB Redis snapshot
@@ -1291,7 +1502,14 @@ function splitWords(text: string): string[] {
 export function localSmartProductMatch(
   snapshot: KnowledgeSnapshot,
   rawQuery: string,
-  options?: { limit?: number; onlyPodiums?: boolean; categorySlug?: string }
+  options?: {
+    limit?: number;
+    onlyPodiums?: boolean;
+    categorySlug?: string;
+    maxPrice?: number | null;
+    minPrice?: number | null;
+    preferPremium?: boolean;
+  }
 ): LocalSmartMatchResult {
   const cleanRaw = rawQuery.trim();
   const q = cleanRaw.toLowerCase();
@@ -1563,16 +1781,29 @@ export function localSmartProductMatch(
     }
   }
 
-  // Price ceiling detection e.g. "under 30000" or "below 25000"
-  const priceLimitMatch = q.match(
-    /(?:under|below|less than|max|budget)\s*(?:rs\.?|inr|₹)?\s*(\d{3,7})/i
-  );
-  const maxPrice = priceLimitMatch ? Number(priceLimitMatch[1]) : null;
+  // Price ceiling/floor detection e.g. "under ₹25,000" or "increase the budget to ₹30,000"
+  const extractedBudget = extractWebsiteBudgetConstraints(cleanRaw);
+  const maxPrice =
+    options?.maxPrice !== undefined ? options.maxPrice : extractedBudget.maxPrice;
+  const minPriceFilter =
+    options?.minPrice !== undefined ? options.minPrice : extractedBudget.minPrice;
+  const preferPremium =
+    options?.preferPremium !== undefined
+      ? options.preferPremium
+      : /\b(most\s*premium|premium|high\s*end|flagship|top\s*end)\b/i.test(q);
 
   const isGiftOrAwardIntent =
     matchedGroups.has("award") && !matchedGroups.has("podium");
 
-  const scored = pool.map((p) => {
+  const isPodiumIntent =
+    Boolean(options?.onlyPodiums) ||
+    (matchedGroups.has("podium") && !matchedGroups.has("award"));
+
+  const candidatePool = isPodiumIntent
+    ? pool.filter((p) => p.isPodium)
+    : pool;
+
+  const scored = candidatePool.map((p) => {
     let score = 0;
     const nameLower = p.name.toLowerCase();
     const skuLower = (p.sku || "").toLowerCase();
@@ -1613,19 +1844,45 @@ export function localSmartProductMatch(
     }
 
     if (maxPrice !== null) {
-      if (p.effectivePrice && p.effectivePrice <= maxPrice) {
-        score += 15;
-      } else if (p.effectivePrice && p.effectivePrice > maxPrice) {
-        score -= 25;
+      if (typeof p.effectivePrice === "number" && p.effectivePrice > 0) {
+        if (p.effectivePrice <= maxPrice) {
+          score += 18;
+        } else {
+          score = -1000;
+        }
+      }
+    }
+    if (minPriceFilter !== null) {
+      if (typeof p.effectivePrice === "number" && p.effectivePrice > 0) {
+        if (p.effectivePrice >= minPriceFilter) {
+          score += 12;
+        } else {
+          score = -1000;
+        }
       }
     }
 
     return { product: p, score };
   });
 
-  const matched = scored
-    .filter((item) => item.score >= 16)
-    .sort((a, b) => b.score - a.score || a.product.name.localeCompare(b.product.name))
+  const validScored = scored.filter((item) => item.score >= 16);
+  const pricedValid = validScored.filter(
+    (item) => typeof item.product.effectivePrice === "number" && item.product.effectivePrice > 0
+  );
+  const filteredScored =
+    (maxPrice !== null || minPriceFilter !== null) && pricedValid.length > 0
+      ? pricedValid
+      : validScored;
+
+  const matched = filteredScored
+    .sort((a, b) => {
+      if (preferPremium) {
+        const aPriced = typeof a.product.effectivePrice === "number" && a.product.effectivePrice > 0 ? a.product.effectivePrice : 0;
+        const bPriced = typeof b.product.effectivePrice === "number" && b.product.effectivePrice > 0 ? b.product.effectivePrice : 0;
+        if (aPriced !== bPriced) return bPriced - aPriced;
+      }
+      return b.score - a.score || a.product.name.localeCompare(b.product.name);
+    })
     .slice(0, limit)
     .map((item) => item.product);
 
