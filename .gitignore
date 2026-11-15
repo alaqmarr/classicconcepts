@@ -30,6 +30,7 @@
 *.db.backup.*
 /backups/
 /public/uploads/
+ai.logs
 *.env
 # debug
 npm-debug.log*

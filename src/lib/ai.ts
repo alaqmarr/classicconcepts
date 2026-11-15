@@ -20,6 +20,10 @@ import {
   bulletsToPlainSummary,
   extractBulletsFromContent,
 } from "@/lib/bullet-formatter";
+import {
+  logClassicConceptsAiTrace,
+  type AiTraceStep,
+} from "@/lib/ai-logger";
 
 export interface ConciergeProductCard {
   id: string;
@@ -62,6 +66,7 @@ interface AnthropicCallResult {
   usage?: {
     inputTokens: number;
     outputTokens: number;
+    thinkingTokens: number;
     cacheCreationInputTokens: number;
     cacheReadInputTokens: number;
   };
@@ -91,26 +96,63 @@ function toCard(p: CachedProductSummary, reason?: string): ConciergeProductCard 
 function extractJsonObject<T>(raw: string): T | null {
   if (!raw) return null;
   const trimmed = raw.trim();
-  // Strip optional markdown code fences
   const unfenced = trimmed
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
 
-  try {
-    return JSON.parse(unfenced) as T;
-  } catch {
-    const start = unfenced.indexOf("{");
-    const end = unfenced.lastIndexOf("}");
-    if (start !== -1 && end > start) {
+  const tryParse = (candidate: string): T | null => {
+    try {
+      return JSON.parse(candidate) as T;
+    } catch {
+      let repaired = "";
+      let inStr = false;
+      let escaped = false;
+      for (let i = 0; i < candidate.length; i++) {
+        const ch = candidate[i];
+        if (escaped) {
+          repaired += ch;
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          repaired += ch;
+          escaped = true;
+          continue;
+        }
+        if (ch === '"') {
+          inStr = !inStr;
+          repaired += ch;
+          continue;
+        }
+        if (inStr && ch === "\n") {
+          repaired += "\\n";
+          continue;
+        }
+        if (inStr && ch === "\r") continue;
+        if (inStr && ch === "\t") {
+          repaired += " ";
+          continue;
+        }
+        repaired += ch;
+      }
       try {
-        return JSON.parse(unfenced.slice(start, end + 1)) as T;
+        return JSON.parse(repaired) as T;
       } catch {
         return null;
       }
     }
-    return null;
+  };
+
+  const direct = tryParse(unfenced);
+  if (direct !== null) return direct;
+
+  const start = unfenced.indexOf("{");
+  const end = unfenced.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    return tryParse(unfenced.slice(start, end + 1));
   }
+  return null;
 }
 
 /**
@@ -196,6 +238,22 @@ export async function callClaudeHaiku(options: {
     let statusCode = 500;
 
     for (const wireModel of wireCandidates) {
+      const isHaiku55 = wireModel === "claude-haiku-5-5";
+      const requestBody: Record<string, unknown> = {
+        model: wireModel,
+        max_tokens: isHaiku55
+          ? Math.max(options.maxTokens ?? 1800, 1600)
+          : (options.maxTokens ?? 600),
+        system: systemBlocks,
+        messages: apiMessages,
+      };
+      if (isHaiku55) {
+        requestBody.thinking = { type: "adaptive" };
+        requestBody.output_config = { effort: "medium" };
+      } else {
+        requestBody.temperature = options.temperature ?? 0.25;
+      }
+
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -204,14 +262,8 @@ export async function callClaudeHaiku(options: {
           "anthropic-version": "2023-06-01",
           "anthropic-beta": "prompt-caching-2024-07-31",
         },
-        body: JSON.stringify({
-          model: wireModel,
-          max_tokens: options.maxTokens ?? 600,
-          temperature: options.temperature ?? 0.25,
-          system: systemBlocks,
-          messages: apiMessages,
-        }),
-        signal: AbortSignal.timeout(18000),
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(24000),
       });
 
       statusCode = response.status;
@@ -252,6 +304,10 @@ export async function callClaudeHaiku(options: {
           .trim()
       : "";
 
+    const hasThinkingBlock =
+      Array.isArray(payload?.content) &&
+      payload.content.some((b: any) => b?.type === "thinking");
+
     return {
       ok: true,
       text,
@@ -261,6 +317,7 @@ export async function callClaudeHaiku(options: {
       usage: {
         inputTokens: payload?.usage?.input_tokens ?? 0,
         outputTokens: payload?.usage?.output_tokens ?? 0,
+        thinkingTokens: hasThinkingBlock ? (payload?.usage?.thinking_tokens ?? 1) : 0,
         cacheCreationInputTokens: payload?.usage?.cache_creation_input_tokens ?? 0,
         cacheReadInputTokens: payload?.usage?.cache_read_input_tokens ?? 0,
       },
@@ -307,6 +364,22 @@ export async function runCustomerConcierge(
   allowAiGeneration = true,
   history?: ConciergeHistoryTurn[]
 ): Promise<ConciergeResponse> {
+  const startedAt = Date.now();
+  const steps: AiTraceStep[] = [];
+  const pushStep = (
+    label: string,
+    detail?: string,
+    status: AiTraceStep["status"] = "OK"
+  ) => {
+    steps.push({
+      stepNumber: steps.length + 1,
+      label,
+      detail,
+      durationMs: Date.now() - startedAt,
+      status,
+    });
+  };
+
   const snapshot = await getKnowledgeSnapshot();
   const settings = await getAiRuntimeSettings();
   const cleanQuery = (rawQuery || "").trim().slice(0, 500);
@@ -346,54 +419,89 @@ export async function runCustomerConcierge(
     };
   }
 
-  // 0. Live Order ID Lookup (0 AI credits, instant database + :3007 tracking check)
+  pushStep(
+    "Loaded Classic Concepts knowledge snapshot",
+    `catalogCount=${snapshot.products.length}, historyTurns=${cleanHistory.length}`
+  );
+
+  // 0. Live Order ID Lookup (0 AI credits, instant database + :3007/:3000 tracking check)
   const orderIdCandidate = extractOrderIdCandidateFromText(cleanQuery);
   if (orderIdCandidate) {
-    try {
-      const hubBase = (
-        process.env.CCWHATSAPP_INTERNAL_URL || "http://127.0.0.1:3007"
-      ).replace(/\/+$/, "");
-      const trackRes = await fetch(
-        `${hubBase}/api/tracking/lookup?id=${encodeURIComponent(orderIdCandidate)}&brand=CLASSIC_CONCEPTS`,
-        { signal: AbortSignal.timeout(3000) }
-      ).catch(() => null);
-      if (trackRes?.ok) {
-        const trackJson: any = await trackRes.json().catch(() => null);
-        if (trackJson?.ok && trackJson?.tracking) {
-          const t = trackJson.tracking;
-          const statusFriendly = String(t.shipmentStatus || "IN_PRODUCTION").replace(/_/g, " ");
-          const msg = `Order ${t.orderId} (${t.brandLabel || "Classic Concepts"}) is currently ${statusFriendly}.${
-            t.itemsSummary ? ` Items: ${t.itemsSummary}.` : ""
-          }${
-            t.awbNumber ? ` Courier: ${t.providerName || "Partner"} (AWB ${t.awbNumber}).` : ""
-          }`;
-          return {
-            intent: "browse",
-            message: cleanAiPatterns(msg),
-            highlights: [
-              `Status: ${statusFriendly}`,
-              ...(t.estimatedDelivery ? [`Estimated delivery: ${t.estimatedDelivery}`] : []),
-            ],
-            products: [],
-            suggestedLinks: [
-              { label: `Track ${t.orderId}`, href: `/tracking?id=${encodeURIComponent(t.orderId)}` },
-              { label: "Contact Support", href: "/contact" },
-            ],
-            followUpChips: [
-              "Check another order ID",
-              "Browse clear stage podiums",
-              "Ask about custom fabrication",
-            ],
-            whatsappNumber: snapshot.whatsappNumber,
-            whatsappPrefill: `Hi Classic Concepts, I am checking order ${t.orderId}.`,
-            source: "smart-local",
-            modelUsed: "order-db-lookup",
-            engineLabel: "Live Order Lookup",
-          };
+    const hubCandidates = Array.from(
+      new Set(
+        [
+          process.env.CCWHATSAPP_INTERNAL_URL,
+          "http://127.0.0.1:3007",
+          "http://127.0.0.1:3000",
+        ]
+          .filter(Boolean)
+          .map((u) => String(u).replace(/\/+$/, ""))
+      )
+    );
+    for (const hubBase of hubCandidates) {
+      try {
+        const trackRes = await fetch(
+          `${hubBase}/api/tracking/lookup?id=${encodeURIComponent(orderIdCandidate)}&brand=CLASSIC_CONCEPTS`,
+          { signal: AbortSignal.timeout(3000) }
+        ).catch(() => null);
+        if (trackRes?.ok) {
+          const trackJson: any = await trackRes.json().catch(() => null);
+          if (trackJson?.ok && trackJson?.tracking) {
+            const t = trackJson.tracking;
+            const statusFriendly = String(t.shipmentStatus || "IN_PRODUCTION").replace(/_/g, " ");
+            const msg = cleanAiPatterns(
+              `Order ${t.orderId} (${t.brandLabel || "Classic Concepts"}) is currently ${statusFriendly}.${
+                t.itemsSummary ? ` Items: ${t.itemsSummary}.` : ""
+              }${
+                t.awbNumber ? ` Courier: ${t.providerName || "Partner"} (AWB ${t.awbNumber}).` : ""
+              }`
+            );
+            pushStep("Resolved live order tracking", `orderId=${t.orderId}, status=${statusFriendly}`);
+            logClassicConceptsAiTrace({
+              feature: "Website Concierge (Order Lookup)",
+              actor: "Website Visitor",
+              question: cleanQuery,
+              model: "order-db-lookup",
+              outcomeSource: "ORDER_LOOKUP",
+              responseCacheStatus: "BYPASS",
+              catalogCacheStatus: "HIT",
+              cacheDetails: "Live order ID lookup bypassed LLM call (0 AI credits)",
+              productLookupTriggered: false,
+              productLookupQuery: orderIdCandidate,
+              productLookupTotalScanned: 0,
+              productsLookedUp: [],
+              steps,
+              response: msg,
+              durationMs: Date.now() - startedAt,
+            });
+            return {
+              intent: "browse",
+              message: msg,
+              highlights: [
+                `Status: ${statusFriendly}`,
+                ...(t.estimatedDelivery ? [`Estimated delivery: ${t.estimatedDelivery}`] : []),
+              ],
+              products: [],
+              suggestedLinks: [
+                { label: `Track ${t.orderId}`, href: `/tracking?id=${encodeURIComponent(t.orderId)}` },
+                { label: "Contact Support", href: "/contact" },
+              ],
+              followUpChips: [
+                "Check another order ID",
+                "Browse clear stage podiums",
+                "Ask about custom fabrication",
+              ],
+              whatsappNumber: snapshot.whatsappNumber,
+              whatsappPrefill: `Hi Classic Concepts, I am checking order ${t.orderId}.`,
+              source: "smart-local",
+              modelUsed: "order-db-lookup",
+              engineLabel: "Live Order Lookup",
+            };
+          }
         }
+      } catch {
+        // Try next Hub candidate
       }
-    } catch {
-      // Fall through cleanly
     }
   }
 
@@ -430,9 +538,41 @@ export async function runCustomerConcierge(
       })
       .filter((x): x is ConciergeProductCard => Boolean(x));
 
+    const cleanMsg = cleanAiPatterns(cached.message);
+    pushStep(
+      "Served response from concierge:v2 persistent cache",
+      `key="${normalizedKey}", matchedProducts=${hydrated.length}`
+    );
+    logClassicConceptsAiTrace({
+      feature: "Website Customer Concierge",
+      actor: "Website Visitor",
+      question: cleanQuery,
+      model: cached.modelUsed || LOCKED_CLAUDE_MODEL,
+      effort: "medium",
+      outcomeSource: "RESPONSE_CACHE",
+      responseCacheStatus: "HIT",
+      catalogCacheStatus: "HIT",
+      cacheDetails: `concierge:v2 HIT (catalogHash=${snapshot.catalogHash.slice(0, 8)})`,
+      productLookupTriggered: true,
+      productLookupQuery: cleanQuery,
+      productLookupTotalScanned: snapshot.products.length,
+      productsLookedUp: hydrated.map((p) => ({
+        name: p.name,
+        slug: p.slug,
+        sku: p.sku,
+        brand: "CLASSIC_CONCEPTS",
+        priceInr: p.effectivePrice,
+        url: `/shop/${p.slug}`,
+        reason: p.reason || null,
+      })),
+      steps,
+      response: cleanMsg,
+      durationMs: Date.now() - startedAt,
+    });
+
     return {
       intent: cached.intent || (hydrated.length > 0 ? "product_match" : "role_clarify"),
-      message: cleanAiPatterns(cached.message),
+      message: cleanMsg,
       highlights: (cached.highlights || []).map((h) => cleanAiPatterns(h)),
       products: hydrated,
       suggestedLinks: cached.suggestedLinks || [{ label: "Browse Full Catalog", href: "/shop" }],
@@ -447,6 +587,12 @@ export async function runCustomerConcierge(
       engineLabel: "Claude Haiku 5.5 • Instant Cache",
     };
   }
+
+  pushStep(
+    hasConversationContext
+      ? "Multi-turn context present -> bypassed single-turn response cache"
+      : "Response cache MISS -> invoking claude-haiku-5-5 Medium"
+  );
 
   // 2. Call Client Agent (Claude Haiku 5.5) using Dedicated Client API Key
   let lastAiError: string | undefined;
@@ -594,6 +740,40 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
           }
         }
 
+        pushStep(
+          "Received live claude-haiku-5-5 concierge reply",
+          `intent=${intent}, matchedProducts=${finalProducts.length}, inTokens=${aiRes.usage?.inputTokens || 0}, outTokens=${aiRes.usage?.outputTokens || 0}`
+        );
+        logClassicConceptsAiTrace({
+          feature: "Website Customer Concierge",
+          actor: "Website Visitor",
+          question: cleanQuery,
+          model: LOCKED_CLAUDE_MODEL,
+          effort: "medium",
+          outcomeSource: "LIVE_AI",
+          responseCacheStatus: hasConversationContext ? "BYPASS" : "MISS",
+          catalogCacheStatus: "HIT",
+          cacheDetails: hasConversationContext
+            ? "Multi-turn conversation bypassed single-turn response cache; Anthropic prompt cache active"
+            : `concierge:v2 MISS -> cached for future identical queries (cacheRead=${aiRes.usage?.cacheReadInputTokens || 0})`,
+          productLookupTriggered: true,
+          productLookupQuery: cleanQuery,
+          productLookupTotalScanned: snapshot.products.length,
+          productsLookedUp: finalProducts.map((p) => ({
+            name: p.name,
+            slug: p.slug,
+            sku: p.sku,
+            brand: "CLASSIC_CONCEPTS",
+            priceInr: p.effectivePrice,
+            url: `/shop/${p.slug}`,
+            reason: p.reason || null,
+          })),
+          steps,
+          response: safeToCache.message,
+          durationMs: Date.now() - startedAt,
+          tokenUsage: aiRes.usage || null,
+        });
+
         return {
           intent,
           message: safeToCache.message,
@@ -609,8 +789,10 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
         };
       }
       lastAiError = "Claude response could not be parsed as JSON";
+      pushStep("Claude JSON parse failed", lastAiError, "WARN");
     } else {
       lastAiError = aiRes.error;
+      pushStep("Claude API call failed", lastAiError, "WARN");
       if (
         lastAiError &&
         /credit balance is too low|invalid x-api-key|authentication_error/i.test(
@@ -658,11 +840,43 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
       ? `ACRIO is configured for Claude Haiku 5.5, and right now it is answering in ${engineLabel} mode.`
       : local.advisoryMessage;
 
+  const fallbackCards = local.products.map((p) => toCard(p));
+  pushStep(
+    "Served deterministic local catalog match fallback",
+    `engine="${engineLabel}", matchedProducts=${fallbackCards.length}`,
+    lastAiError ? "WARN" : "OK"
+  );
+  logClassicConceptsAiTrace({
+    feature: "Website Customer Concierge",
+    actor: "Website Visitor",
+    question: cleanQuery,
+    model: "local-catalog",
+    outcomeSource: "LOCAL_FALLBACK",
+    responseCacheStatus: hasConversationContext ? "BYPASS" : "MISS",
+    catalogCacheStatus: "HIT",
+    cacheDetails: engineLabel,
+    productLookupTriggered: true,
+    productLookupQuery: cleanQuery,
+    productLookupTotalScanned: snapshot.products.length,
+    productsLookedUp: fallbackCards.map((p) => ({
+      name: p.name,
+      slug: p.slug,
+      sku: p.sku,
+      brand: "CLASSIC_CONCEPTS",
+      priceInr: p.effectivePrice,
+      url: `/shop/${p.slug}`,
+    })),
+    steps,
+    response: message,
+    durationMs: Date.now() - startedAt,
+    error: lastAiError || aiDiagnostic || null,
+  });
+
   return {
     intent: local.intent,
     message,
     highlights: local.highlights,
-    products: local.products.map((p) => toCard(p)),
+    products: fallbackCards,
     suggestedLinks: local.suggestedLinks,
     followUpChips: local.followUpChips,
     whatsappNumber: snapshot.whatsappNumber,
@@ -695,6 +909,7 @@ export async function runSmartCatalogSearch(
   modelUsed: string;
   engineLabel: string;
 }> {
+  const startedAt = Date.now();
   const snapshot = await getKnowledgeSnapshot();
   const settings = await getAiRuntimeSettings();
   const cleanQuery = (rawQuery || "").trim().slice(0, 300);
@@ -719,6 +934,33 @@ export async function runSmartCatalogSearch(
     localResult.intent === "off_topic"
   ) {
     if (!options?.useAi) {
+      if (cleanQuery) {
+        logClassicConceptsAiTrace({
+          feature: "Website Smart Search Bar",
+          actor: "Website Visitor",
+          question: cleanQuery,
+          model: "local-catalog",
+          outcomeSource: "LOCAL_FALLBACK",
+          responseCacheStatus: "LOCAL_ONLY",
+          catalogCacheStatus: "HIT",
+          cacheDetails: `Instant non-product intent (${localResult.intent})`,
+          productLookupTriggered: true,
+          productLookupQuery: cleanQuery,
+          productLookupTotalScanned: snapshot.products.length,
+          productsLookedUp: [],
+          steps: [
+            {
+              stepNumber: 1,
+              label: "Detected greeting/role/off-topic query in instant search",
+              detail: `intent=${localResult.intent}`,
+              durationMs: Date.now() - startedAt,
+              status: "OK",
+            },
+          ],
+          response: localResult.advisoryMessage,
+          durationMs: Date.now() - startedAt,
+        });
+      }
       return {
         intent: localResult.intent,
         products: [],
@@ -738,9 +980,44 @@ export async function runSmartCatalogSearch(
     (options?.useAi === true || (wordCount >= 2 && localResult.products.length <= 2));
 
   if (!shouldUseAi) {
+    const cards = localResult.products.map((p) => toCard(p));
+    if (cleanQuery) {
+      logClassicConceptsAiTrace({
+        feature: "Website Smart Search Bar",
+        actor: "Website Visitor",
+        question: cleanQuery,
+        model: "local-catalog",
+        outcomeSource: "LOCAL_FALLBACK",
+        responseCacheStatus: "LOCAL_ONLY",
+        catalogCacheStatus: "HIT",
+        cacheDetails: "Instant lexical catalog match (<2ms, 0 AI credits)",
+        productLookupTriggered: true,
+        productLookupQuery: cleanQuery,
+        productLookupTotalScanned: snapshot.products.length,
+        productsLookedUp: cards.map((c) => ({
+          name: c.name,
+          slug: c.slug,
+          sku: c.sku,
+          brand: "CLASSIC_CONCEPTS",
+          priceInr: c.effectivePrice,
+          url: `/shop/${c.slug}`,
+        })),
+        steps: [
+          {
+            stepNumber: 1,
+            label: "Executed instant lexical catalog search",
+            detail: `matched=${cards.length} of ${snapshot.products.length}`,
+            durationMs: Date.now() - startedAt,
+            status: "OK",
+          },
+        ],
+        response: localResult.advisoryMessage,
+        durationMs: Date.now() - startedAt,
+      });
+    }
     return {
       intent: localResult.intent,
-      products: localResult.products.map((p) => toCard(p)),
+      products: cards,
       summary: cleanQuery ? localResult.advisoryMessage : null,
       matchedCategories: localResult.matchedCategories,
       source: "smart-local",
@@ -784,10 +1061,45 @@ export async function runSmartCatalogSearch(
       .filter((x): x is ConciergeProductCard => Boolean(x));
 
     const cachedIntent = cached.intent || (cards.length > 0 ? "product_match" : "no_match");
+    const cleanSummary = cached.summary ? cleanAiPatterns(cached.summary) : null;
+    logClassicConceptsAiTrace({
+      feature: "Website Smart Search Bar",
+      actor: "Website Visitor",
+      question: cleanQuery,
+      model: LOCKED_CLAUDE_MODEL,
+      effort: "medium",
+      outcomeSource: "RESPONSE_CACHE",
+      responseCacheStatus: "HIT",
+      catalogCacheStatus: "HIT",
+      cacheDetails: `${scopePrefix} HIT`,
+      productLookupTriggered: true,
+      productLookupQuery: cleanQuery,
+      productLookupTotalScanned: snapshot.products.length,
+      productsLookedUp: cards.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+        sku: c.sku,
+        brand: "CLASSIC_CONCEPTS",
+        priceInr: c.effectivePrice,
+        url: `/shop/${c.slug}`,
+        reason: c.reason || null,
+      })),
+      steps: [
+        {
+          stepNumber: 1,
+          label: "Served search results from persistent response cache",
+          detail: `scope=${scopePrefix}, matched=${cards.length}`,
+          durationMs: Date.now() - startedAt,
+          status: "OK",
+        },
+      ],
+      response: cleanSummary || `Matched ${cards.length} catalog products.`,
+      durationMs: Date.now() - startedAt,
+    });
     return {
       intent: cachedIntent,
       products: cards,
-      summary: cached.summary ? cleanAiPatterns(cached.summary) : null,
+      summary: cleanSummary,
       matchedCategories: cards.length > 0 ? localResult.matchedCategories : [],
       source: "cache",
       modelUsed: LOCKED_CLAUDE_MODEL,
@@ -795,6 +1107,7 @@ export async function runSmartCatalogSearch(
     };
   }
 
+  let searchAiError: string | undefined;
   if (settings.clientApiKey && settings.aiEnabled) {
     const aiRes = await callClaudeHaiku({
       scope: "client",
@@ -867,22 +1180,99 @@ If the input is a role introduction ("I am an engineer"), greeting, or off-topic
           }
         }
 
+        const finalSummary = cleanSummary || localResult.advisoryMessage;
+        logClassicConceptsAiTrace({
+          feature: "Website Smart Search Bar",
+          actor: "Website Visitor",
+          question: cleanQuery,
+          model: LOCKED_CLAUDE_MODEL,
+          effort: "medium",
+          outcomeSource: "LIVE_AI",
+          responseCacheStatus: "MISS",
+          catalogCacheStatus: "HIT",
+          cacheDetails: `${scopePrefix} MISS -> cached response`,
+          productLookupTriggered: true,
+          productLookupQuery: cleanQuery,
+          productLookupTotalScanned: snapshot.products.length,
+          productsLookedUp: aiCards.map((c) => ({
+            name: c.name,
+            slug: c.slug,
+            sku: c.sku,
+            brand: "CLASSIC_CONCEPTS",
+            priceInr: c.effectivePrice,
+            url: `/shop/${c.slug}`,
+            reason: c.reason || null,
+          })),
+          steps: [
+            {
+              stepNumber: 1,
+              label: "Cache MISS -> called claude-haiku-5-5 Medium for semantic catalog search",
+              detail: `intent=${intent}, matched=${aiCards.length}`,
+              durationMs: Date.now() - startedAt,
+              status: "OK",
+            },
+          ],
+          response: finalSummary,
+          durationMs: Date.now() - startedAt,
+          tokenUsage: aiRes.usage || null,
+        });
+
         return {
           intent,
           products: aiCards,
-          summary: cleanSummary || localResult.advisoryMessage,
+          summary: finalSummary,
           matchedCategories: aiCards.length > 0 ? localResult.matchedCategories : [],
           source: "ai",
           modelUsed: LOCKED_CLAUDE_MODEL,
           engineLabel: "Claude Haiku 5.5 • Live AI",
         };
       }
+      searchAiError = "Claude search JSON parse failed";
+    } else {
+      searchAiError = aiRes.error;
     }
+  }
+
+  const fallbackSearchCards = localResult.products.map((p) => toCard(p));
+  if (cleanQuery) {
+    logClassicConceptsAiTrace({
+      feature: "Website Smart Search Bar",
+      actor: "Website Visitor",
+      question: cleanQuery,
+      model: "local-catalog",
+      outcomeSource: "LOCAL_FALLBACK",
+      responseCacheStatus: "MISS",
+      catalogCacheStatus: "HIT",
+      cacheDetails: localEngineLabel,
+      productLookupTriggered: true,
+      productLookupQuery: cleanQuery,
+      productLookupTotalScanned: snapshot.products.length,
+      productsLookedUp: fallbackSearchCards.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+        sku: c.sku,
+        brand: "CLASSIC_CONCEPTS",
+        priceInr: c.effectivePrice,
+        url: `/shop/${c.slug}`,
+      })),
+      steps: [
+        {
+          stepNumber: 1,
+          label: "Served local catalog search fallback",
+          detail: `matched=${fallbackSearchCards.length}${searchAiError ? `, error=${searchAiError}` : ""}`,
+          durationMs: Date.now() - startedAt,
+          status: searchAiError ? "WARN" : "OK",
+        },
+      ],
+      response: localResult.advisoryMessage,
+      durationMs: Date.now() - startedAt,
+      error: searchAiError || null,
+    });
   }
 
   return {
     intent: localResult.intent,
-    products: localResult.products.map((p) => toCard(p)),
+    products: fallbackSearchCards,
     summary: localResult.advisoryMessage,
     matchedCategories: localResult.matchedCategories,
     source: "smart-local",
@@ -904,6 +1294,7 @@ export async function runAdminInlineRewrite(params: {
   mode: "plain" | "html" | "bullets";
   fieldLabel?: string;
 }): Promise<{ ok: boolean; result: string; bullets?: string[]; warning?: string; error?: string }> {
+  const startedAt = Date.now();
   const { currentText, instruction, mode, fieldLabel } = params;
 
   const aiRes = await callClaudeHaiku({
@@ -935,10 +1326,38 @@ CRITICAL DESIGN-LANGUAGE RULE: If the Current content contains formatting tags s
           ? parsed.bullets
           : extractBulletsFromContent(aiRes.text);
       const list = rawList.map((b) => cleanAiPatterns(b)).filter(Boolean);
+      const htmlResult = bulletsToCleanHtml(list);
+      logClassicConceptsAiTrace({
+        feature: `Admin Inline Rewrite (${fieldLabel || "Bullets"})`,
+        actor: "Website Admin",
+        question: `${instruction || "Convert to bullet points"}\n---\n${currentText.slice(0, 260)}`,
+        model: LOCKED_CLAUDE_MODEL,
+        effort: "medium",
+        outcomeSource: "LIVE_AI",
+        responseCacheStatus: "BYPASS",
+        catalogCacheStatus: "HIT",
+        cacheDetails: "Admin copywriting turn with Anthropic catalog prompt cache",
+        productLookupTriggered: false,
+        productLookupQuery: "",
+        productLookupTotalScanned: 0,
+        productsLookedUp: [],
+        steps: [
+          {
+            stepNumber: 1,
+            label: "Generated plain-language bullet points via claude-haiku-5-5 Medium",
+            detail: `bulletCount=${list.length}`,
+            durationMs: Date.now() - startedAt,
+            status: "OK",
+          },
+        ],
+        response: list.join("\n"),
+        durationMs: Date.now() - startedAt,
+        tokenUsage: aiRes.usage || null,
+      });
       return {
         ok: true,
         bullets: list,
-        result: bulletsToCleanHtml(list),
+        result: htmlResult,
       };
     }
 
@@ -950,6 +1369,32 @@ CRITICAL DESIGN-LANGUAGE RULE: If the Current content contains formatting tags s
         .trim(),
       mode === "html"
     );
+    logClassicConceptsAiTrace({
+      feature: `Admin Inline Rewrite (${fieldLabel || mode})`,
+      actor: "Website Admin",
+      question: `${instruction || "Rewrite copy"}\n---\n${currentText.slice(0, 260)}`,
+      model: LOCKED_CLAUDE_MODEL,
+      effort: "medium",
+      outcomeSource: "LIVE_AI",
+      responseCacheStatus: "BYPASS",
+      catalogCacheStatus: "HIT",
+      cacheDetails: "Admin copywriting turn with Anthropic catalog prompt cache",
+      productLookupTriggered: false,
+      productLookupQuery: "",
+      productLookupTotalScanned: 0,
+      productsLookedUp: [],
+      steps: [
+        {
+          stepNumber: 1,
+          label: `Generated ${mode} website copy via claude-haiku-5-5 Medium`,
+          durationMs: Date.now() - startedAt,
+          status: "OK",
+        },
+      ],
+      response: cleaned,
+      durationMs: Date.now() - startedAt,
+      tokenUsage: aiRes.usage || null,
+    });
     return { ok: true, result: cleaned };
   }
 
@@ -965,6 +1410,34 @@ CRITICAL DESIGN-LANGUAGE RULE: If the Current content contains formatting tags s
         "Formatted into bullet points locally (add your Admin API key in Site Settings for AI suggestions).",
     };
   }
+
+  logClassicConceptsAiTrace({
+    feature: `Admin Inline Rewrite (${fieldLabel || mode})`,
+    actor: "Website Admin",
+    question: `${instruction || "Rewrite copy"}\n---\n${currentText.slice(0, 260)}`,
+    model: LOCKED_CLAUDE_MODEL,
+    effort: "medium",
+    outcomeSource: "ERROR",
+    responseCacheStatus: "BYPASS",
+    catalogCacheStatus: "BYPASS",
+    cacheDetails: aiRes.error || "Admin AI key missing",
+    productLookupTriggered: false,
+    productLookupQuery: "",
+    productLookupTotalScanned: 0,
+    productsLookedUp: [],
+    steps: [
+      {
+        stepNumber: 1,
+        label: "Admin AI rewrite failed",
+        detail: aiRes.error,
+        durationMs: Date.now() - startedAt,
+        status: "ERROR",
+      },
+    ],
+    response: aiRes.error || "AI credentials not configured",
+    durationMs: Date.now() - startedAt,
+    error: aiRes.error || null,
+  });
 
   return {
     ok: false,
@@ -999,6 +1472,7 @@ export async function runAdminProductAutofill(params: {
   };
   error?: string;
 }> {
+  const startedAt = Date.now();
   if (!params.name?.trim()) {
     return { ok: false, error: "Please enter a product name first." };
   }
@@ -1056,6 +1530,33 @@ Admin Prompt / Notes: ${params.customNotes || "Generate simple layman bullet-poi
   });
 
   if (!aiRes.ok) {
+    logClassicConceptsAiTrace({
+      feature: "Admin Product Autofill",
+      actor: "Website Admin",
+      question: `Autofill product: ${params.name} (${params.sku || "no SKU"})`,
+      model: LOCKED_CLAUDE_MODEL,
+      effort: "medium",
+      outcomeSource: "ERROR",
+      responseCacheStatus: "BYPASS",
+      catalogCacheStatus: "BYPASS",
+      cacheDetails: aiRes.error || "Autofill failed",
+      productLookupTriggered: false,
+      productLookupQuery: params.name,
+      productLookupTotalScanned: 0,
+      productsLookedUp: [],
+      steps: [
+        {
+          stepNumber: 1,
+          label: "Admin product autofill failed",
+          detail: aiRes.error,
+          durationMs: Date.now() - startedAt,
+          status: "ERROR",
+        },
+      ],
+      response: aiRes.error || "Autofill failed",
+      durationMs: Date.now() - startedAt,
+      error: aiRes.error || null,
+    });
     return { ok: false, error: aiRes.error };
   }
 
@@ -1078,6 +1579,34 @@ Admin Prompt / Notes: ${params.customNotes || "Generate simple layman bullet-poi
       ? parsed.bullets
       : extractBulletsFromContent(params.existingDescription || params.name);
   const bullets = rawBullets.map((b) => cleanAiPatterns(b)).filter(Boolean);
+
+  logClassicConceptsAiTrace({
+    feature: "Admin Product Autofill",
+    actor: "Website Admin",
+    question: `Autofill product: ${params.name} (${params.sku || "no SKU"})`,
+    model: LOCKED_CLAUDE_MODEL,
+    effort: "medium",
+    outcomeSource: "LIVE_AI",
+    responseCacheStatus: "BYPASS",
+    catalogCacheStatus: "HIT",
+    cacheDetails: "Admin product specialist autofill",
+    productLookupTriggered: false,
+    productLookupQuery: params.name,
+    productLookupTotalScanned: 0,
+    productsLookedUp: [],
+    steps: [
+      {
+        stepNumber: 1,
+        label: "Generated product bullets, features, dimensions, and specs via claude-haiku-5-5 Medium",
+        detail: `bullets=${bullets.length}`,
+        durationMs: Date.now() - startedAt,
+        status: "OK",
+      },
+    ],
+    response: bullets.join("\n"),
+    durationMs: Date.now() - startedAt,
+    tokenUsage: aiRes.usage || null,
+  });
 
   return {
     ok: true,
@@ -1115,6 +1644,7 @@ export async function runAdminDraftEnquiryReply(params: {
   source?: string;
   tone?: string;
 }): Promise<{ ok: boolean; reply?: string; error?: string }> {
+  const startedAt = Date.now();
   const aiRes = await callClaudeHaiku({
     scope: "admin",
     useCatalogSystemCache: true,
@@ -1132,7 +1662,61 @@ Customer Message:
   });
 
   if (!aiRes.ok) {
+    logClassicConceptsAiTrace({
+      feature: "Admin Draft Enquiry Reply",
+      actor: `Website Admin -> ${params.customerName}`,
+      question: params.customerMessage,
+      model: LOCKED_CLAUDE_MODEL,
+      effort: "medium",
+      outcomeSource: "ERROR",
+      responseCacheStatus: "BYPASS",
+      catalogCacheStatus: "BYPASS",
+      cacheDetails: aiRes.error || "Draft reply failed",
+      productLookupTriggered: false,
+      productLookupQuery: "",
+      productLookupTotalScanned: 0,
+      productsLookedUp: [],
+      steps: [
+        {
+          stepNumber: 1,
+          label: "Admin enquiry reply draft failed",
+          detail: aiRes.error,
+          durationMs: Date.now() - startedAt,
+          status: "ERROR",
+        },
+      ],
+      response: aiRes.error || "Failed",
+      durationMs: Date.now() - startedAt,
+      error: aiRes.error || null,
+    });
     return { ok: false, error: aiRes.error };
   }
-  return { ok: true, reply: cleanAiPatterns(aiRes.text.trim()) };
+  const cleanReply = cleanAiPatterns(aiRes.text.trim());
+  logClassicConceptsAiTrace({
+    feature: "Admin Draft Enquiry Reply",
+    actor: `Website Admin -> ${params.customerName}`,
+    question: params.customerMessage,
+    model: LOCKED_CLAUDE_MODEL,
+    effort: "medium",
+    outcomeSource: "LIVE_AI",
+    responseCacheStatus: "BYPASS",
+    catalogCacheStatus: "HIT",
+    cacheDetails: "Admin enquiry reply with catalog prompt cache",
+    productLookupTriggered: true,
+    productLookupQuery: params.customerMessage.slice(0, 120),
+    productLookupTotalScanned: 0,
+    productsLookedUp: [],
+    steps: [
+      {
+        stepNumber: 1,
+        label: "Drafted plain-language enquiry reply via claude-haiku-5-5 Medium",
+        durationMs: Date.now() - startedAt,
+        status: "OK",
+      },
+    ],
+    response: cleanReply,
+    durationMs: Date.now() - startedAt,
+    tokenUsage: aiRes.usage || null,
+  });
+  return { ok: true, reply: cleanReply };
 }
