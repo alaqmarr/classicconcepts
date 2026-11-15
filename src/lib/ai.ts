@@ -259,8 +259,8 @@ export async function callClaudeHaiku(options: {
       const requestBody: Record<string, unknown> = {
         model: wireModel,
         max_tokens: isHaiku55
-          ? Math.max(options.maxTokens ?? 1800, 1600)
-          : (options.maxTokens ?? 600),
+          ? Math.max(options.maxTokens ?? 4096, 4096)
+          : (options.maxTokens ?? 1024),
         system: systemBlocks,
         messages: apiMessages,
       };
@@ -271,7 +271,7 @@ export async function callClaudeHaiku(options: {
         requestBody.temperature = options.temperature ?? 0.25;
       }
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      let response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -280,11 +280,57 @@ export async function callClaudeHaiku(options: {
           "anthropic-beta": "prompt-caching-2024-07-31",
         },
         body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(24000),
+        signal: AbortSignal.timeout(26000),
       });
 
       statusCode = response.status;
       payload = await response.json().catch(() => null);
+
+      const extractPayloadText = (p: any) =>
+        Array.isArray(p?.content)
+          ? p.content
+              .filter((b: any) => b?.type === "text")
+              .map((b: any) => b.text)
+              .join("\n")
+              .trim()
+          : "";
+
+      const firstText = response.ok ? extractPayloadText(payload) : "";
+      // If adaptive thinking starved the output token budget or truncated JSON, retry once without thinking
+      if (
+        isHaiku55 &&
+        (!response.ok ||
+          !firstText ||
+          payload?.stop_reason === "max_tokens" ||
+          (firstText.includes("{") && !firstText.endsWith("}")))
+      ) {
+        const fastBody: Record<string, unknown> = {
+          model: wireModel,
+          max_tokens: 2048,
+          system: systemBlocks,
+          messages: apiMessages,
+        };
+        const retryRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": scopedKey,
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "prompt-caching-2024-07-31",
+          },
+          body: JSON.stringify(fastBody),
+          signal: AbortSignal.timeout(22000),
+        }).catch(() => null);
+        if (retryRes && retryRes.ok) {
+          const retryPayload = await retryRes.json().catch(() => null);
+          if (extractPayloadText(retryPayload)) {
+            response = retryRes;
+            statusCode = retryRes.status;
+            payload = retryPayload;
+          }
+        }
+      }
+
       if (response.ok) {
         responseOk = true;
         break;
@@ -711,10 +757,8 @@ export async function runCustomerConcierge(
     const finalUserMsg = hasConversationContext
       ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${stateHint}${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"${candidateProductsBlock}`
       : `Customer input: "${cleanQuery}"${candidateProductsBlock}`;
-    if (preClassifiedNonProduct) {
-      claudeTurns.length = 0;
-      claudeTurns.push({ role: "user", content: finalUserMsg });
-    } else if (claudeTurns.length > 0 && claudeTurns[claudeTurns.length - 1].role === "user") {
+    // Preserve multi-turn history across all turns so numbered selections ("1"), chat history summaries, and follow-ups work seamlessly
+    if (claudeTurns.length > 0 && claudeTurns[claudeTurns.length - 1].role === "user") {
       claudeTurns[claudeTurns.length - 1].content = `${claudeTurns[claudeTurns.length - 1].content}\n\n${finalUserMsg}`;
     } else {
       claudeTurns.push({ role: "user", content: finalUserMsg });
@@ -722,26 +766,28 @@ export async function runCustomerConcierge(
 
     const aiRes = await callClaudeHaiku({
       scope: "client",
-      useCatalogSystemCache: !preClassifiedNonProduct || preCheck.intent === "company_info",
+      useCatalogSystemCache: true,
       effort: preClassifiedNonProduct ? "low" : "medium",
-      maxTokens: 650,
+      maxTokens: 4096,
       temperature: 0.25,
       conversationMessages: claudeTurns,
-      taskSystemInstruction: `You are ACRIO, Classic Concepts' Friendly Product Helper.
+      taskSystemInstruction: `You are ACRIO, Classic Concepts' Friendly Product Helper & Project Specialist.
 A website visitor is chatting with you inside our search & concierge modal.
-Write everything in simple everyday layman English. Never use em dashes ("—") or fancy buzzwords.
-CONVERSATION CONTINUITY, PRODUCT KNOWLEDGE & ANTI-REPETITION RULES:
-- Keep the conversation open and helpful! If the visitor gives a short or vague message (like "price?", "something smaller", "for our office", "need 10"), use the conversation history above to understand what they mean, suggest matching options, and ask 1 natural follow-up question.
-- When the visitor asks about specific dimensions (height, top sheet, bottom sheet, front panel, shelf size), technical specifications (pillars, wheels, weight, warranty, assembly), variants and variant pricing (e.g. Clear Frosted vs Blue LED), features, or compares two products (e.g. "Compare CCP054 and CCP055", "Which one is wider?", "Which has the largest reading top?"), state the exact measurements, specifications, and variant ₹ prices from the Candidate Catalog Products list in "message" and "highlights"!
-- NEVER invent, guess, or assume any dimension, specification, thickness capacity, wattage, or warranty that is not present in the Candidate Catalog Products list. If a requested technical detail is not in the catalog record, state honestly that it is not listed in the standard catalog specs and offer to confirm with our Fabrication Team on WhatsApp.
-- Never repeat "Hello" or "Welcome" on follow-up turns.
-- Do NOT mention "16,000 sq. ft. factory" unless the visitor specifically asks about our factory, manufacturing facility, or bulk capacity.
-- Do NOT repeat generic lines about "custom logo, size, or LED light" on every query. Only mention custom work if they ask for customisation or if no ready item matches.
+Write everything in simple everyday layman English (or Hindi/Hinglish if the visitor writes in Hindi/Hinglish; use other languages only if they clearly do not understand English or Hindi). Never use em dashes ("—") or fancy buzzwords.
+CONVERSATION CONTINUITY, GIST FORMATTING, TOTALLING & LEADERSHIP CONTACTS:
+- Keep the conversation open and helpful! If the visitor gives a short or numbered reply ("1", "any more options?", "cheaper alternative", "they sit, Acrylic chair"), use the conversation history above to understand what they mean.
+- Cheapest vs Most Premium Podiums: Our most affordable ready podium is Acrylic Podium CCP057S (₹7,150, Top 18" x 14") followed by CCP054 (₹14,999, Top 20" x 15"). Our most premium flagship podium is Acrylic & Wood Podium CCP111 (₹55,000, Top 27" x 18").
+- Podium Sub-Categories: 1. Essential Podiums (₹7,150 to ₹23,650), 2. Classic Signature Podiums (₹19,250 to ₹28,600), 3. Premium Podiums (₹28,600 to ₹55,000), 4. Custom-Built Podiums.
+- Furniture & Chairs: When asked about furniture, interiors, or chairs for sitting, recommend our Acrylic Chair (₹15,950), Acrylic Bar Stool (₹9,350), Acrylic Console Table (₹12,100), and Acrylic Nesting Tables (₹8,800) — never suggest podiums for furniture/seating!
+- Multi-Item Totalling & Budgets: When the visitor asks for multiple quantities or a project budget (e.g. "3 podiums, 10 signages, and 10 chairs within 1 lac rupees"), calculate unit price × quantity = line total for each item and suggest a within-budget combination!
+- Company Details, Leadership & Department Contacts: When asked about leadership, chairperson/directors, marketing, sales, or department contacts, share the exact names, roles, emails, and phone numbers from Section 3 (AL AQMAR: app@rapidshiftlabs.in, +91 96184 43558; Ananya Deshmukh: ananya.deshmukh@classiconcepts.in, +91 98480 22102; Priya Menon: priya.menon@classiconcepts.in, +91 98480 55110; Rohan Kulkarni: rohan.kulkarni@classiconcepts.in, +91 98480 22101; Karthik Nair: karthik.nair@classiconcepts.in, +91 98480 22103; Head Office: +91 73372 22876 / +91 93467 63253, sales@classicconcepts.in).
+- When the visitor asks about a single product, give a concise scannable gist (Price, Height & Top size, Build/Warranty, Variants, 2-3 highlights) instead of dumping a giant wall of text.
+- Never repeat "Hello" or "Welcome" on follow-up turns, and do not repeat the same closing question turn after turn.
 - Classify the visitor's message:
   * "product_match": They want a product, gift, or venue setup (or are refining an earlier product request). Pick 1 to 4 genuinely relevant slugs from Section 4.
   * "role_clarify": They ONLY state their job/role or a vague problem without saying what item they want. Ask 1 short, friendly clarifying question and set "recommendations": [] and "highlights": [].
   * "greeting": Greeting or question about you (confirm you are ACRIO, Classic Concepts' product assistant). Set "recommendations": [] and "highlights": [].
-  * "company_info": Question about our factory location, working hours, pan-India shipping, or what Classic Concepts does. Answer clearly and set "recommendations": [] and "highlights": [].
+  * "company_info": Question about our factory location, leadership/department contacts, working hours, pan-India shipping, or what Classic Concepts does. Answer clearly and set "recommendations": [] and "highlights": [].
   * "topic_reset": They say "I have a different query" or "Let's start over". Invite their new question warmly and set "recommendations": [] and "highlights": [] (do NOT repeat products from earlier turns).
   * "human_handoff_info": They ask "Whom will you connect me to?". Explain that we connect them to our Classic Concepts Sales & Fabrication Team on WhatsApp, and set "recommendations": [] and "highlights": [].
   * "off_topic": Unrelated topic (weather, food, sports, coding). Politely state that you help with Classic Concepts acrylic products and set "recommendations": [] and "highlights": [].

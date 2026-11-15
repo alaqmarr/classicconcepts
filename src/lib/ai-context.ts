@@ -423,20 +423,21 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
       );
       await enrichProductsWithCompleteKnowledge(products, catalogLines);
 
-      const teamSummaryLines =
-        teamMembersRaw.length > 0
-          ? teamMembersRaw
-              .map(
-                (t) =>
-                  `  - ${t.name} (${t.position})${t.phone ? `, Phone: ${t.phone}` : ""}${t.email ? `, Email: ${t.email}` : ""}`
-              )
-              .join("\n")
-          : [
-              "  - Sales Team (Acrylic Podiums, Trophies, Hotel Stands, Bulk Quotes): Rohan Kulkarni (P0), Ananya Deshmukh (P1)",
-              "  - Custom Fabrication Team (Custom Sizes, Drawings, Industrial Enclosures): Ananya Deshmukh (P0), Rohan Kulkarni (P1)",
-              "  - Classic Edge 53 Machines Team (Diamond Polishers, Acrylic Benders, CNC, Laser, Consumables & Accessories): Karthik Nair (P0), Ananya Deshmukh (P1)",
-              "  - Orders & Dispatch Team (GST Invoices, Courier Tracking, Dispatch Updates): Rohan Kulkarni (P0), Ananya Deshmukh (P1)",
-            ].join("\n");
+      const defaultDepartmentContacts = [
+        "  - Leadership & Platform Engineering Head: AL AQMAR (Email: app@rapidshiftlabs.in, Phone/WhatsApp: +91 96184 43558)",
+        "  - Senior Sales & Hospitality Head: Ananya Deshmukh (Email: ananya.deshmukh@classiconcepts.in, Phone/WhatsApp: +91 98480 22102)",
+        "  - Corporate, Office & Hotel Sales Specialist: Priya Menon (Email: priya.menon@classiconcepts.in, Phone/WhatsApp: +91 98480 55110)",
+        "  - Sales & Dispatch Executive (Podiums, Trophies, Orders): Rohan Kulkarni (Email: rohan.kulkarni@classiconcepts.in, Phone/WhatsApp: +91 98480 22101)",
+        "  - Classic Edge 53 Machines & Technical Head (Diamond Polishers, Acrylic Benders, CNC, Laser, Consumables & Accessories): Karthik Nair (Email: karthik.nair@classiconcepts.in, Phone/WhatsApp: +91 98480 22103)",
+        `  - Main Factory & Head Office Desk: ${phone1}${settings?.phone2 ? ` / ${settings.phone2}` : ""}, Email: ${email}`,
+      ];
+      const teamSummaryLines = [
+        ...teamMembersRaw.map(
+          (t) =>
+            `  - ${t.name} (${t.position})${t.phone ? `, Phone: ${t.phone}` : ""}${t.email ? `, Email: ${t.email}` : ""}`
+        ),
+        ...defaultDepartmentContacts,
+      ].join("\n");
 
       const machinerySummaryLines =
         machineryRaw.length > 0
@@ -1397,16 +1398,23 @@ export function extractWebsiteBudgetConstraints(rawQuery: string): {
     .toLowerCase()
     .replace(/,/g, "");
 
-  const parseAmount = (numStr: string, kSuffix?: string): number | null => {
+  const parseAmount = (numStr: string, unitSuffix?: string): number | null => {
     const val = Number.parseFloat(numStr);
     if (!Number.isFinite(val) || val <= 0) return null;
-    if (kSuffix && kSuffix.toLowerCase() === "k") return Math.round(val * 1000);
+    const u = (unitSuffix || "").trim().toLowerCase();
+    if (u === "k" || u === "thousand") return Math.round(val * 1000);
+    if (u === "lac" || u === "lacs" || u === "lakh" || u === "lakhs") {
+      return Math.round(val * 100000);
+    }
+    if (u === "cr" || u === "crore" || u === "crores") {
+      return Math.round(val * 10000000);
+    }
     return Math.round(val);
   };
 
   const rangeMatches = Array.from(
     q.matchAll(
-      /\b(?:between|from)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\s*(?:and|to|-)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\b/gi
+      /\b(?:between|from)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lac|lacs|lakh|lakhs|cr|crore|crores)?\s*(?:and|to|-)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lac|lacs|lakh|lakhs|cr|crore|crores)?\b/gi
     )
   );
   if (rangeMatches.length > 0) {
@@ -1426,7 +1434,7 @@ export function extractWebsiteBudgetConstraints(rawQuery: string): {
 
   const maxMatches = Array.from(
     q.matchAll(
-      /\b(?:under|below|less\s*than|upto|up\s*to|within|max|maximum|not\s*more\s*than|(?:increase|raise|extend|stretch|bump|change|update|set|keep)\s+(?:the\s+|my\s+|our\s+)?budget\s*(?:to|up\s*to|at|around|under|within)?|budget(?:\s*of|\s*is|\s*to|\s*up\s*to|\s*around|\s*under|\s*within)?|(?:make|keep)\s+it(?:\s+under|\s+up\s*to|\s+to)?|around|till)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\b/gi
+      /\b(?:under|below|less\s*than|upto|up\s*to|within|max|maximum|not\s*more\s*than|(?:increase|raise|extend|stretch|bump|change|update|set|keep)\s+(?:the\s+|my\s+|our\s+)?budget\s*(?:to|up\s*to|at|around|under|within)?|budget(?:\s*of|\s*is|\s*to|\s*up\s*to|\s*around|\s*under|\s*within)?(?:\s*around|\s*under|\s*within|\s*about)?|(?:make|keep)\s+it(?:\s+under|\s+up\s*to|\s+to)?|around|till)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lac|lacs|lakh|lakhs|cr|crore|crores)?\s*(?:rupees|rs\.?|inr|₹)?\b/gi
     )
   );
   for (const m of maxMatches) {
@@ -1438,7 +1446,7 @@ export function extractWebsiteBudgetConstraints(rawQuery: string): {
 
   const minMatches = Array.from(
     q.matchAll(
-      /\b(?:above|over|more\s*than|min|minimum|starting\s*from|at\s*least)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k)?\b/gi
+      /\b(?:above|over|more\s*than|min|minimum|starting\s*from|at\s*least)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lac|lacs|lakh|lakhs|cr|crore|crores)?\s*(?:rupees|rs\.?|inr|₹)?\b/gi
     )
   );
   for (const m of minMatches) {
@@ -1469,6 +1477,20 @@ function detectWebsiteProductFamily(text: string): {
 } {
   const clean = String(text || "").trim();
   const lower = clean.toLowerCase();
+  if (/\b(furniture|interior|interiors|interiora|chair|chairs|stool|stools|table|tables|desk|console|they\s+sit|seating)\b/i.test(lower)) {
+    return {
+      family: "furniture",
+      canonicalQuery: `${clean} acrylic chair stool table furniture`,
+      onlyPodiums: false,
+    };
+  }
+  if (/\b(signage|signages|name\s*plate|name\s*plates|nameplate|nameplates|name\s*board)\b/i.test(lower)) {
+    return {
+      family: "signage",
+      canonicalQuery: `${clean} acrylic signage name plate sign holder`,
+      onlyPodiums: false,
+    };
+  }
   if (/\b(pulpit|pulpits|podium|podiums|lectern|lecterns|rostrum|rostrums|ccpo?\s*0?\d{2,3})\b/i.test(lower)) {
     return {
       family: "podium",
@@ -1476,10 +1498,10 @@ function detectWebsiteProductFamily(text: string): {
       onlyPodiums: true,
     };
   }
-  if (/\b(trophy|trophies|memento|mementos|award|awards|plaque|plaques|medal|medals)\b/i.test(lower)) {
+  if (/\b(trophy|trophies|memento|mementos|award|awards|plaque|plaques|medal|medals|gift|gifts|corporate\s*clients?|paperweight|pen\s*stand)\b/i.test(lower)) {
     return {
       family: "award",
-      canonicalQuery: `${clean} acrylic trophy award memento`,
+      canonicalQuery: `${clean} acrylic trophy award memento corporate gift`,
       onlyPodiums: false,
     };
   }
