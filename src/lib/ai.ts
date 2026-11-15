@@ -34,6 +34,7 @@ export interface ConciergeProductCard {
   name: string;
   slug: string;
   sku: string | null;
+  url: string;
   categoryName: string;
   subCategoryName: string | null;
   basePrice: number | null;
@@ -43,6 +44,11 @@ export interface ConciergeProductCard {
   stockStatus: string;
   mainImage: string;
   reason?: string;
+  dimensions?: { name: string; value: string; type: string }[];
+  specs?: { name: string; value: string; type?: string }[];
+  variants?: { id: string; name: string; price: number | null; imageUrl: string | null }[];
+  features?: string[];
+  quickFacts?: { label: string; value: string }[];
 }
 
 export interface ConciergeResponse {
@@ -85,6 +91,7 @@ function toCard(p: CachedProductSummary, reason?: string): ConciergeProductCard 
     name: p.name,
     slug: p.slug,
     sku: p.sku,
+    url: `/shop/p/${p.slug}`,
     categoryName: p.categoryName,
     subCategoryName: p.subCategoryName,
     basePrice: p.basePrice,
@@ -94,6 +101,11 @@ function toCard(p: CachedProductSummary, reason?: string): ConciergeProductCard 
     stockStatus: p.stockStatus,
     mainImage: p.mainImage,
     reason,
+    dimensions: p.dimensions || [],
+    specs: p.specs || [],
+    variants: p.variants || [],
+    features: p.features || [],
+    quickFacts: p.quickFacts || [],
   };
 }
 
@@ -598,7 +610,7 @@ export async function runCustomerConcierge(
     };
   }
 
-  // Pre-classify current message intent BEFORE invoking Claude or scanning catalog products (Phase A + Phase B multi-turn state)
+  // Pre-classify current message intent BEFORE invoking Claude or scanning catalog products (Phase A + Phase B multi-turn state + Phase H deep retrieval)
   const webState = deriveWebsiteConversationState(cleanHistory, cleanQuery);
   const directPreCheck = localSmartProductMatch(snapshot, cleanQuery, { limit: 4 });
   const preCheck =
@@ -622,6 +634,26 @@ export async function runCustomerConcierge(
           preferPremium: webState.preferences.includes("premium"),
         })
       : directPreCheck;
+
+  if (
+    !isNonProductQueryIntent(preCheck.intent) &&
+    preCheck.products.length > 0 &&
+    webState.isFollowUpRefinement
+  ) {
+    const { buildDeterministicDeepProductAdvisory } = await import(
+      "@/lib/product-knowledge"
+    );
+    const followUpDeep = buildDeterministicDeepProductAdvisory({
+      rawQuery: cleanQuery,
+      matchedProducts: preCheck.products,
+    });
+    if (followUpDeep.advisoryMessage) {
+      preCheck.advisoryMessage = followUpDeep.advisoryMessage;
+    }
+    if (followUpDeep.highlights.length > 0) {
+      preCheck.highlights = followUpDeep.highlights;
+    }
+  }
   const preClassifiedNonProduct = isNonProductQueryIntent(preCheck.intent);
   const activeBudgetLabel =
     webState.maxPrice !== null && webState.minPrice !== null
@@ -674,7 +706,7 @@ export async function runCustomerConcierge(
         ? ` Active visitor requirements from conversation: product="${webState.primaryProductQuery}"${activeBudgetLabel ? `, budget="${activeBudgetLabel}"` : ""}${webState.preferences.length ? `, preferences=[${webState.preferences.join(", ")}]` : ""}. Preserve the product category and enforce the active budget ceiling strictly.`
         : "";
     const candidateProductsBlock = !preClassifiedNonProduct
-      ? `\n\n${formatCandidateProductsForPrompt(preCheck.products, 15)}`
+      ? `\n\n${formatCandidateProductsForPrompt(preCheck.products, 15, cleanQuery)}`
       : "";
     const finalUserMsg = hasConversationContext
       ? `[Continue the open conversation naturally. Do NOT repeat "Hello" or "Welcome" again; answer or narrow down based on our earlier messages above.${stateHint}${preClassifiedNonProduct ? ` Detected non-product intent="${preCheck.intent}": answer directly and set "recommendations": [] without repeating earlier products!` : ""}]\nVisitor follow-up: "${cleanQuery}"${candidateProductsBlock}`
@@ -692,14 +724,16 @@ export async function runCustomerConcierge(
       scope: "client",
       useCatalogSystemCache: !preClassifiedNonProduct || preCheck.intent === "company_info",
       effort: preClassifiedNonProduct ? "low" : "medium",
-      maxTokens: 550,
+      maxTokens: 650,
       temperature: 0.25,
       conversationMessages: claudeTurns,
       taskSystemInstruction: `You are ACRIO, Classic Concepts' Friendly Product Helper.
 A website visitor is chatting with you inside our search & concierge modal.
 Write everything in simple everyday layman English. Never use em dashes ("—") or fancy buzzwords.
-CONVERSATION CONTINUITY & ANTI-REPETITION RULES:
+CONVERSATION CONTINUITY, PRODUCT KNOWLEDGE & ANTI-REPETITION RULES:
 - Keep the conversation open and helpful! If the visitor gives a short or vague message (like "price?", "something smaller", "for our office", "need 10"), use the conversation history above to understand what they mean, suggest matching options, and ask 1 natural follow-up question.
+- When the visitor asks about specific dimensions (height, top sheet, bottom sheet, front panel, shelf size), technical specifications (pillars, wheels, weight, warranty, assembly), variants and variant pricing (e.g. Clear Frosted vs Blue LED), features, or compares two products (e.g. "Compare CCP054 and CCP055", "Which one is wider?", "Which has the largest reading top?"), state the exact measurements, specifications, and variant ₹ prices from the Candidate Catalog Products list in "message" and "highlights"!
+- NEVER invent, guess, or assume any dimension, specification, thickness capacity, wattage, or warranty that is not present in the Candidate Catalog Products list. If a requested technical detail is not in the catalog record, state honestly that it is not listed in the standard catalog specs and offer to confirm with our Fabrication Team on WhatsApp.
 - Never repeat "Hello" or "Welcome" on follow-up turns.
 - Do NOT mention "16,000 sq. ft. factory" unless the visitor specifically asks about our factory, manufacturing facility, or bulk capacity.
 - Do NOT repeat generic lines about "custom logo, size, or LED light" on every query. Only mention custom work if they ask for customisation or if no ready item matches.
@@ -1210,7 +1244,7 @@ Given a visitor's search query${options?.onlyPodiums ? " (restricted ONLY to Pod
   ]
 }
 If the input is a role introduction ("I am an engineer"), greeting, or off-topic query, set "matches": [] and write a polite clarifying or helpful summary. Otherwise select up to ${Math.min(limit, 8)} best-matching slugs from the candidate list below.`,
-      userPrompt: `Search query: "${cleanQuery}"\n\n${formatCandidateProductsForPrompt(localResult.products, 15)}`,
+      userPrompt: `Search query: "${cleanQuery}"\n\n${formatCandidateProductsForPrompt(localResult.products, 15, cleanQuery)}`,
     });
 
     if (aiRes.ok) {

@@ -164,7 +164,7 @@ export function resolveScopedApiKey(
  */
 export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
   return rememberCached<KnowledgeSnapshot>(
-    "ai:knowledge-snapshot",
+    "ai:knowledge-snapshot:v3",
     ["catalog", "taxonomy", "settings", "brand", "ai-snapshot"],
     SNAPSHOT_TTL_SECONDS,
     async () => {
@@ -479,6 +479,13 @@ Use these simple, everyday explanations whenever a visitor asks common questions
 5. NEVER use stiff AI buzzwords like bespoke, elevate, delve, meticulous, unparalleled, seamless, testament, leverage, robust, cutting-edge, state-of-the-art, utilize, optical-grade, or consultative.
 6. Product descriptions must ALWAYS be short, easy-to-read bullet points, never long paragraphs.`;
 
+      // Enrich all products in-place with complete untruncated features, specifications, dimensions,
+      // variants + variant pricing, normalized descriptionHtml & importantNoteHtml, industries, problemStatements, and resources.
+      const { enrichProductsWithCompleteKnowledge } = await import(
+        "@/lib/product-knowledge"
+      );
+      await enrichProductsWithCompleteKnowledge(products, catalogLines);
+
       // Hash both the static knowledge base AND the full catalog lines so any product/price/spec edit bumps catalogHash immediately!
       const catalogHash = crypto
         .createHash("sha256")
@@ -503,38 +510,41 @@ Use these simple, everyday explanations whenever a visitor asks common questions
   );
 }
 
+export interface CachedProductSummary {
+  dimensions?: { name: string; value: string; type: string }[];
+  technicalSpecs?: { name: string; value: string; type: string }[];
+  variants?: {
+    id: string;
+    name: string;
+    price: number | null;
+    imageUrl: string | null;
+  }[];
+  quickFacts?: { label: string; value: string }[];
+  descriptionText?: string;
+  importantNoteText?: string;
+  searchKeywords?: string;
+  podiumSubCategoryNames?: string[];
+  industryObjects?: { name: string; slug: string; description: string }[];
+  problemStatementObjects?: { name: string; slug: string; description: string }[];
+  resources?: { name: string; url: string }[];
+  isRegisteredDesign?: boolean;
+  designRegistrationNo?: string | null;
+  ipProtectionText?: string | null;
+  videoUrl?: string | null;
+}
+
 /**
- * Formats only the top-K pre-retrieved candidate products into a compact prompt section (~300-900 tokens)
- * instead of dumping all 189 catalog products (~32,000 tokens) into every LLM turn.
+ * Formats only the top-K pre-retrieved candidate products into a question-aware prompt section
+ * (compact for general browsing, or full untruncated dimensions/specs/variants/features/notes for deep queries)
+ * instead of dumping all 189 catalog products into every LLM turn.
  */
 export function formatCandidateProductsForPrompt(
   candidates: CachedProductSummary[],
-  maxItems = 15
+  maxItems = 15,
+  rawQuery = ""
 ): string {
-  const slice = candidates.slice(0, maxItems);
-  if (slice.length === 0) {
-    return "### CANDIDATE CATALOG PRODUCTS FOR THIS QUERY\n(0 exact catalog products matched the visitor's current filters/budget.)";
-  }
-  const lines = slice.map((p) => {
-    const priceStr = p.effectivePrice ? `₹${p.effectivePrice}` : "Price on Request";
-    const subStr = p.subCategoryName ? ` / ${p.subCategoryName}` : "";
-    const skuStr = p.sku ? ` [SKU:${p.sku}]` : "";
-    const specStr =
-      p.specs.length > 0
-        ? ` | Specs: ${p.specs
-            .slice(0, 3)
-            .map((s) => `${s.name}:${s.value}`)
-            .join("; ")}`
-        : "";
-    const featStr =
-      p.features.length > 0
-        ? ` | Features: ${p.features.slice(0, 2).join("; ")}`
-        : p.bullets.length > 0
-        ? ` | Highlights: ${p.bullets.slice(0, 2).join("; ")}`
-        : "";
-    return `- SLUG:"${p.slug}" | NAME:"${p.name}"${skuStr} | CAT:"${p.categoryName}${subStr}" | PRICE:${priceStr} | STOCK:${p.stockStatus}${specStr}${featStr}`;
-  });
-  return `### CANDIDATE CATALOG PRODUCTS FOR THIS QUERY (ONLY PICK SLUGS FROM THIS LIST)\n${lines.join("\n")}`;
+  const { formatQuestionAwareProductsForPrompt } = require("@/lib/product-knowledge") as typeof import("@/lib/product-knowledge");
+  return formatQuestionAwareProductsForPrompt(candidates, rawQuery, maxItems);
 }
 
 /**
@@ -1426,13 +1436,18 @@ function detectWebsiteProductFamily(text: string): {
 }
 
 export function deriveWebsiteConversationState(
-  history: { role: "user" | "assistant"; text: string }[] | undefined,
+  history:
+    | { role: "user" | "assistant"; text?: string; content?: string }[]
+    | undefined,
   currentQuery: string
 ): WebsiteConversationState {
   const cleanCurrent = String(currentQuery || "").trim();
   const userTurns = (history || [])
-    .filter((h) => h.role === "user" && Boolean(String(h.text || "").trim()))
-    .map((h) => String(h.text).trim());
+    .filter(
+      (h) =>
+        h.role === "user" && Boolean(String(h.text || h.content || "").trim())
+    )
+    .map((h) => String(h.text || h.content || "").trim());
 
   if (userTurns.length > 0 && userTurns[userTurns.length - 1] === cleanCurrent) {
     userTurns.pop();
@@ -1516,7 +1531,7 @@ export function deriveWebsiteConversationState(
     (currentBudget.maxPrice !== null ||
       currentBudget.minPrice !== null ||
       currentPrefs.length > 0 ||
-      /\b(budget|price|cost|under|below|above|around|increase|raise|stretch|extend|premium|transparent|clear|frosted|show\s*more|other\s*options|compare|first\s*two)\b/i.test(
+      /\b(budget|price|cost|under|below|above|around|increase|raise|stretch|extend|premium|transparent|clear|frosted|show\s*more|other\s*options|compare|comparison|vs\.?|versus|difference|first\s*two|top\s*two|which\s*one|which\s*of\s*these|wider|widest|largest|bigger|taller|reading\s*top|top\s*sheet|bottom\s*sheet|front\s*panel|dimension|dimensions|size|height|width|spec|specs|specification|specifications|variant|variants|colour|color|colours|colors|led|pillar|pillars|wheel|wheels|warranty|weight|feature|features|20\s*mm|watt|voltage)\b/i.test(
         cleanCurrent
       ));
 
@@ -1554,6 +1569,7 @@ export function localSmartProductMatch(
     maxPrice?: number | null;
     minPrice?: number | null;
     preferPremium?: boolean;
+    rawTurnQuery?: string;
   }
 ): LocalSmartMatchResult {
   const cleanRaw = rawQuery.trim();
@@ -1876,26 +1892,69 @@ export function localSmartProductMatch(
     ? pool.filter((p) => p.isPodium)
     : pool;
 
+  const {
+    extractExplicitProductCodesOrSlugs,
+    buildDeterministicDeepProductAdvisory,
+  } = require("@/lib/product-knowledge") as typeof import("@/lib/product-knowledge");
+  const explicitCodeMatches = extractExplicitProductCodesOrSlugs(
+    candidatePool,
+    cleanRaw
+  );
+  const explicitSlugSet = new Set(explicitCodeMatches.map((p) => p.slug));
+
   const scored = candidatePool.map((p) => {
     let score = 0;
     const nameLower = p.name.toLowerCase();
     const skuLower = (p.sku || "").toLowerCase();
     const nameWords = splitWords(nameLower);
     const catWords = splitWords(
-      `${p.categoryName} ${p.subCategoryName || ""}`
+      `${p.categoryName} ${p.subCategoryName || ""} ${(p.podiumSubCategoryNames || []).join(" ")}`
     );
     const blobWords = splitWords(p.searchBlob);
+    const featLower = (p.features || []).join(" ").toLowerCase();
+    const descLower = (p.descriptionText || "").toLowerCase();
+    const noteLower = (p.importantNoteText || "").toLowerCase();
+    const specLower = (p.specs || [])
+      .map((s) => `${s.name} ${s.value}`)
+      .join(" ")
+      .toLowerCase();
+    const varLower = (p.variants || [])
+      .map((v) => `${v.name} ${v.price ?? ""}`)
+      .join(" ")
+      .toLowerCase();
+    const appLower = [
+      ...(p.industries || []),
+      ...(p.problems || []),
+      ...(p.industryObjects || []).map((i) => `${i.name} ${i.description}`),
+      ...(p.problemStatementObjects || []).map((ps) => `${ps.name} ${ps.description}`),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    if (explicitSlugSet.has(p.slug)) {
+      score += 240;
+    }
 
     if (nameLower === q || (skuLower && skuLower === q)) score += 140;
     else if (q.length >= 4 && skuLower && skuLower.includes(q)) score += 90;
     else if (q.length >= 5 && meaningfulTokens.length >= 2 && nameLower.includes(q)) {
       score += 70;
+    } else if (
+      q.length >= 6 &&
+      meaningfulTokens.length >= 2 &&
+      (featLower.includes(q) || descLower.includes(q) || noteLower.includes(q) || specLower.includes(q) || appLower.includes(q))
+    ) {
+      score += 48;
     }
 
     for (const tok of meaningfulTokens) {
-      if (skuLower && tok.length >= 3 && skuLower.includes(tok)) score += 40;
+      if (skuLower && tok.length >= 3 && skuLower.includes(tok)) score += 45;
       if (nameWords.some((nw) => tokenMatchesWord(tok, nw))) score += 30;
       if (catWords.some((cw) => tokenMatchesWord(tok, cw))) score += 22;
+      if (appLower && splitWords(appLower).some((aw) => tokenMatchesWord(tok, aw))) score += 20;
+      if (varLower && splitWords(varLower).some((vw) => tokenMatchesWord(tok, vw))) score += 18;
+      if (specLower && splitWords(specLower).some((sw) => tokenMatchesWord(tok, sw))) score += 16;
+      if (featLower && splitWords(featLower).some((fw) => tokenMatchesWord(tok, fw))) score += 16;
       if (blobWords.some((bw) => tokenMatchesWord(tok, bw))) score += 12;
     }
 
@@ -1944,6 +2003,9 @@ export function localSmartProductMatch(
 
   const matched = filteredScored
     .sort((a, b) => {
+      const aExplicit = explicitSlugSet.has(a.product.slug) ? 1 : 0;
+      const bExplicit = explicitSlugSet.has(b.product.slug) ? 1 : 0;
+      if (aExplicit !== bExplicit) return bExplicit - aExplicit;
       if (preferPremium) {
         const aPriced = typeof a.product.effectivePrice === "number" && a.product.effectivePrice > 0 ? a.product.effectivePrice : 0;
         const bPriced = typeof b.product.effectivePrice === "number" && b.product.effectivePrice > 0 ? b.product.effectivePrice : 0;
@@ -2016,7 +2078,14 @@ export function localSmartProductMatch(
   const minPrice = priced.length > 0 ? Math.min(...priced) : null;
 
   let advisoryMessage: string;
-  if (isGiftOrAwardIntent) {
+  const deepAdvisory = buildDeterministicDeepProductAdvisory({
+    rawQuery: options?.rawTurnQuery || cleanRaw,
+    matchedProducts: matched,
+  });
+
+  if (deepAdvisory.advisoryMessage) {
+    advisoryMessage = deepAdvisory.advisoryMessage;
+  } else if (isGiftOrAwardIntent) {
     advisoryMessage = `Here ${matched.length === 1 ? "is" : "are"} ${matched.length} acrylic award and gift ${matched.length === 1 ? "option" : "options"} from our catalog for "${cleanRaw}".`;
   } else if (matched.every((p) => p.isPodium)) {
     advisoryMessage = `Here ${matched.length === 1 ? "is" : "are"} ${matched.length} matching acrylic ${matched.length === 1 ? "podium" : "podiums"} for "${cleanRaw}".`;
@@ -2027,13 +2096,17 @@ export function localSmartProductMatch(
   }
 
   const highlights: string[] = [];
-  if (minPrice !== null) {
-    highlights.push(`Listed catalog options starting from ₹${minPrice.toLocaleString("en-IN")}`);
-  }
-  if (isGiftOrAwardIntent) {
-    highlights.push("Suitable for event prizes, student recognition, and batch orders");
-  } else if (matched.some((p) => p.isPodium)) {
-    highlights.push("Available in full-clear, frosted, LED, and wood-accent podium styles");
+  if (deepAdvisory.highlights.length > 0) {
+    highlights.push(...deepAdvisory.highlights);
+  } else {
+    if (minPrice !== null) {
+      highlights.push(`Listed catalog options starting from ₹${minPrice.toLocaleString("en-IN")}`);
+    }
+    if (isGiftOrAwardIntent) {
+      highlights.push("Suitable for event prizes, student recognition, and batch orders");
+    } else if (matched.some((p) => p.isPodium)) {
+      highlights.push("Available in full-clear, frosted, LED, and wood-accent podium styles");
+    }
   }
 
   let followUpChips: string[];

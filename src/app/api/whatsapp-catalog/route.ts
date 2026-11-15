@@ -1,225 +1,218 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { rememberCached } from "@/lib/redis-cache";
+import { normalizeRichHtmlToStructuredText, isDimensionSpecification } from "@/lib/product-knowledge";
 
 export const dynamic = "force-dynamic";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-cc-sync-key",
-};
-
-function toAbsoluteUrl(url: string | null | undefined, origin: string): string | null {
-  if (!url) return null;
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+function isDummyProductRow(row: {
+  id?: string | null;
+  name?: string | null;
+  slug?: string | null;
+}): boolean {
+  const id = String(row.id || "").trim().toLowerCase();
+  const name = String(row.name || "").trim().toLowerCase();
+  const slug = String(row.slug || "").trim().toLowerCase();
+  return (
+    !name ||
+    id === "test" ||
+    slug === "test" ||
+    name === "test" ||
+    name === "test product" ||
+    /^test\s+product\b/i.test(name)
+  );
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
-}
-
-function resolvePublicClassicConceptsOrigin(candidate?: string | null): string {
-  const clean = String(candidate || "").trim().replace(/\/+$/, "");
-  if (
-    !clean ||
-    /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(clean)
-  ) {
-    return "https://classicconcepts.in";
-  }
-  return clean;
-}
-
-export async function GET(req: NextRequest) {
+/**
+ * Public/Internal Catalog Bridge for Classic Concepts WhatsApp Hub (`ccwhatsapp`).
+ * Exposes all active products, categories, podium styles, dimensions, technical specifications,
+ * features, variants, rich HTML descriptions, important notes, industries, problemStatements,
+ * resources, and recent enquiries so ACRIO WhatsApp AI Co-Pilot has 100% live product knowledge.
+ */
+export async function GET(request: Request) {
   try {
-    const origin = resolvePublicClassicConceptsOrigin(
-      process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin
-    );
+    const { searchParams } = new URL(request.url);
+    const search = (searchParams.get("q") || "").trim().toLowerCase();
+    const limitParam = Number(searchParams.get("limit") || "250");
+    const limit = Math.min(Math.max(limitParam, 1), 500);
 
-    const customerQuery = (req.nextUrl.searchParams.get("customer") || "").trim();
+    const [productsRaw, enquiries, globalResources] = await Promise.all([
+      prisma.product.findMany({
+        orderBy: [{ isPodium: "desc" }, { updatedAt: "desc" }],
+        take: 350,
+        include: {
+          category: { select: { name: true, slug: true } },
+          subCategory: { select: { name: true, slug: true } },
+          subCategories: { select: { name: true, slug: true } },
+          podiumSubCategory: { select: { name: true, slug: true } },
+          podiumSubCategories: { select: { name: true, slug: true } },
+          images: {
+            orderBy: [{ isMain: "desc" }, { createdAt: "asc" }],
+            take: 3,
+            select: { url: true, isMain: true },
+          },
+          features: {
+            select: { text: true },
+          },
+          specifications: {
+            select: { name: true, value: true, type: true },
+          },
+          variants: {
+            select: { id: true, name: true, price: true, imageUrl: true },
+          },
+          industries: {
+            select: { name: true, slug: true, description: true },
+          },
+          problemStatements: {
+            select: { name: true, slug: true, description: true },
+          },
+        },
+      }),
+      prisma.enquiry.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      }),
+      prisma.resource
+        .findMany({
+          select: { title: true, fileUrl: true, type: true },
+          take: 30,
+        })
+        .catch(() => [] as { title: string; fileUrl: string; type: string }[]),
+    ]);
 
-    const catalogPayload = await rememberCached(
-      "whatsapp-sync:catalog:v2",
-      ["catalog", "taxonomy", "brand"],
-      3600,
-      async () => {
-        const [products, categories, machinery] = await Promise.all([
-          prisma.product.findMany({
-            include: {
-              category: { select: { name: true, slug: true } },
-              subCategory: { select: { name: true, slug: true } },
-              images: {
-                orderBy: [{ isMain: "desc" }, { createdAt: "asc" }],
-                take: 3,
-                select: { url: true, isMain: true },
-              },
-              features: {
-                take: 5,
-                select: { text: true },
-              },
-              specifications: {
-                take: 8,
-                select: { name: true, value: true, type: true },
-              },
-            },
-            orderBy: [{ isPodium: "desc" }, { updatedAt: "desc" }],
-          }),
-          prisma.category.findMany({
-            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              description: true,
-            },
-          }),
-          prisma.machinery.findMany({
-            orderBy: { sortOrder: "asc" },
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              imageUrl: true,
-            },
-          }),
-        ]);
+    const products = productsRaw.filter((p) => !isDummyProductRow(p));
 
-        return {
-          products: products.map((p) => ({
-            id: p.id,
-            brand: "CLASSIC_CONCEPTS" as const,
-            brandLabel: "Classic Concepts",
-            itemType: "PRODUCT" as const,
-            name: p.name,
-            slug: p.slug,
-            sku: p.sku || null,
-            description: p.description || null,
-            categoryName: p.category?.name || "Acrylic Products",
-            categorySlug: p.category?.slug || "",
-            subCategoryName: p.subCategory?.name || null,
-            basePrice: p.basePrice ?? null,
-            discountPrice: p.discountPrice ?? null,
-            stockStatus: p.stockStatus || "In stock",
-            isPodium: p.isPodium,
-            mainImage: toAbsoluteUrl(p.images[0]?.url || null, origin),
-            features: p.features.map((f) => f.text),
-            specifications: p.specifications.map((s) => ({
-              key: s.name,
-              value: s.value,
-            })),
-            url: `${origin}/shop/p/${p.slug}`,
-            updatedAt: p.updatedAt.toISOString(),
+    const filtered = search
+      ? products.filter((p) => {
+          const descText = normalizeRichHtmlToStructuredText(p.descriptionHtml);
+          const noteText = normalizeRichHtmlToStructuredText(p.importantNoteHtml);
+          const haystack = [
+            p.name,
+            p.sku || "",
+            p.slug,
+            p.category?.name || "",
+            p.subCategory?.name || "",
+            ...p.subCategories.map((sc) => sc.name),
+            p.podiumSubCategory?.name || "",
+            ...p.podiumSubCategories.map((psc) => psc.name),
+            p.description || "",
+            descText,
+            noteText,
+            p.searchKeywords || "",
+            ...p.features.map((f) => f.text),
+            ...p.specifications.map((s) => `${s.name} ${s.value}`),
+            ...p.variants.map((v) => `${v.name} ${v.price ?? ""}`),
+            ...p.industries.map((i) => `${i.name} ${i.description || ""}`),
+            ...p.problemStatements.map((ps) => `${ps.name} ${ps.description || ""}`),
+          ]
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(search);
+        })
+      : products;
+
+    const mappedProducts = filtered.slice(0, limit).map((p) => {
+      const descriptionText = [
+        normalizeRichHtmlToStructuredText(p.description),
+        normalizeRichHtmlToStructuredText(p.descriptionHtml),
+      ]
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      const importantNoteText = normalizeRichHtmlToStructuredText(
+        p.importantNoteHtml
+      );
+      const specs = p.specifications.map((s) => ({
+        key: s.name,
+        name: s.name,
+        value: s.value,
+        type: s.type || "specification",
+      }));
+      const dimensions = specs.filter((s) =>
+        isDimensionSpecification({ name: s.name, value: s.value, type: s.type })
+      );
+      const technicalSpecifications = specs.filter(
+        (s) =>
+          !isDimensionSpecification({ name: s.name, value: s.value, type: s.type })
+      );
+
+      return {
+        id: p.id,
+        brand: "CLASSIC_CONCEPTS" as const,
+        name: p.name,
+        slug: p.slug,
+        sku: p.sku,
+        categoryName: p.subCategory
+          ? `${p.category.name} - ${p.subCategory.name}`
+          : p.category.name,
+        subCategories: p.subCategories.map((sc) => sc.name),
+        podiumSubCategory: p.podiumSubCategory?.name || null,
+        podiumSubCategories: p.podiumSubCategories.map((psc) => psc.name),
+        description: p.description,
+        descriptionHtml: p.descriptionHtml,
+        descriptionText,
+        importantNoteHtml: p.importantNoteHtml,
+        importantNoteText,
+        searchKeywords: p.searchKeywords,
+        basePrice: p.basePrice,
+        discountPrice: p.discountPrice,
+        discountBadge: p.discountBadge,
+        stockStatus: p.stockStatus,
+        isPodium: p.isPodium,
+        isRegisteredDesign: p.isRegisteredDesign,
+        designRegistrationNo: p.designRegistrationNo,
+        ipProtectionText: p.ipProtectionText,
+        videoUrl: p.videoUrl,
+        mainImage: p.images[0]?.url || null,
+        url: `https://classicconcepts.in/shop/p/${p.slug}`,
+        features: p.features.map((f) => f.text),
+        specifications: specs,
+        dimensions,
+        technicalSpecifications,
+        variants: p.variants.map((v) => ({
+          id: v.id,
+          name: v.name,
+          price: v.price,
+          imageUrl: v.imageUrl,
+        })),
+        industries: p.industries
+          .filter((i) => !isDummyProductRow({ id: i.slug, name: i.name }))
+          .map((i) => ({
+            name: i.name,
+            slug: i.slug,
+            description: normalizeRichHtmlToStructuredText(i.description),
           })),
-          categories: categories.map((c) => ({
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            description: c.description || null,
-            url: `${origin}/shop/c/${c.slug}`,
+        problemStatements: p.problemStatements
+          .filter((ps) => !isDummyProductRow({ id: ps.slug, name: ps.name }))
+          .map((ps) => ({
+            name: ps.name,
+            slug: ps.slug,
+            description: normalizeRichHtmlToStructuredText(ps.description),
           })),
-          machinery: machinery.map((m) => ({
-            id: m.id,
-            name: m.name,
-            description: m.description || null,
-            imageUrl: toAbsoluteUrl(m.imageUrl, origin),
-          })),
-        };
-      }
-    );
+        resources: globalResources.map((r) => ({ name: r.title, url: r.fileUrl })),
+      };
+    });
 
-    let customerEnquiries: {
-      id: string;
-      brand: "CLASSIC_CONCEPTS";
-      name: string;
-      email: string;
-      phone: string;
-      message: string;
-      source: string;
-      status: string;
-      createdAt: string;
-    }[] = [];
-
-    let customerCartOrders: {
-      id: string;
-      name: string;
-      phone: string;
-      total: number | null;
-      status: string;
-      itemsSummary: string;
-      createdAt: string;
-    }[] = [];
-
-    if (customerQuery) {
-      const last10 = customerQuery.replace(/\D/g, "").slice(-10);
-      const isEmail = customerQuery.includes("@");
-      const orFilters: any[] = [];
-      if (last10.length >= 7) {
-        orFilters.push({ phone: { contains: last10 } });
-      }
-      if (isEmail) {
-        orFilters.push({ email: { equals: customerQuery } });
-      }
-
-      if (orFilters.length > 0) {
-        const [enqRows, cartRows] = await Promise.all([
-          prisma.enquiry.findMany({
-            where: { OR: orFilters },
-            orderBy: { createdAt: "desc" },
-            take: 8,
-          }),
-          prisma.cartOrder.findMany({
-            where: { OR: orFilters },
-            include: { items: true },
-            orderBy: { createdAt: "desc" },
-            take: 8,
-          }),
-        ]);
-
-        customerEnquiries = enqRows.map((e) => ({
-          id: e.id,
-          brand: "CLASSIC_CONCEPTS",
-          name: e.name,
-          email: e.email,
-          phone: e.phone,
-          message: e.message,
-          source: `classicconcepts.in (${e.source})`,
-          status: e.status,
-          createdAt: e.createdAt.toISOString(),
-        }));
-
-        customerCartOrders = cartRows.map((o) => ({
-          id: o.id,
-          name: o.name,
-          phone: o.phone,
-          total: o.total ?? null,
-          status: o.status,
-          itemsSummary: o.items
-            .map((it) => `${it.quantity}x ${it.productName}`)
-            .join(", "),
-          createdAt: o.createdAt.toISOString(),
-        }));
-      }
-    }
-
+    return NextResponse.json({
+      ok: true,
+      brand: "CLASSIC_CONCEPTS",
+      domain: "https://classicconcepts.in",
+      count: mappedProducts.length,
+      products: mappedProducts,
+      enquiries: enquiries.map((e) => ({
+        id: e.id,
+        name: e.name,
+        email: e.email,
+        phone: e.phone,
+        message: e.message,
+        source: e.source,
+        status: e.status,
+        createdAt: e.createdAt.toISOString(),
+      })),
+    });
+  } catch (error: any) {
     return NextResponse.json(
-      {
-        ok: true,
-        source: "classicconcepts.in",
-        syncedAt: new Date().toISOString(),
-        ...catalogPayload,
-        customerEnquiries,
-        customerCartOrders,
-      },
-      { headers: CORS_HEADERS }
-    );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: err?.message || "Failed to export Classic Concepts catalog",
-      },
-      { status: 500, headers: CORS_HEADERS }
+      { ok: false, error: error?.message || "Failed to load catalog" },
+      { status: 500 }
     );
   }
 }

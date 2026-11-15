@@ -10,6 +10,7 @@
 - [x] **Phase E — Upgrade & Formalize ACRO Administrator Assistant Across Classic Concepts & Classic Edge 53** *(Completed)*
 - [x] **Phase F — Database Caching, Prompt-Cache Efficiency, Token Costs & ACRO-to-ACRIO Catalog Synchronization** *(Completed)*
 - [x] **Phase G — Add Evaluation & Regression Test Suite & Final Integration Review** *(Completed)*
+- [x] **Phase H — Complete Product Knowledge & Deep Retrieval** *(Completed)*
 
 ---
 
@@ -264,3 +265,26 @@
 - `ccwhatsapp` (`scripts/test-phase-a` through `test-phase-g`, **6 suites including 20/20 Phase G scenarios**) + `apps/web npx tsc --noEmit`: **PASS (0 errors)**
 - `classicconcepts` (`scripts/test-phase-a` through `test-phase-g`, **7 suites**) + `npx tsc --noEmit`: **PASS (0 errors)**
 - `classicedge` (`scripts/test-phase-c-search.ts`, `scripts/test-phase-e-acro-admin.ts`, **2 suites**) + `npx tsc --noEmit`: **PASS (0 errors)**
+
+
+---
+
+## Phase H — Complete Product Knowledge & Deep Retrieval — Completed Summary
+
+### What Was Fixed & Upgraded
+1. **Complete Product Knowledge Ingestion & Rich HTML Normalization (`classicconcepts/src/lib/product-knowledge.ts`, `classicconcepts/src/lib/ai-context.ts`, `classicconcepts/src/app/api/whatsapp-catalog/route.ts`)**:
+   - Removed artificial truncation caps (`features: { take: 6 }` and `specifications: { take: 8 }`) across both `getKnowledgeSnapshot()` (`ai:knowledge-snapshot:v3`) and `/api/whatsapp-catalog` so all 9 features and all 14–15 specifications on podiums (`CCP055`, `CCP054`, etc.) are loaded in full.
+   - Added `normalizeRichHtmlToStructuredText()` and `normalizeCatalogHtmlToText()` to strip HTML tags and decode HTML entities (`&nbsp;`, `&amp;`, `&times;`, `&#39;`, numeric entities) while preserving bullet lists, table rows, measurements (`24 × 20 Inches`), model aliases (`"C Podium"` on `CCP053`), finishes (`"Stainless Steel/Silver and Golden finishes"` on `CCP057`), and care notes from `descriptionHtml` and `importantNoteHtml`.
+   - Explicitly separated `dimensions` (`type = "dimension"` or dimension labels like `Height`, `Top Sheet`, `Bottom Sheet`, `Front Panel`, `Shelf Size`, `Logo Panel Size`) from `technicalSpecs` (`type = "specification"`, such as `Pillars`, `Material`, `Wheels`, `Warranty`, `Weight`, `Assembly`).
+   - Loaded `ProductVariant` records with variant-specific pricing (e.g. `CCP055`: 5 standard finishes at `₹24,200` and 4 LED finishes at `₹26,400`), `searchKeywords`, `podiumSubCategories`, `industries`, `problemStatements`, `resources`, and design registration metadata (`isRegisteredDesign`, `designRegistrationNo`, `ipProtectionText`).
+   - Included a deep product fingerprint (`DEEP:<slug>|VARS:...|SPECS:...|FEATS:...|KW:...|DESC:...|NOTE:...`) inside `catalogLines` so `catalogHash` automatically invalidates AI response caches whenever any specification, variant price, feature, or HTML description changes.
+2. **Classic Edge 53 Machine, Model & Consumable Separation (`classicedge/src/app/api/whatsapp-catalog/route.ts`, `classicedge/src/app/actions/search.ts`, `ccwhatsapp/packages/database/src/clients.ts`)**:
+   - Upgraded the Classic Edge 53 catalog bridge, `globalSearch`, and direct SQLite loader (`loadAllClassicEdgeItems`) to load `ProductFeature`, product-level `Specification` (`productId != null && productModelId == null`), `ProductModel` (`YN-JW1200`, `YN-JW1600`, `ABM-1250`, `ABM-2400`, `CE-LC1390`, `CE-LC1325`, `CE-CNC1325`, `CE-FP160`, `CE-FP260`, `CE-TO1525`), model-level `Specification` (`productModelId != null`), product/model `Resource` datasheets, and related `Consumable` items.
+   - Enforced strict `MACHINE` vs `CONSUMABLE` separation in `searchEcosystemItems` so machine queries (`"Show me acrylic edge polishing machines"`) return only `MACHINE` items unless consumables/tools are requested.
+3. **Two-Stage Question-Aware Retrieval & Deterministic Deep Advisory (`classicconcepts/src/lib/product-knowledge.ts`, `classicconcepts/src/lib/ai.ts`, `ccwhatsapp/packages/database/src/clients.ts`, `ccwhatsapp/packages/connections/src/index.ts`)**:
+   - Stage 1 searches across the enriched `searchBlob` (names, SKUs, model codes, categories, features, dimensions, specifications, variants, normalized `descriptionHtml`/`importantNoteHtml`, applications) and boosts explicit product/model codes (`CCP054`, `CCP055`, `YN-JW1200`, `YN-JW1600`, `ABM-1250`, `ABM-2400`).
+   - Stage 2 (`formatQuestionAwareProductsForPrompt` on Website and `buildEcosystemDeepProductContextAndAnswer` on WhatsApp) hydrates full dimensions, specifications, variants + variant prices, features, machine models, and resources only for the top matched items relevant to the customer's question, keeping token usage compact.
+   - Added deterministic comparison, dimension, variant-price, and anti-hallucination handlers (`buildDeterministicDeepProductAdvisory` and `buildEcosystemDeepProductContextAndAnswer`) so ACRIO never guesses unverified specifications (such as unverified mm sheet thickness on `CCP055` or `20 mm` bending on `ABM-1250` rated for `1mm to 10mm`).
+4. **Verification Results (`scripts/test-phase-h-deep-retrieval.ts`)**:
+   - All **18/18 Phase H deep product knowledge test scenarios** + **Phase A–G regression checks** passed (`0` failures).
+   - Zero TypeScript errors across `classicconcepts`, `classicedge`, and `ccwhatsapp`.
