@@ -11,6 +11,7 @@
 - [x] **Phase F — Database Caching, Prompt-Cache Efficiency, Token Costs & ACRO-to-ACRIO Catalog Synchronization** *(Completed)*
 - [x] **Phase G — Add Evaluation & Regression Test Suite & Final Integration Review** *(Completed)*
 - [x] **Phase H — Complete Product Knowledge & Deep Retrieval** *(Completed)*
+- [x] **Phase I — Developer-Only Claude API Usage & Spend Comparison (Acrio vs Acro)** *(Completed)*
 
 ---
 
@@ -288,3 +289,43 @@
 4. **Verification Results (`scripts/test-phase-h-deep-retrieval.ts`)**:
    - All **18/18 Phase H deep product knowledge test scenarios** + **Phase A–G regression checks** passed (`0` failures).
    - Zero TypeScript errors across `classicconcepts`, `classicedge`, and `ccwhatsapp`.
+
+---
+
+## Phase I — Developer-Only Claude API Usage & Spend Comparison (`Acrio` vs `Acro`) — Completed Summary
+
+### 1. Billing & Identity Verification
+- **Acrio (WhatsApp Support & Website Client Concierge)**:
+  - Runtime key (`ANTHROPIC_CLIENT_API_KEY`): Workspace Service Account key (`sk-ant-svc-1CdF...8wAAA`).
+  - Verified live via `GET https://api.anthropic.com/v1/organizations/me`: Organization ID `6411698a-79d6-49be-a4e0-a7c9c4cfc8b1` (`"AL’s Individual Org"`).
+- **Acro (Admin Co-Pilot & Catalog Editor)**:
+  - Runtime key (`ANTHROPIC_ADMIN_API_KEY`): Workspace Service Account key (`sk-ant-svc-1wrP...3-AAA`).
+  - Verified live via `GET https://api.anthropic.com/v1/organizations/me`: Organization ID `6411698a-79d6-49be-a4e0-a7c9c4cfc8b1` (`"AL’s Individual Org"`).
+- **Live Admin API Status**:
+  - Both keys belong to the **same Anthropic Organization** (`6411698a-79d6-49be-a4e0-a7c9c4cfc8b1`).
+  - Because the currently configured keys are workspace-scoped runtime inference keys (`sk-ant-svc-...`) rather than an Organization Admin API key (`sk-ant-admin...`), calling `GET /v1/organizations/usage_report/messages` and `GET /v1/organizations/cost_report` with the runtime keys returns HTTP `401` (`"The Admin API requires an Admin API key or an organization-scoped API key."`).
+  - Therefore, live spend was **not** yet verifiable against the Anthropic Console until an `sk-ant-admin...` key and workspace/key IDs are provided; all attribution, pagination, USD cent conversion, shared-workspace, and separate-workspace flows were verified against mocked Anthropic Admin API responses and live organization discovery.
+
+### 2. Backend & Developer UI Implementation (`ccwhatsapp`)
+- **Backend Reporting & Attribution Engine (`packages/connections/src/anthropic-usage-spend.ts`)**:
+  - Queries `GET /v1/organizations/usage_report/messages` (`bucket_width=1d`, `group_by[]=api_key_id&group_by[]=workspace_id&group_by[]=model`) and `GET /v1/organizations/cost_report` (`bucket_width=1d`, `group_by[]=workspace_id&group_by[]=description`).
+  - Supports cursor pagination (`has_more` + `next_page`), `429`/`5xx` retry with `Retry-After` backoff, and a 5-minute server-side cache scoped to `(organization, adminKeySuffix, startingAtUtc, endingAtUtc)` with stale-on-error fallback (`STALE_DATA`).
+  - Converts Anthropic `cost_report` `amount` strings (in USD cents) to exact USD dollars (`amountCents / 100`) without estimates or currency conversion.
+  - Supports **same organization** and **separate organizations**, **separate workspaces** (`SEPARATE_WORKSPACES`), **shared workspace** (`SHARED_WORKSPACE` — separating token usage by `api_key_id`, marking per-key spend as `Unavailable`, and displaying the combined shared workspace spend), and workspaces that also serve unrelated integrations (labeled as `Workspace Total (Includes Other Integrations)`).
+- **Developer-Only Endpoint & Page**:
+  - API Route: `GET / POST /api/dev/claude-usage` (`apps/web/src/app/api/dev/claude-usage/route.ts`) — strictly gated to active `DEV` role (`403 Forbidden` for all other roles).
+  - Page Route: `/dashboard/claude-usage` (`apps/web/src/app/dashboard/claude-usage/page.tsx` & `layout.tsx`) — added to the `DEV` sidebar in `apps/web/src/components/AppShell.tsx` and linked from `/dashboard/dev`.
+  - Features Month-to-Date (`mtd`, default), Last 7 Days (`7d`), Last 30 Days (`30d`), and Custom UTC Date Range (`custom`), explicit `UTC` reporting time zone and last successful refresh labels, side-by-side USD spend and daily spend tables, and token tables (`inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens`) by API key and model.
+
+### 3. Required Configuration for Live Anthropic Reporting
+- `ANTHROPIC_ORG_ADMIN_API_KEY="sk-ant-admin..."` (or `ACRIO_ANTHROPIC_ORG_ADMIN_API_KEY` and `ACRO_ANTHROPIC_ORG_ADMIN_API_KEY` if in separate organizations)
+- `ACRIO_ANTHROPIC_WORKSPACE_ID="wrkspc_..."`
+- `ACRO_ANTHROPIC_WORKSPACE_ID="wrkspc_..."`
+- `ACRIO_ANTHROPIC_API_KEY_ID="apikey_..."`
+- `ACRO_ANTHROPIC_API_KEY_ID="apikey_..."`
+- Optional: `ACRIO_WORKSPACE_SHARED_WITH_OTHER_INTEGRATIONS="true"` / `ACRO_WORKSPACE_SHARED_WITH_OTHER_INTEGRATIONS="true"`
+
+### 4. Verification & Regression Tests Run
+- `npx tsx scripts/test-phase-i-claude-usage-and-spend.ts` in `ccwhatsapp`: **PASS (8/8 checks: developer 403 auth guard, USD cent conversion, 3-page cursor pagination, separate workspaces + unrelated-integration labeling, shared workspace behavior, 5m cache hit + stale fallback on 503, separate organizations + zero-usage state, and live organization auto-discovery)**
+- `npm run typecheck` in `ccwhatsapp`: **PASS (0 errors)**
+
