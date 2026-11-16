@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { getTransporter } from "@/lib/email";
+import { getTransporter, sendAdminReply } from "@/lib/email";
 import { isAuthorizedInternalBridgeRequest } from "@/lib/whatsapp-bridge";
 
 export const dynamic = "force-dynamic";
@@ -156,14 +157,52 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const action = String(body?.action || "");
 
-  if (action === "mark_enquiry_replied" && body?.enquiryId) {
+  if ((action === "mark_enquiry_replied" || action === "reply_enquiry") && body?.enquiryId) {
+    const enquiry = await prisma.enquiry
+      .findUnique({ where: { id: String(body.enquiryId) } })
+      .catch(() => null);
+    let emailDelivered = false;
+    let emailError: string | null = null;
+
+    if (
+      action === "reply_enquiry" &&
+      body?.sendEmail !== false &&
+      enquiry?.email &&
+      body?.replyMessage
+    ) {
+      try {
+        await sendAdminReply({
+          name: enquiry.name,
+          email: enquiry.email,
+          replyMessage: String(body.replyMessage),
+          originalMessage: enquiry.message,
+        });
+        emailDelivered = true;
+      } catch (err: any) {
+        emailError = err?.message || "Failed to send email via Classic Concepts SMTP";
+      }
+    }
+
     await prisma.enquiry
       .update({
         where: { id: String(body.enquiryId) },
         data: { status: "Replied" },
       })
       .catch(() => null);
-    return NextResponse.json({ ok: true });
+
+    try {
+      revalidatePath("/admin/enquiries");
+      revalidatePath(`/admin/enquiries/${String(body.enquiryId)}`);
+      revalidatePath("/admin");
+    } catch {
+      // Non-blocking
+    }
+
+    return NextResponse.json({
+      ok: true,
+      emailDelivered,
+      emailError,
+    });
   }
 
   // Allows ccwhatsapp (:3007) on the same server to dispatch emails through Classic Concepts' configured SMTP if ccwhatsapp .env SMTP is empty

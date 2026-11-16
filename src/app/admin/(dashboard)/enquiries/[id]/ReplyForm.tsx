@@ -57,7 +57,7 @@ export function ReplyForm({
       } else {
         const fallback = `Dear ${name},\n\nGreetings from Classic Concepts Acrylic Pvt. Ltd.!\n\nThank you for reaching out${
           originalMessage ? ` regarding "${originalMessage.slice(0, 120)}"` : ""
-        }.\n\nWe make this directly at our 16,000 sq. ft. ISO 9001:2015 factory (Since 2008) using 100% imported clear cast acrylic, and we can make custom sizes as well as color-print or laser-engrave your organization's logo.\n\nPlease share your required quantity and delivery city/PIN code so we can send you our best factory-direct price quote right away.\n\nWarm regards,\nTeam Classic Concepts\n+91 73372 22876`;
+        }.\n\nWe make this directly at our 16,000 sq. ft. ISO 9001:2015 factory (Since 2008) using 100% imported clear cast acrylic, and we can make custom sizes as well as color-print or laser-engrave your organization's logo.\n\nPlease share your required quantity and delivery city/PIN code so we can send you our best factory-direct price quote right away.\n\nWarm regards,\nTeam Classic Concepts\nPhone: +91 79016 50662 | WhatsApp: +91 73372 20568`;
         setPendingReplyDraft(fallback);
         toast(
           json?.error
@@ -88,17 +88,17 @@ export function ReplyForm({
         body: JSON.stringify({ enquiryId, message }),
       });
 
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
 
-      if (res.ok) {
+      if (res.ok && result.success !== false) {
         toast.success(`Reply sent to ${name} via email`);
         setMessage("");
         router.refresh();
       } else {
         toast.error(result.error || "Failed to send reply");
       }
-    } catch {
-      toast.error("An unexpected error occurred.");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not connect to server to send reply.");
     } finally {
       setLoading(false);
     }

@@ -237,23 +237,67 @@ function highlightBox(content: string, bgColor = '#f0f9ff', borderColor = BRAND_
 // ─── Transporter ────────────────────────────────────────────────────────────
 
 export async function getTransporter() {
-  const settings = await prisma.siteSetting.findUnique({ where: { id: "default" } });
-  
-  if (!settings?.smtpHost || !settings?.smtpUser || !settings?.smtpPass) {
-    throw new Error('SMTP credentials not configured in Site Settings.');
+  const settings =
+    (await prisma.siteSetting.findUnique({ where: { id: "default" } })) ||
+    (await prisma.siteSetting.findFirst());
+
+  const smtpHost = (
+    settings?.smtpHost?.trim() ||
+    process.env.SMTP_HOST?.trim() ||
+    "smtp.gmail.com"
+  );
+  const smtpPort =
+    settings?.smtpPort || Number(process.env.SMTP_PORT) || 587;
+  const smtpUser = (
+    settings?.smtpUser?.trim() ||
+    process.env.SMTP_USER?.trim() ||
+    ""
+  );
+  const rawPass = (
+    settings?.smtpPass?.trim() ||
+    process.env.SMTP_PASS?.trim() ||
+    ""
+  );
+  const smtpPass = smtpHost.toLowerCase().includes("gmail")
+    ? rawPass.replace(/\s+/g, "")
+    : rawPass;
+
+  if (!smtpUser || !smtpPass) {
+    throw new Error("SMTP credentials not configured in Site Settings.");
   }
+
+  const safeSettings = {
+    ...(settings || {}),
+    smtpHost,
+    smtpPort,
+    smtpUser,
+    smtpPass,
+    address:
+      settings?.address && !/sakina\s*manzil|tirumalgherry/i.test(settings.address)
+        ? settings.address
+        : "1-6-44/2 Muthyam Reddy Estate, Yadamma Nagar, Kanajiguda, Alwal, Secunderabad, Telangana 500015",
+    phone1: settings?.phone1 || "+91 79016 50662",
+    email:
+      settings?.email && !/alaqmarak0810/i.test(settings.email)
+        ? settings.email
+        : "sales@classicconcepts.in",
+    adminEmail:
+      settings?.adminEmail && !/alaqmarak0810/i.test(settings.adminEmail)
+        ? settings.adminEmail
+        : "sales@classicconcepts.in",
+  };
 
   return {
     transporter: nodemailer.createTransport({
-      host: settings.smtpHost,
-      port: settings.smtpPort || 587,
-      secure: settings.smtpPort === 465, 
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: {
-        user: settings.smtpUser,
-        pass: settings.smtpPass,
+        user: smtpUser,
+        pass: smtpPass,
       },
     }),
-    settings
+    settings: safeSettings,
   };
 }
 

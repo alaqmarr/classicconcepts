@@ -406,18 +406,22 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
       }));
 
       const whatsappNumber = "+91 73372 20568";
-      const phone1 = settings?.phone1 || "+917337222876";
+      const phone1 =
+        settings?.phone1 && !/93467|63253|98480/.test(settings.phone1)
+          ? settings.phone1
+          : "+91 79016 50662";
       const safePhone2 =
-        settings?.phone2 && !/93467|63253/.test(settings.phone2)
+        settings?.phone2 && !/93467|63253|98480/.test(settings.phone2)
           ? settings.phone2
-          : null;
+          : "+91 79016 50663";
       const email =
-        settings?.email && !/alaqmarak0810/i.test(settings.email)
+        settings?.email && !/alaqmarak0810|rapidshift/i.test(settings.email)
           ? settings.email
           : "sales@classicconcepts.in";
       const address = (
-        settings?.address ||
-        "M/s. Classic Concepts Acrylic Private Limited, 1-6-44/2, Muthiyam Reddy Estate, Secunderabad - 500 015, Telangana, India"
+        settings?.address && !/sakina\s*manzil|tirumalgherry/i.test(settings.address)
+          ? settings.address
+          : "1-6-44/2 Muthyam Reddy Estate, Yadamma Nagar, Kanajiguda, Alwal, Secunderabad, Telangana 500015"
       ).replace(/\\n/g, ", ");
 
       const catalogLines: string[] = [];
@@ -431,12 +435,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
       await enrichProductsWithCompleteKnowledge(products, catalogLines);
 
       const defaultDepartmentContacts = [
-        "  - Leadership & Platform Engineering Head: AL AQMAR (Email: app@rapidshiftlabs.in, Phone/WhatsApp: +91 96184 43558)",
-        "  - Senior Sales & Hospitality Head: Ananya Deshmukh (Email: ananya.deshmukh@classiconcepts.in, Phone/WhatsApp: +91 98480 22102)",
-        "  - Corporate, Office & Hotel Sales Specialist: Priya Menon (Email: priya.menon@classiconcepts.in, Phone/WhatsApp: +91 98480 55110)",
-        "  - Sales & Dispatch Executive (Podiums, Trophies, Orders): Rohan Kulkarni (Email: rohan.kulkarni@classiconcepts.in, Phone/WhatsApp: +91 98480 22101)",
-        "  - Classic Edge 53 Machines & Technical Head (Diamond Polishers, Acrylic Benders, CNC, Laser, Consumables & Accessories): Karthik Nair (Email: karthik.nair@classiconcepts.in, Phone/WhatsApp: +91 98480 22103)",
-        `  - Main Factory & Head Office Desk: ${phone1}${safePhone2 ? ` / ${safePhone2}` : ""}, Email: ${email}`,
+        `  - Head Office & Manufacturing Desk: Phone: ${phone1}${safePhone2 ? `, ${safePhone2}` : ""}, Official WhatsApp: ${whatsappNumber}, Email: ${email}, info@classicconcepts.in`,
       ];
       const teamSummaryLines = [
         ...teamMembersRaw.map(
