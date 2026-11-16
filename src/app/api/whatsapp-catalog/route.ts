@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const limitParam = Number(searchParams.get("limit") || "250");
     const limit = Math.min(Math.max(limitParam, 1), 500);
 
-    const [productsRaw, enquiries, globalResources, teamMembers, machinery, cartOrders, categories] = await Promise.all([
+    const [productsRaw, globalResources, teamMembers, machinery, categories] = await Promise.all([
       prisma.product.findMany({
         orderBy: [{ isPodium: "desc" }, { updatedAt: "desc" }],
         take: 450,
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
           podiumSubCategories: { select: { name: true, slug: true } },
           images: {
             orderBy: [{ isMain: "desc" }, { createdAt: "asc" }],
-            take: 3,
+            take: 10,
             select: { url: true, isMain: true },
           },
           features: {
@@ -67,10 +67,6 @@ export async function GET(request: Request) {
           },
         },
       }),
-      prisma.enquiry.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
       prisma.resource
         .findMany({
           select: { title: true, description: true, fileUrl: true, type: true },
@@ -86,13 +82,6 @@ export async function GET(request: Request) {
       prisma.machinery
         .findMany({
           orderBy: { sortOrder: "asc" },
-        })
-        .catch(() => []),
-      prisma.cartOrder
-        .findMany({
-          orderBy: { createdAt: "desc" },
-          take: 50,
-          include: { items: true },
         })
         .catch(() => []),
       prisma.category
@@ -191,6 +180,7 @@ export async function GET(request: Request) {
         ipProtectionText: p.ipProtectionText,
         videoUrl: p.videoUrl,
         mainImage: p.images[0]?.url || null,
+        images: p.images.map((img) => img.url).filter(Boolean),
         url: `https://classicconcepts.in/shop/p/${p.slug}`,
         features: p.features.map((f) => f.text),
         specifications: specs,
@@ -252,33 +242,6 @@ export async function GET(request: Request) {
         description: r.description,
         url: r.fileUrl,
         type: r.type,
-      })),
-      cartOrders: cartOrders.map((o) => ({
-        id: o.id,
-        name: o.name,
-        email: o.email,
-        phone: o.phone,
-        city: o.city,
-        state: o.state,
-        total: o.total,
-        status: o.status,
-        items: o.items.map((it) => ({
-          productName: it.productName,
-          productSlug: it.productSlug,
-          price: it.price,
-          quantity: it.quantity,
-        })),
-        createdAt: o.createdAt.toISOString(),
-      })),
-      enquiries: enquiries.map((e) => ({
-        id: e.id,
-        name: e.name,
-        email: e.email,
-        phone: e.phone,
-        message: e.message,
-        source: e.source,
-        status: e.status,
-        createdAt: e.createdAt.toISOString(),
       })),
     });
   } catch (error: any) {

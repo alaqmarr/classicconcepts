@@ -164,7 +164,7 @@ export function resolveScopedApiKey(
  */
 export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
   return rememberCached<KnowledgeSnapshot>(
-    "ai:knowledge-snapshot:v6",
+    "ai:knowledge-snapshot:v7",
     ["catalog", "taxonomy", "settings", "brand", "ai-snapshot"],
     SNAPSHOT_TTL_SECONDS,
     async () => {
@@ -407,7 +407,14 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
 
       const whatsappNumber = settings?.whatsappNumber || "+917337222876";
       const phone1 = settings?.phone1 || "+917337222876";
-      const email = settings?.email || "sales@classicconcepts.in";
+      const safePhone2 =
+        settings?.phone2 && !/93467|63253/.test(settings.phone2)
+          ? settings.phone2
+          : null;
+      const email =
+        settings?.email && !/alaqmarak0810/i.test(settings.email)
+          ? settings.email
+          : "sales@classicconcepts.in";
       const address = (
         settings?.address ||
         "M/s. Classic Concepts Acrylic Private Limited, 1-6-44/2, Muthiyam Reddy Estate, Secunderabad - 500 015, Telangana, India"
@@ -429,7 +436,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
         "  - Corporate, Office & Hotel Sales Specialist: Priya Menon (Email: priya.menon@classiconcepts.in, Phone/WhatsApp: +91 98480 55110)",
         "  - Sales & Dispatch Executive (Podiums, Trophies, Orders): Rohan Kulkarni (Email: rohan.kulkarni@classiconcepts.in, Phone/WhatsApp: +91 98480 22101)",
         "  - Classic Edge 53 Machines & Technical Head (Diamond Polishers, Acrylic Benders, CNC, Laser, Consumables & Accessories): Karthik Nair (Email: karthik.nair@classiconcepts.in, Phone/WhatsApp: +91 98480 22103)",
-        `  - Main Factory & Head Office Desk: ${phone1}${settings?.phone2 ? ` / ${settings.phone2}` : ""}, Email: ${email}`,
+        `  - Main Factory & Head Office Desk: ${phone1}${safePhone2 ? ` / ${safePhone2}` : ""}, Email: ${email}`,
       ];
       const teamSummaryLines = [
         ...teamMembersRaw.map(
@@ -472,7 +479,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
   - **Acrylic Hardware & Fabrication Accessories (188+ items)**: Acrylic Hinges (Standard, Super Thin, Spring, Mini Rib, Rib, Piano, Auto, Monster, Hardened, Counterbore, Square/Triangle/Slot Flexible Hinges), Handles & Knobs (C-Handle, High Gloss Door Handle, Door Knobs), Clear Plastic Screws (Countersunk, Round, Hex Bolt, Pin Screws, Hand Knob, Headless Set Screws, Menu/Book Screws), Anodized Spacers & Invisible Standoffs, Locks & Catches (Mini Camlock, Acrylic Camlock, Corner Lock, Hasp & Staple, Suitcase Latch, Magnetic Catch, Door Catch), L-Brackets, Angle Bars, Clear/Tinted/Radeon/Luminous Acrylic Rods & Square Rods, Acrylic/PC Tubes (Round, Square, Spiral, Reeded), Acrylic Balls & Half-Balls, Rotating Discs/Turntables, Keyway Frame Hangers, Hooks, Height Adjusters, Cabinet/Sofa Legs, and Specialty Acrylic Sheets (Metallic, Glitter, Silver/Gold Mirror, Water-Effect Chairmat, Radeon).
 - **Official Contact Details**:
   - Factory & Head Office: ${address}
-  - Primary Phone: ${phone1}${settings?.phone2 ? ` / ${settings.phone2}` : ""}
+  - Primary Phone: ${phone1}${safePhone2 ? ` / ${safePhone2}` : ""}
   - Direct WhatsApp Help: ${whatsappNumber}
   - Official Email: ${email}${settings?.email2 ? ` / ${settings.email2}` : ""}
   - Working Hours: ${(settings?.businessHours || "Monday to Saturday: 9:00 AM to 6:00 PM IST").replace(/\s*[—–]\s*/g, " to ")}
