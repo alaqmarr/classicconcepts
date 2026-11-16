@@ -480,7 +480,7 @@ export function ProductDetailSections({
   const showNoteCard = Boolean(importantNoteHtml) || editMode;
 
   return (
-    <section className="container mx-auto px-6 space-y-8 relative">
+    <section className="container mx-auto px-4 sm:px-6 space-y-6 sm:space-y-8 relative">
       {statusToast && (
         <div className="fixed top-24 right-6 z-[90] px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <Check className="w-4 h-4" />
@@ -694,11 +694,11 @@ export function ProductDetailSections({
         <div className="lg:col-span-2 space-y-8 min-w-0">
           {/* 1. Bullet-Point Product Description */}
           {showDescriptionCard && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 relative group/desc">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <Tag className="text-[#0056b3] shrink-0" />
-                  <span>Product Highlights &amp; Description</span>
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 relative group/desc overflow-hidden min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2.5 sm:gap-3 min-w-0">
+                  <Tag className="text-[#0056b3] shrink-0 w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="break-words">Product Highlights &amp; Description</span>
                 </h2>
 
                 {editMode && (
@@ -746,15 +746,15 @@ export function ProductDetailSections({
               </div>
 
               {bullets.length > 0 ? (
-                <ul className="space-y-3.5">
+                <ul className="space-y-3.5 min-w-0">
                   {bullets.map((bullet, idx) => (
                     <li
                       key={idx}
-                      className="flex items-start gap-3.5 text-slate-700 leading-relaxed group/bitem"
+                      className="flex items-start gap-3 sm:gap-3.5 text-slate-700 leading-relaxed group/bitem min-w-0"
                     >
                       <span className="mt-2 w-2 h-2 rounded-full bg-[#0056b3] shrink-0" />
                       {editingBulletIdx === idx ? (
-                        <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
                           <input
                             type="text"
                             value={editingBulletText}
@@ -767,7 +767,7 @@ export function ProductDetailSections({
                                 setEditingBulletIdx(null);
                               }
                             }}
-                            className="flex-1 px-3 py-1.5 rounded-lg border border-indigo-300 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                            className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-indigo-300 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500"
                             autoFocus
                           />
                           <button
@@ -789,7 +789,7 @@ export function ProductDetailSections({
                         </div>
                       ) : (
                         <>
-                          <div className="flex-1 text-[15px] sm:text-base break-words">
+                          <div className="flex-1 min-w-0 text-sm sm:text-base break-words [overflow-wrap:anywhere]">
                             {renderFormattedBulletText(bullet)}
                           </div>
                           {editMode && (
@@ -853,10 +853,10 @@ export function ProductDetailSections({
 
           {/* 2. Key Features Card (Direct On-Page Add / Edit / AI Suggest) */}
           {showFeaturesCard && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <CheckCircle2 className="text-[#0056b3] shrink-0" />
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 overflow-hidden min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2.5 sm:gap-3">
+                  <CheckCircle2 className="text-[#0056b3] shrink-0 w-5 h-5 sm:w-6 sm:h-6" />
                   <span>Key Features</span>
                 </h2>
 
@@ -878,18 +878,18 @@ export function ProductDetailSections({
               </div>
 
               {features.length > 0 ? (
-                <ul className="space-y-3.5">
+                <ul className="space-y-3.5 min-w-0">
                   {features.map((featureText, idx) => (
                     <li
                       key={idx}
-                      className="flex items-start gap-3 group/fitem"
+                      className="flex items-start gap-3 group/fitem min-w-0"
                     >
                       <CheckCircle2
                         size={20}
                         className="text-emerald-500 shrink-0 mt-0.5"
                       />
                       {editingFeatureIdx === idx ? (
-                        <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
                           <input
                             type="text"
                             value={editingFeatureText}
@@ -904,7 +904,7 @@ export function ProductDetailSections({
                                 setEditingFeatureIdx(null);
                               }
                             }}
-                            className="flex-1 px-3 py-1.5 rounded-lg border border-indigo-300 text-sm text-slate-900"
+                            className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-indigo-300 text-sm text-slate-900"
                             autoFocus
                           />
                           <button
@@ -924,7 +924,7 @@ export function ProductDetailSections({
                         </div>
                       ) : (
                         <>
-                          <span className="flex-1 text-slate-700">
+                          <span className="flex-1 min-w-0 text-sm sm:text-base text-slate-700 break-words [overflow-wrap:anywhere]">
                             {featureText}
                           </span>
                           {editMode && (
@@ -988,9 +988,9 @@ export function ProductDetailSections({
         </div>
 
         {/* Right Column: Dimensions, Specifications & Important Note */}
-        <div className="space-y-8 min-w-0">
+        <div className="space-y-6 sm:space-y-8 min-w-0">
           {showSpecsCard && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 space-y-6 overflow-hidden min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                   <SlidersHorizontal className="w-5 h-5 text-[#0056b3]" />
@@ -1323,9 +1323,9 @@ export function ProductDetailSections({
 
           {/* 3. Important Note Card */}
           {showNoteCard && (
-            <div className="bg-amber-50 rounded-3xl p-6 sm:p-8 shadow-sm border border-amber-200">
+            <div className="bg-amber-50 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm border border-amber-200 overflow-hidden min-w-0">
               <h2 className="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-600" />
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
                 <span>Important Note</span>
               </h2>
               <EditableText

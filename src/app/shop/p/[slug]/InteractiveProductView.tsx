@@ -351,7 +351,7 @@ export function InteractiveProductView({
               productPatch={{ productId: product.id, field: "name" }}
               value={currentName}
               contextHint={`Product title in ${product.category.name}`}
-              className="text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight mb-2 block"
+              className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight mb-2 block break-words"
             />
 
             {(product.sku || editMode) && (
@@ -434,11 +434,12 @@ export function InteractiveProductView({
               </div>
 
               {topHighlights.length > 0 ? (
-                <ul className="space-y-2 text-sm sm:text-[15px] text-slate-700 leading-relaxed">
+                <ul className="space-y-2 text-sm sm:text-[15px] text-slate-700 leading-relaxed min-w-0">
                   {topHighlights.map((b, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
+                    <li key={i} className="flex items-start gap-2.5 min-w-0">
                       <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[#0056b3] shrink-0" />
                       <span
+                        className="flex-1 min-w-0 break-words [overflow-wrap:anywhere]"
                         dangerouslySetInnerHTML={{
                           __html: formatBulletItemHtml(b),
                         }}

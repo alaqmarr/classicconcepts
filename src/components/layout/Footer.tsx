@@ -57,7 +57,7 @@ export function Footer({
   );
 
   return (
-    <footer className="bg-[#0c1a40] pt-20 pb-8 text-white/70 text-[13px] relative overflow-hidden">
+    <footer className="bg-[#0c1a40] pt-16 sm:pt-20 pb-24 sm:pb-28 text-white/70 text-[13px] relative overflow-hidden">
       <div className="container mx-auto px-4 md:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 mb-16">
           {/* Logo & Socials */}

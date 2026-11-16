@@ -267,7 +267,7 @@ export default async function ProductDetailPage({
         </div>
       </div>
 
-      <section className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8 relative z-10">
+      <section className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-8 relative">
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xs border border-slate-200 overflow-hidden">
           <InteractiveProductView
             product={{
@@ -338,7 +338,7 @@ export default async function ProductDetailPage({
 
       {/* Full-Width Related Products Section */}
       {relatedProducts.length > 0 && (
-        <section className="container mx-auto px-4 sm:px-6 mt-10 pt-8 border-t border-slate-200 relative z-10">
+        <section className="container mx-auto px-4 sm:px-6 mt-10 pt-8 border-t border-slate-200 relative">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">

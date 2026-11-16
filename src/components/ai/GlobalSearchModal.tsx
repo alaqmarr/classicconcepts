@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
   Search,
   X,
@@ -259,29 +260,34 @@ export function GlobalSearchModal({
     return () => clearTimeout(timer);
   }, [query, isOpen, lastAskedQuery, askAcrio]);
 
+  const pathname = usePathname() || "";
+  const isProductDetailPage = pathname.startsWith("/shop/p/");
+
   return (
     <>
-      {/* Floating ACRIO Search & Product Assistant Pill */}
-      <div className="fixed bottom-4 left-3 sm:bottom-6 sm:left-6 z-40">
-        <button
-          type="button"
-          onClick={() => openModal()}
-          className="group flex items-center gap-2.5 bg-[#0c1a40] hover:bg-[#0056b3] text-white pl-3 pr-4 py-2.5 rounded-full shadow-lg border border-white/15 transition-all hover:scale-[1.02]"
-          aria-label="Ask ACRIO or search acrylic products"
-        >
-          <span className="w-8 h-8 rounded-full bg-[#0056b3] group-hover:bg-white/20 flex items-center justify-center shrink-0 transition-colors">
-            <Sparkles className="w-4 h-4 text-white" />
-          </span>
-          <div className="text-left leading-tight">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-sky-300">
-              ACRIO Product Assistant
+      {/* Floating ACRIO Search & Product Assistant Pill (hidden on /shop/p/[slug] where it is integrated into the sticky bottom bar) */}
+      {!isProductDetailPage && (
+        <div className="fixed bottom-4 left-3 sm:bottom-6 sm:left-6 z-50">
+          <button
+            type="button"
+            onClick={() => openModal()}
+            className="group flex items-center gap-2.5 bg-[#0c1a40] hover:bg-[#0056b3] text-white pl-3 pr-4 py-2.5 rounded-full shadow-lg border border-white/15 transition-all hover:scale-[1.02]"
+            aria-label="Ask ACRIO or search acrylic products"
+          >
+            <span className="w-8 h-8 rounded-full bg-[#0056b3] group-hover:bg-white/20 flex items-center justify-center shrink-0 transition-colors">
+              <Sparkles className="w-4 h-4 text-white" />
             </span>
-            <span className="block text-xs sm:text-sm font-bold text-white">
-              Search &amp; Find Products
-            </span>
-          </div>
-        </button>
-      </div>
+            <div className="text-left leading-tight">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-sky-300">
+                ACRIO Product Assistant
+              </span>
+              <span className="block text-xs sm:text-sm font-bold text-white">
+                Search &amp; Find Products
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
 
       {isOpen && (
         <div

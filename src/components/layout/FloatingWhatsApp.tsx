@@ -1,6 +1,19 @@
-import Link from 'next/link';
+"use client";
 
-export function FloatingWhatsApp({ phoneNumber = "+917337222876" }: { phoneNumber?: string | null }) {
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export function FloatingWhatsApp({
+  phoneNumber = "+917337222876",
+}: {
+  phoneNumber?: string | null;
+}) {
+  const pathname = usePathname() || "";
+  // On product detail pages (/shop/p/[slug]), the unified sticky bottom bar already includes "Enquire on WhatsApp"
+  if (pathname.startsWith("/shop/p/")) {
+    return null;
+  }
+
   const activePhone = phoneNumber || "+917337222876";
   
   // Format phone number for WhatsApp URL (remove spaces, plus, etc.)

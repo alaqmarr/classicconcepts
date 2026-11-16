@@ -225,6 +225,10 @@ export function EditableText({
   const shouldRenderHtmlDirectly =
     looksLikeHtml && (!children || isUsingCustomOverride);
 
+  const normalizedDisplayValue = (localValue || "")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .replace(/\u00a0/g, " ");
+
   // Zero overhead path for normal visitors or when editMode is toggled off
   if (!editMode || !target) {
     if (shouldRenderHtmlDirectly) {
@@ -232,13 +236,13 @@ export function EditableText({
       return (
         <SafeTag
           className={className}
-          dangerouslySetInnerHTML={{ __html: localValue }}
+          dangerouslySetInnerHTML={{ __html: normalizedDisplayValue }}
         />
       );
     }
     return (
       <Tag className={className}>
-        {children && !isUsingCustomOverride ? children : localValue}
+        {children && !isUsingCustomOverride ? children : normalizedDisplayValue}
       </Tag>
     );
   }
@@ -331,7 +335,7 @@ export function EditableText({
         <span
           ref={innerRef}
           className="contents"
-          dangerouslySetInnerHTML={{ __html: localValue }}
+          dangerouslySetInnerHTML={{ __html: normalizedDisplayValue }}
         />
         {pencilBadge}
       </SafeTag>
@@ -346,7 +350,7 @@ export function EditableText({
       className={editWrapperClasses}
     >
       <span ref={innerRef} className="contents">
-        {children && !isUsingCustomOverride ? children : localValue}
+        {children && !isUsingCustomOverride ? children : normalizedDisplayValue}
       </span>
       {pencilBadge}
     </SafeTag>

@@ -42,9 +42,14 @@ export function escapeHtmlBasic(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function normalizeNonBreakingSpaces(str: string): string {
+  return (str || "")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .replace(/\u00a0/g, " ");
+}
+
 function decodeHtmlEntities(str: string): string {
-  return str
-    .replace(/&nbsp;/gi, " ")
+  return normalizeNonBreakingSpaces(str)
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/>/g, ">")
@@ -79,7 +84,7 @@ export function stripAllHtmlTags(str: string): string {
  */
 export function sanitizeInlineFormatting(raw: string): string {
   if (!raw) return "";
-  let cleaned = raw
+  let cleaned = normalizeNonBreakingSpaces(raw)
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
     .replace(
@@ -142,8 +147,9 @@ export function extractBulletsFromContent(
   primaryHtmlOrText?: string | null,
   fallbackText?: string | null
 ): string[] {
-  const source =
-    (primaryHtmlOrText || "").trim() || (fallbackText || "").trim();
+  const source = normalizeNonBreakingSpaces(
+    (primaryHtmlOrText || "").trim() || (fallbackText || "").trim()
+  );
   if (!source) return [];
 
   // 1. If HTML contains explicit <li> items, extract them first
@@ -227,7 +233,9 @@ export function extractBulletsFromContent(
  * gradients, bold/italic tags, and auto-bolding `Label:` lead-ins.
  */
 export function formatBulletItemHtml(item: string): string {
-  const trimmed = stripLeadingBulletMarker((item || "").trim());
+  const trimmed = stripLeadingBulletMarker(
+    normalizeNonBreakingSpaces(item || "").trim()
+  );
   if (!trimmed) return "";
 
   if (hasInlineRichFormatting(trimmed) || /\*\*[^*]+\*\*/.test(trimmed)) {
