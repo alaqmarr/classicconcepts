@@ -40,6 +40,7 @@ import {
   PanelLeftOpen,
   ChevronDown,
   ChevronRight,
+  ShieldAlert,
 } from "lucide-react";
 
 export interface AdminSidebarCounts {
@@ -284,6 +285,14 @@ export function AdminShell({
         id: "system",
         label: "Data, ACRIO AI & System",
         items: [
+          {
+            name: "Issues Identifier",
+            href: "/admin/issues-identifier",
+            icon: ShieldAlert,
+            badge: "ACRIO",
+            badgeTone: "ai",
+            keywords: "audit broken links discrepancies missing images specs dev",
+          },
           {
             name: "Import & Export Data",
             href: "/admin/import-export",

@@ -18,6 +18,7 @@ import {
   Eye,
   ChevronDown,
   Database,
+  ShieldAlert,
 } from "lucide-react";
 import type { InlineEditorRequest } from "./types";
 import type { SiteContentMap } from "@/lib/site-content-shared";
@@ -283,6 +284,15 @@ export function InlineEditProvider({
               >
                 <Database className="w-3.5 h-3.5 text-cyan-300" />
                 <span className="hidden md:inline">Backup / Sync</span>
+              </Link>
+
+              <Link
+                href="/admin/issues-identifier"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white font-medium transition-colors"
+                title="Run ACRIO Ecosystem Issues Identifier (missing links, discrepancies, R2 media)"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden md:inline">Issues Identifier</span>
               </Link>
 
               <Link
