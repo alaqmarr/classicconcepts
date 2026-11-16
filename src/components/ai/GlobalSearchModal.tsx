@@ -18,8 +18,8 @@ import {
   CheckCircle2,
   RotateCcw,
 } from "lucide-react";
-function buildWhatsAppHref(rawNumber: string, text: string) {
-  const digits = rawNumber.replace(/\D/g, "") || "919393939773";
+function buildWhatsAppHref(_rawNumber: string, text: string) {
+  const digits = "917337220568";
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
 
@@ -78,7 +78,7 @@ const QUICK_PROMPTS = [
 ];
 
 export function GlobalSearchModal({
-  whatsappNumber = "919393939773",
+  whatsappNumber = "917337220568",
 }: {
   whatsappNumber?: string;
   isAdmin?: boolean;

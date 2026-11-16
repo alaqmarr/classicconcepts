@@ -210,7 +210,7 @@ export default async function PodiumSubCategoryPage({
       <section className="py-8 sm:py-10 container mx-auto px-4 sm:px-6 relative z-20 space-y-6">
         <ShopSmartSearchBar
           onlyPodiums={true}
-          whatsappNumber={settings?.whatsappNumber || "+917337222876"}
+          whatsappNumber={settings?.whatsappNumber || "+917337220568"}
           defaultCategoryHint={subCategory.name}
         />
 
@@ -243,7 +243,7 @@ export default async function PodiumSubCategoryPage({
 
         <ProductGridWithSearch
           products={products}
-          phone={settings?.whatsappNumber || "+917337222876"}
+          phone={settings?.whatsappNumber || "+917337220568"}
           contextLabel={subCategory.name}
           itemLabel="podiums"
           clearHref="/podiums"

@@ -20,7 +20,7 @@ interface ProductActionsProps {
 
 export function ProductActions({
   product,
-  phone = "+917337222876",
+  phone = "+917337220568",
 }: ProductActionsProps) {
   const { addToCart } = useCart();
   const [mounted, setMounted] = useState(false);
@@ -30,11 +30,8 @@ export function ProductActions({
   }, []);
 
   const handleEnquire = () => {
-    const rawPhone = phone || "+917337222876";
-    let cleanPhone = rawPhone.replace(/\D/g, "");
-    if (!cleanPhone.startsWith("91") && cleanPhone.length === 10) {
-      cleanPhone = "91" + cleanPhone;
-    }
+    void phone;
+    const cleanPhone = "917337220568";
     const text = encodeURIComponent(
       `Hi, I would like to enquire about the product: ${product.name} (SKU/Link: ${window.location.origin}/shop/p/${product.slug})`
     );

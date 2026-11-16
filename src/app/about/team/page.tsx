@@ -26,9 +26,7 @@ export default async function TeamPage() {
   ]);
   const members = brandAssets.teamMembers;
 
-  const defaultWhatsapp = (
-    settings?.whatsappNumber || "+917337222876"
-  ).replace(/[^0-9]/g, "");
+  const defaultWhatsapp = "917337220568";
 
   return (
     <main className="min-h-screen bg-[#fafbfc] flex flex-col">

@@ -209,7 +209,7 @@ model SiteSetting {
   address        String
   phone1         String
   phone2         String?
-  whatsappNumber String?  @default("+917337222876")
+  whatsappNumber String?  @default("+917337220568")
   email          String
   email2         String?
   businessHours  String?

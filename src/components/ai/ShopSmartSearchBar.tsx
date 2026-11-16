@@ -16,8 +16,8 @@ import {
 import { EditableText } from "@/components/inline-edit/EditableText";
 import { useInlineEdit } from "@/components/inline-edit/InlineEditProvider";
 
-function buildWhatsAppHref(rawNumber: string, text: string) {
-  const digits = rawNumber.replace(/\D/g, "") || "919393939773";
+function buildWhatsAppHref(_rawNumber: string, text: string) {
+  const digits = "917337220568";
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
 
@@ -57,7 +57,7 @@ const PODIUM_QUICK_IDEAS = [
 ];
 
 export function ShopSmartSearchBar({
-  whatsappNumber = "919393939773",
+  whatsappNumber = "917337220568",
   defaultCategoryHint,
   onlyPodiums = false,
   placeholder,

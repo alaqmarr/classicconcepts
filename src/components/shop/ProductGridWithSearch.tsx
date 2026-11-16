@@ -66,7 +66,7 @@ function getLocalGroupLabel(p: any): string {
 
 export function ProductGridWithSearch({
   products,
-  phone = "+917337222876",
+  phone = "+917337220568",
   initialQuery = "",
   contextLabel,
   categoryLabel,

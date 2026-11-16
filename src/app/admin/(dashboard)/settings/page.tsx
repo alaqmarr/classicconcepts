@@ -66,7 +66,7 @@ async function updateSettings(formData: FormData) {
     phone1: formData.get("phone1") as string,
     phone2: formData.get("phone2") as string,
     whatsappNumber:
-      (formData.get("whatsappNumber") as string) || "+917337222876",
+      (formData.get("whatsappNumber") as string) || "+917337220568",
     email: formData.get("email") as string,
     email2: (formData.get("email2") as string) || null,
     businessHours: (formData.get("businessHours") as string) || null,
@@ -401,8 +401,8 @@ export default async function AdminSettingsPage() {
             <input
               type="text"
               name="whatsappNumber"
-              defaultValue={settings?.whatsappNumber || "+917337222876"}
-              placeholder="+917337222876"
+              defaultValue={settings?.whatsappNumber || "+917337220568"}
+              placeholder="+917337220568"
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

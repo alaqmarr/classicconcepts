@@ -60,7 +60,7 @@ export function PublicChrome({
       <CustomerConciergeModal />
       <GlobalSearchModal />
       <FloatingWhatsApp
-        phoneNumber={settings?.whatsappNumber || "+917337222876"}
+        phoneNumber={settings?.whatsappNumber || "+917337220568"}
       />
     </InlineEditProvider>
   );

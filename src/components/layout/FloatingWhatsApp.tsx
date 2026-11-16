@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export function FloatingWhatsApp({
-  phoneNumber = "+917337222876",
+  phoneNumber = "+917337220568",
 }: {
   phoneNumber?: string | null;
 }) {
@@ -14,13 +14,8 @@ export function FloatingWhatsApp({
     return null;
   }
 
-  const activePhone = phoneNumber || "+917337222876";
-  
-  // Format phone number for WhatsApp URL (remove spaces, plus, etc.)
-  let formattedNumber = activePhone.replace(/\D/g, '');
-  if (!formattedNumber.startsWith('91') && formattedNumber.length === 10) {
-      formattedNumber = '91' + formattedNumber;
-  }
+  void phoneNumber;
+  const formattedNumber = "917337220568";
   const whatsappUrl = `https://wa.me/${formattedNumber}`;
 
   return (

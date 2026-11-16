@@ -35,7 +35,7 @@ interface ProductCardProps {
 
 export function ProductCard({
   product,
-  phone = "+917337222876",
+  phone = "+917337220568",
 }: ProductCardProps) {
   const { addToCart } = useCart();
   const { editMode } = useInlineEdit();
@@ -54,11 +54,8 @@ export function ProductCard({
 
   const handleEnquire = (e: React.MouseEvent) => {
     e.preventDefault();
-    const rawPhone = phone || "+917337222876";
-    let cleanPhone = rawPhone.replace(/\D/g, "");
-    if (!cleanPhone.startsWith("91") && cleanPhone.length === 10) {
-      cleanPhone = "91" + cleanPhone;
-    }
+    void phone;
+    const cleanPhone = "917337220568";
     const text = encodeURIComponent(
       `Hi, I would like to enquire about the product: ${product.name} (SKU/Link: ${window.location.origin}/shop/p/${product.slug})`
     );

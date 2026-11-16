@@ -42,10 +42,8 @@ export function Footer({
         settings.upiName || "Classic Concepts"
       )}&cu=INR`
     : null;
-  const whatsappNumber = (settings?.whatsappNumber || "+917337222876").replace(
-    /\D/g,
-    ""
-  );
+  void settings?.whatsappNumber;
+  const whatsappNumber = "917337220568";
 
   const firstColCategories = categories.slice(0, 5);
   const secondColCategories = categories.slice(5, 11);

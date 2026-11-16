@@ -45,7 +45,7 @@ export async function POST(req: Request) {
           "Acrylic trophies & awards",
           "Display stands & holders",
         ],
-        whatsappNumber: "+917337222876",
+        whatsappNumber: "+917337220568",
         whatsappPrefill: "Hi Classic Concepts, I need help choosing an acrylic product.",
         source: "smart-local",
         modelUsed: "local-catalog",

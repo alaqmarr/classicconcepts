@@ -405,7 +405,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
         count: Math.max(s._count.products, s._count.multiProducts),
       }));
 
-      const whatsappNumber = settings?.whatsappNumber || "+917337222876";
+      const whatsappNumber = "+91 73372 20568";
       const phone1 = settings?.phone1 || "+917337222876";
       const safePhone2 =
         settings?.phone2 && !/93467|63253/.test(settings.phone2)

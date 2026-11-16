@@ -107,7 +107,7 @@ export default async function ProductDetailPage({
   }
 
   const effectivePrice = product.discountPrice || product.basePrice;
-  const phone = settings?.whatsappNumber || "+917337222876";
+  const phone = "+917337220568";
 
   // Related products from the same category (or podiums)
   const relatedProducts = catalog.products

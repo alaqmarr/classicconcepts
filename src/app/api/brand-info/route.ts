@@ -37,8 +37,8 @@ export async function GET(req: NextRequest) {
     const certificates = brandAssets.certificates;
     const team = brandAssets.teamMembers;
 
-    const whatsappNumber = settings?.whatsappNumber || "+917337222876";
-    const whatsappClean = whatsappNumber.replace(/\D/g, "");
+    const whatsappNumber = "+91 73372 20568";
+    const whatsappClean = "917337220568";
     const businessHoursRaw =
       settings?.businessHours ||
       "Monday - Saturday: 9:00 AM to 6:00 PM\nSunday: Closed";

@@ -10,6 +10,22 @@ import { getSiteContentMap, type SiteContentMap } from "@/lib/site-content";
 const PUBLIC_TTL_SECONDS = 3600; // 1 hour in 100MB Redis + instant tag-version invalidation on admin edits
 const DETAIL_NOT_FOUND_TTL_SECONDS = 120; // Protect SQLite against bot 404 scans
 
+export const OFFICIAL_WHATSAPP_API_NUMBER = "+91 73372 20568";
+export const OFFICIAL_WHATSAPP_API_DIGITS = "917337220568";
+
+export function normalizeOfficialWhatsAppNumber(raw?: string | null): string {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (
+    !digits ||
+    /7337222876|9393939773|7901650662|7901650663|9849050752|9346763253/.test(
+      digits
+    )
+  ) {
+    return OFFICIAL_WHATSAPP_API_NUMBER;
+  }
+  return OFFICIAL_WHATSAPP_API_NUMBER;
+}
+
 export interface PublicSiteSettings {
   id: string;
   address: string;
@@ -313,6 +329,7 @@ export async function getPublicSiteSettings(): Promise<PublicSiteSettings | null
       if (!row) return null;
       return {
         ...row,
+        whatsappNumber: normalizeOfficialWhatsAppNumber(row.whatsappNumber),
         updatedAt: row.updatedAt.toISOString(),
       };
     }

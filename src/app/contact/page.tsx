@@ -3,6 +3,7 @@ import { getCachedBrandAssets, getPublicSiteSettings } from "@/lib/public-data";
 import { ContactForm } from "@/components/ContactForm";
 import { TeamSection } from "@/components/team/TeamSection";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import type { Metadata } from "next";
 import {
   getSiteContentMap,
@@ -159,6 +160,25 @@ export default async function ContactPage() {
                         />
                       )}
                     </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-[#16a34a] shrink-0">
+                    <WhatsAppIcon size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-800 mb-1 block">
+                      WhatsApp Business Support
+                    </h3>
+                    <a
+                      href="https://wa.me/917337220568"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-600 hover:text-[#16a34a] font-medium transition-colors inline-flex items-center gap-1.5"
+                    >
+                      +91 73372 20568
+                    </a>
                   </div>
                 </div>
 

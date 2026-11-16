@@ -169,7 +169,7 @@ export default async function ShopPage({
         {/* ACRIO Smart Search Bar */}
         <ShopSmartSearchBar
           onlyPodiums={false}
-          whatsappNumber={settings?.whatsappNumber || "+917337222876"}
+          whatsappNumber={settings?.whatsappNumber || "+917337220568"}
           customQuickIdeas={resolvedQuickIdeas}
           contentPrefix="shop.search"
           placeholder="Search products, SKU, or describe what you need in plain words (e.g., 'menu stand for restaurant', 'school trophy', 'LED stage podium')..."
@@ -178,7 +178,7 @@ export default async function ShopPage({
         {/* Full-Width Product Listing with Slide-Over Filter Sheet */}
         <ProductGridWithSearch
           products={products}
-          phone={settings?.whatsappNumber || "+917337222876"}
+          phone={settings?.whatsappNumber || "+917337220568"}
           initialQuery={searchQuery || ""}
           contextLabel={
             activeCat

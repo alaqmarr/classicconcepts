@@ -210,7 +210,7 @@ export default async function PodiumsPage({
         {/* ACRIO Smart Podium Search Bar */}
         <ShopSmartSearchBar
           onlyPodiums={true}
-          whatsappNumber={settings?.whatsappNumber || "+917337222876"}
+          whatsappNumber={settings?.whatsappNumber || "+917337220568"}
           customQuickIdeas={resolvedQuickIdeas}
           contentPrefix="podiums.search"
           placeholder="Search podiums by SKU, style, or describe what you need (e.g., 'LED podium with logo for hotel', 'wooden & acrylic school lectern')..."
@@ -547,7 +547,7 @@ export default async function PodiumsPage({
         {/* Full-Width Podiums Grid with Slide-Over Filter Sheet */}
         <ProductGridWithSearch
           products={products}
-          phone={settings?.whatsappNumber || "+917337222876"}
+          phone={settings?.whatsappNumber || "+917337220568"}
           initialQuery={searchQuery || ""}
           contextLabel={
             activeSubCategory
