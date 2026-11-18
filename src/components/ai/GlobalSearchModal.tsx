@@ -118,10 +118,13 @@ export function GlobalSearchModal({
     }, 40);
   }, []);
 
+  const acrioInFlightRef = useRef<boolean>(false);
+
   const askAcrio = useCallback(
     async (promptText?: string, forceFresh?: boolean) => {
       const q = (promptText ?? query).trim();
-      if (q.length < 2) return;
+      if (q.length < 2 || acrioInFlightRef.current) return;
+      acrioInFlightRef.current = true;
       if (promptText) setQuery(q);
 
       const isResetPhrase =
@@ -181,6 +184,7 @@ export function GlobalSearchModal({
       } catch {
         // Ignore network error, instant search results still work
       } finally {
+        acrioInFlightRef.current = false;
         setAcrioLoading(false);
       }
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -76,6 +76,7 @@ export function ShopSmartSearchBar({
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [acrioData, setAcrioData] = useState<ConciergeResponse | null>(null);
+  const inFlightQueryRef = useRef<string>("");
 
   const effectiveHint =
     defaultCategoryHint || (onlyPodiums ? "Acrylic Podiums" : undefined);
@@ -88,7 +89,8 @@ export function ShopSmartSearchBar({
 
   const handleAsk = async (promptText?: string) => {
     const q = (promptText ?? query).trim();
-    if (q.length < 2) return;
+    if (q.length < 2 || loading || inFlightQueryRef.current === q) return;
+    inFlightQueryRef.current = q;
     if (promptText) setQuery(q);
 
     setLoading(true);
@@ -120,6 +122,7 @@ export function ShopSmartSearchBar({
     } catch {
       // Fallback handled silently
     } finally {
+      inFlightQueryRef.current = "";
       setLoading(false);
     }
   };

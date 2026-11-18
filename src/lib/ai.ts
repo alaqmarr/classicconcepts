@@ -306,7 +306,7 @@ export async function callClaudeHaiku(options: {
       ) {
         const fastBody: Record<string, unknown> = {
           model: wireModel,
-          max_tokens: 2048,
+          max_tokens: 4096,
           system: systemBlocks,
           messages: apiMessages,
         };
@@ -606,7 +606,7 @@ export async function runCustomerConcierge(
     const nonProductCached = isNonProductQueryIntent(cachedIntent);
     const cleanMsg = cleanAiPatterns(cached.message);
     pushStep(
-      "Served response from concierge:v2 persistent cache",
+      "Served response from concierge:v4 persistent cache",
       `key="${normalizedKey}", intent=${cachedIntent}, matchedProducts=${hydrated.length}`
     );
     logClassicConceptsAiTrace({
@@ -618,7 +618,7 @@ export async function runCustomerConcierge(
       outcomeSource: "RESPONSE_CACHE",
       responseCacheStatus: "HIT",
       catalogCacheStatus: nonProductCached ? "BYPASS" : "HIT",
-      cacheDetails: `concierge:v2 HIT (intent=${cachedIntent}, catalogHash=${snapshot.catalogHash.slice(0, 8)})`,
+      cacheDetails: `concierge:v4 HIT (intent=${cachedIntent}, catalogHash=${snapshot.catalogHash.slice(0, 8)})`,
       productLookupTriggered: !nonProductCached,
       productLookupQuery: nonProductCached ? "" : cleanQuery,
       productLookupTotalScanned: nonProductCached ? 0 : snapshot.products.length,
@@ -718,7 +718,7 @@ export async function runCustomerConcierge(
   pushStep(
     hasConversationContext
       ? "Multi-turn context present -> bypassed single-turn response cache"
-      : "Response cache MISS -> invoking claude-haiku-5-5 Medium"
+      : "Response cache MISS -> invoking claude-haiku-5-5"
   );
 
   // 2. Call Client Agent (Claude Haiku 5.5) using Dedicated Client API Key
@@ -781,7 +781,8 @@ CONVERSATION CONTINUITY, GIST FORMATTING, TOTALLING & LEADERSHIP CONTACTS:
 - Furniture & Chairs: When asked about furniture, interiors, or chairs for sitting, recommend our Acrylic Chair (₹15,950), Acrylic Bar Stool (₹9,350), Acrylic Console Table (₹12,100), and Acrylic Nesting Tables (₹8,800) — never suggest podiums for furniture/seating!
 - Multi-Item Totalling & Budgets: When the visitor asks for multiple quantities or a project budget (e.g. "3 podiums, 10 signages, and 10 chairs within 1 lac rupees"), calculate unit price × quantity = line total for each item and suggest a within-budget combination!
 - Company Details, Leadership & Department Contacts: ONLY when the visitor explicitly asks about company leadership, directors, sales contacts, or factory address, share the verified names, roles, emails, and phone numbers from Section 3 (Directors: Yusuf Zakir - Director Production, Hussain Earanpurwala - Director Sales; Corporate & Sales Managers: Shiva Kumar Chernapally, Lalitha Barma, Susheela Kunchala, Shilpa Parikh, M Chandi Priyanka, Lakshmi Nossam, Syed Murtuza, B Suraj Goud, Harendar Kumar; Head Office: +91 79016 50662 / +91 79016 50663, Official WhatsApp: +91 73372 20568, sales@classicconcepts.in, 1-6-44/2 Muthyam Reddy Estate, Yadamma Nagar, Kanajiguda, Alwal, Secunderabad, Telangana 500015). Never include unrequested contact directories in normal product answers!
-- When the visitor asks about a single product, give a concise scannable gist (Price, Height & Top size, Build/Warranty, Variants, 2-3 highlights) instead of dumping a giant wall of text.
+- When the visitor asks about a single product, give a concise 2 to 4 line gist instead of a wall of text.
+- Never push or market products on greetings, intros, company info, topic resets, or off-topic turns. Reply politely in 1 to 2 short, direct sentences and stop.
 - Never repeat "Hello" or "Welcome" on follow-up turns, and do not repeat the same closing question turn after turn.
 - Classify the visitor's message:
   * "product_match": They want a product, gift, or venue setup (or are refining an earlier product request). Pick 1 to 4 genuinely relevant slugs from Section 4.
@@ -922,7 +923,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
           catalogCacheStatus: isNonProd ? "BYPASS" : "HIT",
           cacheDetails: hasConversationContext
             ? `Multi-turn conversation (intent=${intent})`
-            : `concierge:v2 MISS -> cached (intent=${intent}, cacheRead=${aiRes.usage?.cacheReadInputTokens || 0})`,
+            : `concierge:v4 MISS -> cached (intent=${intent}, cacheRead=${aiRes.usage?.cacheReadInputTokens || 0})`,
           productLookupTriggered: !isNonProd,
           productLookupQuery: isNonProd ? "" : cleanQuery,
           productLookupTotalScanned: isNonProd ? 0 : snapshot.products.length,
@@ -1998,6 +1999,10 @@ export async function runAdminProductAutofill(params: {
     existingSpecs: params.existingSpecs,
     customNotes: sanitizedNotes.sanitized,
   });
+  const isColouredOrFrostedOrWood =
+    /\b(colou?r(?:ed|s)?|shade|frosted|opaque|black|white|red|blue|green|yellow|orange|pink|purple|gold|golden|silver|wood|wooden|mdf|matte)\b/i.test(
+      `${sanitizedName.sanitized} ${params.categoryName || ""} ${sanitizedNotes.sanitized}`
+    );
 
   const seoFallback = buildDeterministicSeoMetadata({
     name: sanitizedName.sanitized,
@@ -2014,23 +2019,25 @@ export async function runAdminProductAutofill(params: {
   const aiRes = await callClaudeHaiku({
     scope: "admin",
     useCatalogSystemCache: true,
-    maxTokens: 1050,
+    effort: "low",
+    maxTokens: 2400,
     temperature: 0.2,
     taskSystemInstruction: `You are ACRO, Classic Concepts' Administrator Co-Pilot & Plain-Language Product Specialist.
 Generate accurate, easy-to-understand product details and SEO metadata for an acrylic item made by Classic Concepts.
 CRITICAL GROUNDING & ANTI-HALLUCINATION RULES:
 - Write in simple everyday layman English that a first-time buyer immediately understands.
 - NEVER use em dashes ("—"), spaced en dashes (" – "), or fancy words like bespoke, optical-grade, elevate, meticulous, seamless, or state-of-the-art.
+- Match the actual material/finish in Product Name & Notes (for coloured, frosted, opaque, or wooden items, describe them as coloured/frosted/opaque/wooden rather than transparent or clear).
 - Product descriptions MUST be short, clear bullet points (never long paragraphs).
 - STRICT FACTUAL GROUNDING: NEVER invent numeric heights, widths, depths, sheet thicknesses (like "8mm", "10mm", "44 to 46 inches"), weights, or warranty years that were NOT provided in the Admin input!
 - If the Admin input provides exact dimensions or sheet thickness, preserve those exact numbers in "dimensions". If the Admin input does NOT provide exact dimensions or thickness, return an EMPTY array [] for "dimensions" (or only include the verified dimensions from the prompt) and list what is missing in "missingAttributesWarning".
 Return STRICTLY valid JSON matching this schema:
 {
   "bullets": [
-    "Material: Made from thick, glass-clear imported cast acrylic that does not turn yellow.",
-    "Build & Finish: Smooth, shiny polished edges with a strong, steady body.",
+    "Material: Description matching the actual finish (e.g. clear, coloured, frosted, or wood+acrylic).",
+    "Build & Finish: Smooth, clean edges with reliable daily durability.",
     "Easy to Use: ...",
-    "Custom Options: Can be custom-made in your size with your logo printed or engraved on the front.",
+    "Custom Options: Can be custom-made or custom-cut in your required size or branding.",
     "Best Used For: ..."
   ],
   "features": [
@@ -2081,20 +2088,28 @@ Admin Prompt / Notes: ${sanitizedNotes.sanitized || "Generate simple layman bull
     : null;
 
   // Build grounded bullets, features, dimensions, specifications, and SEO metadata (with deterministic local fallback when AI key is missing/offline)
+  const thicknessSuffix =
+    verifiedFacts.hasExplicitThickness && verifiedFacts.verifiedThicknessTokens.length > 0
+      ? ` (${verifiedFacts.verifiedThicknessTokens.join(" / ")})`
+      : "";
+  const materialLine = isColouredOrFrostedOrWood
+    ? `Made from strong imported cast acrylic${thicknessSuffix} in even, long-lasting colours and finishes that do not fade.`
+    : `Made from thick, glass-clear imported cast acrylic${thicknessSuffix} that stays crystal clear and does not turn yellow.`;
+  const buildFinishLine = /\bsheet|sheets\b/i.test(`${sanitizedName.sanitized} ${params.categoryName || ""}`)
+    ? "Clean, smooth sheet surface with uniform finish, ready for laser cutting, routing, heat bending, or direct signage."
+    : "Smooth, shiny diamond-polished edges with a strong, steady body built for daily use.";
+  const useCaseLine = /\bsheet|sheets\b/i.test(`${sanitizedName.sanitized} ${params.categoryName || ""}`)
+    ? "signage boards, backlit displays, shop branding, interior wall accents, partitions, and custom fabrication"
+    : params.isPodium
+    ? "conferences, auditoriums, colleges, churches, hotels, and stage events"
+    : "offices, retail counters, reception desks, hotels, hospitals, and exhibitions";
+
   const defaultBullets = [
-    `Product: ${sanitizedName.sanitized} crafted directly at the Classic Concepts factory (${params.categoryName || (params.isPodium ? "Acrylic Podiums" : "Acrylic Display Products")}).`,
-    `Material: Made from thick, glass-clear imported cast acrylic${
-      verifiedFacts.hasExplicitThickness && verifiedFacts.verifiedThicknessTokens.length > 0
-        ? ` (${verifiedFacts.verifiedThicknessTokens.join(" / ")})`
-        : ""
-    } that stays crystal clear and does not turn yellow.`,
-    "Build & Finish: Smooth, shiny diamond-polished edges with a strong, steady body built for daily use.",
-    "Custom Options: Can be custom-made in your size with your company or institution logo color-printed or laser engraved.",
-    `Best Used For: Ideal for ${
-      params.isPodium
-        ? "conferences, auditoriums, colleges, churches, hotels, and stage events"
-        : "offices, retail counters, reception desks, hotels, hospitals, and exhibitions"
-    }.`,
+    `Product: ${sanitizedName.sanitized} from the Classic Concepts factory (${params.categoryName || (params.isPodium ? "Acrylic Podiums" : "Acrylic Products")}).`,
+    `Material: ${materialLine}`,
+    `Build & Finish: ${buildFinishLine}`,
+    "Custom Options: Can be custom-cut or custom-made to your required size, finish, and branding.",
+    `Best Used For: Ideal for ${useCaseLine}.`,
   ];
 
   const rawBullets =
@@ -2106,12 +2121,19 @@ Admin Prompt / Notes: ${sanitizedNotes.sanitized || "Generate simple layman bull
     .map((b) => scrubUnverifiedNumbersFromText(b, verifiedFacts))
     .filter(Boolean);
 
-  const defaultFeatures = [
-    "Thick, glass-clear imported cast acrylic that does not turn yellow over time",
-    "Smooth, shiny polished edges for a clean look",
-    "Custom logo printing or laser engraving available on request",
-    "Safe, sturdy factory packaging for pan-India delivery",
-  ];
+  const defaultFeatures = isColouredOrFrostedOrWood
+    ? [
+        "High-grade imported cast acrylic in rich, even colours that resist fading",
+        "Consistent surface finish suitable for clean fabrication and display",
+        "Custom sizing and branding options available on request",
+        "Safe, sturdy factory packaging for pan-India delivery",
+      ]
+    : [
+        "Thick, glass-clear imported cast acrylic that does not turn yellow over time",
+        "Smooth, shiny polished edges for a clean look",
+        "Custom logo printing or laser engraving available on request",
+        "Safe, sturdy factory packaging for pan-India delivery",
+      ];
 
   const features = (
     parsed?.features && Array.isArray(parsed.features) && parsed.features.length > 0
@@ -2148,9 +2170,19 @@ Admin Prompt / Notes: ${sanitizedNotes.sanitized || "Generate simple layman bull
     parsed?.specifications && Array.isArray(parsed.specifications) && parsed.specifications.length > 0
       ? parsed.specifications
       : [
-          { name: "Material", value: "Thick, Glass-Clear Imported Cast Acrylic (Non-Yellowing)" },
-          { name: "Edge Finish", value: "Smooth, Shiny Polished Edges" },
-          { name: "Logo Option", value: "Color Printed or Laser Engraved Logo Available" },
+          {
+            name: "Material",
+            value: isColouredOrFrostedOrWood
+              ? "Imported Cast Acrylic (Multiple Colours & Finishes)"
+              : "Thick, Glass-Clear Imported Cast Acrylic (Non-Yellowing)",
+          },
+          {
+            name: "Finish",
+            value: /\bsheet|sheets\b/i.test(`${sanitizedName.sanitized} ${params.categoryName || ""}`)
+              ? "Smooth Uniform Cast Acrylic Surface"
+              : "Smooth, Shiny Polished Edges",
+          },
+          { name: "Custom Option", value: "Custom Sizes & Branding Available on Request" },
           { name: "Made By", value: "Classic Concepts Factory, Secunderabad, India" },
         ];
 
@@ -2224,12 +2256,15 @@ Admin Prompt / Notes: ${sanitizedNotes.sanitized || "Generate simple layman bull
     },
   };
 
+  const autofillFallbackReason = !parsed
+    ? aiRes.error || (aiRes.ok ? "Claude response could not be parsed as JSON" : "Claude autofill request failed")
+    : undefined;
   logClassicConceptsAiTrace({
     feature: "ACRO Product Autofill & SEO",
     actor: "ACRO Admin",
     question: `Autofill product: ${sanitizedName.sanitized} (${params.sku || "no SKU"})`,
     model: parsed ? LOCKED_CLAUDE_MODEL : "acro-local-fallback",
-    effort: parsed ? "medium" : "low",
+    effort: "low",
     outcomeSource: parsed ? "LIVE_AI" : "LOCAL_FALLBACK",
     responseCacheStatus: parsed ? "BYPASS" : "LOCAL_ONLY",
     catalogCacheStatus: parsed ? "HIT" : "LOCAL_ONLY",
@@ -2246,14 +2281,15 @@ Admin Prompt / Notes: ${sanitizedNotes.sanitized || "Generate simple layman bull
         label: parsed
           ? "Generated grounded product bullets, features, specs, and SEO via ACRO (claude-haiku-5-5)"
           : "Generated grounded product bullets, features, specs, and SEO via ACRO deterministic fallback",
-        detail: `bullets=${bullets.length}, dimensions=${dimensions.length}, warnings=${verifiedFacts.missingAttributesWarning.length}`,
+        detail: `bullets=${bullets.length}, dimensions=${dimensions.length}, warnings=${verifiedFacts.missingAttributesWarning.length}${autofillFallbackReason ? `, reason="${autofillFallbackReason}"` : ""}`,
         durationMs: Date.now() - startedAt,
-        status: "OK",
+        status: parsed ? "OK" : "WARN",
       },
     ],
     response: bullets.join("\n"),
     durationMs: Date.now() - startedAt,
     tokenUsage: aiRes.usage || null,
+    error: autofillFallbackReason,
   });
 
   return {
