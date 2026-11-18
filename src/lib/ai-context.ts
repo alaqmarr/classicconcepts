@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { extractBulletsFromContent } from "@/lib/bullet-formatter";
 import { LOCKED_CLAUDE_MODEL, type AiAgentScope } from "@/lib/ai-agents";
+import { resolveVerifiedGoogleMapsData } from "@/lib/location-helper";
 import {
   getRawCached,
   invalidateCacheTags,
@@ -48,6 +49,8 @@ export interface KnowledgeSnapshot {
   whatsappNumber: string;
   phone1: string;
   email: string;
+  address: string;
+  mapsUrl: string;
 }
 
 export interface AiRuntimeSettings {
@@ -193,6 +196,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
             email: true,
             email2: true,
             businessHours: true,
+            mapEmbedUrl: true,
           },
         }),
         prisma.category.findMany({
@@ -228,7 +232,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
         }),
         prisma.infrastructureLocation.findMany({
           orderBy: { sortOrder: "asc" },
-          select: { name: true },
+          select: { name: true, mapUrl: true },
         }),
         prisma.product.findMany({
           orderBy: { name: "asc" },
@@ -423,6 +427,11 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
           ? settings.address
           : "1-6-44/2 Muthyam Reddy Estate, Yadamma Nagar, Kanajiguda, Alwal, Secunderabad, Telangana 500015"
       ).replace(/\\n/g, ", ");
+      const resolvedLocation = resolveVerifiedGoogleMapsData({
+        address,
+        mapEmbedUrl: settings?.mapEmbedUrl,
+        explicitMapUrl: locationsRaw.find((l) => l.mapUrl)?.mapUrl || null,
+      });
 
       const catalogLines: string[] = [];
 
@@ -478,6 +487,7 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
   - **Acrylic Hardware & Fabrication Accessories (188+ items)**: Acrylic Hinges (Standard, Super Thin, Spring, Mini Rib, Rib, Piano, Auto, Monster, Hardened, Counterbore, Square/Triangle/Slot Flexible Hinges), Handles & Knobs (C-Handle, High Gloss Door Handle, Door Knobs), Clear Plastic Screws (Countersunk, Round, Hex Bolt, Pin Screws, Hand Knob, Headless Set Screws, Menu/Book Screws), Anodized Spacers & Invisible Standoffs, Locks & Catches (Mini Camlock, Acrylic Camlock, Corner Lock, Hasp & Staple, Suitcase Latch, Magnetic Catch, Door Catch), L-Brackets, Angle Bars, Clear/Tinted/Radeon/Luminous Acrylic Rods & Square Rods, Acrylic/PC Tubes (Round, Square, Spiral, Reeded), Acrylic Balls & Half-Balls, Rotating Discs/Turntables, Keyway Frame Hangers, Hooks, Height Adjusters, Cabinet/Sofa Legs, and Specialty Acrylic Sheets (Metallic, Glitter, Silver/Gold Mirror, Water-Effect Chairmat, Radeon).
 - **Official Contact Details**:
   - Factory & Head Office: ${address}
+  - Google Maps Link: ${resolvedLocation.mapsUrl}
   - Primary Phone: ${phone1}${safePhone2 ? ` / ${safePhone2}` : ""}
   - Direct WhatsApp Help: ${whatsappNumber}
   - Official Email: ${email}${settings?.email2 ? ` / ${settings.email2}` : ""}
@@ -563,6 +573,8 @@ Use these simple, everyday explanations whenever a visitor asks common questions
         whatsappNumber,
         phone1,
         email,
+        address: resolvedLocation.address,
+        mapsUrl: resolvedLocation.mapsUrl,
       };
     }
   );
@@ -1787,31 +1799,36 @@ export function localSmartProductMatch(
     };
   }
 
-  // 3. Company / factory / location / shipping info question ("where is your factory", "what does classic concepts do")
+  // 3. Company / factory / location / shipping info question ("where is your factory", "share location", "map")
   if (
-    /\b(where\s+(?:are\s+you|is\s+your)\s*(?:located|based|factory|office|workshop|shop|company|from)?|what\s+is\s+your\s+(?:location|address|factory\s+address|working\s+hours|timings)|what\s+(?:does|is)\s+classic\s+(?:concepts|edge(?:\s*53)?)(?:\s+do)?|difference\s+between\s+classic\s+concepts\s+and\s+classic\s+edge|tell\s+me\s+about\s+(?:your\s+company|classic\s+concepts)|do\s+you\s+(?:ship|deliver)\s+(?:across|all\s+over|pan)\s+india|do\s+you\s+provide\s+gst)\b/i.test(
+    /\b(where\s+(?:are\s+you|is\s+your)\s*(?:located|based|factory|office|workshop|shop|company|plant|unit|from)?|(?:what\s+is|share|send|give|need|want|show)\s*(?:me\s*)?(?:your\s*)?(?:location|map\s*location|google\s*map|maps\s*(?:link|url)?|directions?|address|factory\s*address|office\s*address|office\s*location|factory\s*location|working\s*hours|timings)|^\s*(?:map\s*location|location|your\s*location|address|office\s*address|directions)\s*\??$|visit\s+(?:your\s+)?(?:factory|office|showroom)|what\s+(?:does|is)\s+classic\s+(?:concepts|edge(?:\s*53)?)(?:\s+do)?|difference\s+between\s+classic\s+concepts\s+and\s+classic\s+edge|tell\s+me\s+about\s+(?:your\s+company|classic\s+concepts)|do\s+you\s+(?:ship|deliver)\s+(?:across|all\s+over|pan)\s+india|do\s+you\s+provide\s+gst)\b/i.test(
       q
     ) &&
     !/\b(under|below|above|price\s+of|cost\s+of|buy|looking\s+for\s+a)\b/i.test(q)
   ) {
+    const isLocationFocus =
+      /\b(where|location|address|map|directions?|visit|office|factory|workshop)\b/i.test(q);
     return {
       intent: "company_info",
       products: [],
       matchedCategories: [],
-      advisoryMessage:
-        "Classic Concepts manufactures cast-acrylic stage podiums, awards, hotel and retail display stands, and custom acrylic boxes from our Secunderabad / Hyderabad factory, with pan-India delivery and full GST billing.",
-      highlights: [],
+      advisoryMessage: isLocationFocus
+        ? `Our factory & head office is at ${snapshot.address} (Mon to Sat, 10:00 AM to 7:00 PM). Google Maps: ${snapshot.mapsUrl}`
+        : `Classic Concepts manufactures cast-acrylic stage podiums, awards, hotel and retail display stands, and custom acrylic boxes from our Secunderabad / Hyderabad factory (${snapshot.mapsUrl}), with pan-India delivery and full GST billing.`,
+      highlights: isLocationFocus
+        ? [`Secunderabad Factory: Mon to Sat, 10 AM to 7 PM`, `Pan-India dispatch & GST billing`]
+        : [],
       followUpChips: [
         "Explore stage podiums",
         "Browse awards & trophies",
         "Ask about custom fabrication",
       ],
       suggestedLinks: [
-        { label: "About Classic Concepts", href: "/about" },
+        { label: "Open in Google Maps", href: snapshot.mapsUrl },
         { label: "Contact Us", href: "/contact" },
       ],
       whatsappPrefill:
-        "Hi Classic Concepts! I have a question about your factory and products.",
+        "Hi Classic Concepts! Please share your factory location pin and details.",
     };
   }
 

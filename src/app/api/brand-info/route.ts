@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCachedBrandAssets, getPublicSiteSettings } from "@/lib/public-data";
+import { resolveVerifiedGoogleMapsData } from "@/lib/location-helper";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,11 @@ export async function GET(req: NextRequest) {
     const businessHoursRaw =
       settings?.businessHours ||
       "Monday - Saturday: 9:00 AM to 6:00 PM\nSunday: Closed";
+    const resolvedLocation = resolveVerifiedGoogleMapsData({
+      address: settings?.address,
+      mapEmbedUrl: settings?.mapEmbedUrl,
+      explicitMapUrl: branches.find((b) => b.mapUrl)?.mapUrl || null,
+    });
 
     const payload = {
       success: true,
@@ -118,6 +124,10 @@ export async function GET(req: NextRequest) {
           .map((l) => l.trim())
           .filter(Boolean),
         mapEmbedUrl: settings?.mapEmbedUrl || null,
+        mapsUrl: resolvedLocation.mapsUrl,
+        latitude: resolvedLocation.latitude,
+        longitude: resolvedLocation.longitude,
+        placeName: resolvedLocation.placeName,
         payment: {
           upiId: settings?.upiId || null,
           upiName: settings?.upiName || "Classic Concepts",

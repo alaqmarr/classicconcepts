@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 import { getCachedBrandAssets, getPublicSiteSettings } from "@/lib/public-data";
 import { ContactForm } from "@/components/ContactForm";
 import { TeamSection } from "@/components/team/TeamSection";
-import { MapPin, Phone, Mail, Clock } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, ExternalLink } from "lucide-react";
+import { resolveVerifiedGoogleMapsData } from "@/lib/location-helper";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import type { Metadata } from "next";
 import {
@@ -25,6 +26,11 @@ export default async function ContactPage() {
     getSiteContentMap(),
   ]);
   const teamMembers = brandAssets.teamMembers;
+  const resolvedLocation = resolveVerifiedGoogleMapsData({
+    address: settings?.address,
+    mapEmbedUrl: settings?.mapEmbedUrl,
+    explicitMapUrl: brandAssets.locations?.find((l) => l.mapUrl)?.mapUrl || null,
+  });
 
   let mapSrc =
     settings?.mapEmbedUrl ||
@@ -302,6 +308,18 @@ export default async function ContactPage() {
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 ></iframe>
+              </div>
+              <div className="pt-1 flex flex-wrap items-center gap-2">
+                <a
+                  href={resolvedLocation.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-[#0056b3] border border-blue-200 text-xs sm:text-sm font-bold shadow-xs transition-colors"
+                >
+                  <MapPin size={15} />
+                  <span>Open in Google Maps &amp; Get Directions</span>
+                  <ExternalLink size={14} />
+                </a>
               </div>
             </div>
           </div>

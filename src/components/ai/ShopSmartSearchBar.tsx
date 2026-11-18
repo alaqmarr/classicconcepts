@@ -10,6 +10,8 @@ import {
   Loader2,
   CheckCircle2,
   MessageCircle,
+  MapPin,
+  ExternalLink,
   Package,
   X,
 } from "lucide-react";
@@ -323,6 +325,43 @@ export function ShopSmartSearchBar({
                       </span>
                     </Link>
                   ))}
+                </div>
+              )}
+
+              {acrioData?.suggestedLinks && acrioData.suggestedLinks.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {acrioData.suggestedLinks.map((link, idx) => {
+                    const isExternal = /^https?:\/\//i.test(link.href);
+                    const isMapLink = /maps\.google\.com|google\.com\/maps|maps\.app\.goo\.gl/i.test(link.href);
+                    if (isExternal) {
+                      return (
+                        <a
+                          key={idx}
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-lg transition-colors border ${
+                            isMapLink
+                              ? "text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
+                              : "text-[#0056b3] bg-white hover:bg-blue-50 border-blue-200"
+                          }`}
+                        >
+                          {isMapLink ? <MapPin className="w-3.5 h-3.5 text-emerald-700" /> : null}
+                          <span>{link.label}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      );
+                    }
+                    return (
+                      <Link
+                        key={idx}
+                        href={link.href}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-[#0056b3] bg-white hover:bg-blue-50 border border-blue-200 px-3 py-1 rounded-lg transition-colors"
+                      >
+                        {link.label} <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>

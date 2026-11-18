@@ -28,6 +28,7 @@ import {
   logClassicConceptsAiTrace,
   type AiTraceStep,
 } from "@/lib/ai-logger";
+import { isTrustedGoogleMapsUrl } from "@/lib/location-helper";
 
 export interface ConciergeProductCard {
   id: string;
@@ -604,7 +605,25 @@ export async function runCustomerConcierge(
     const cachedIntent =
       cached.intent || (hydrated.length > 0 ? "product_match" : "role_clarify");
     const nonProductCached = isNonProductQueryIntent(cachedIntent);
-    const cleanMsg = cleanAiPatterns(cached.message);
+    const cachedIsLocationAsk =
+      cachedIntent === "company_info" &&
+      /\b(where|location|address|map|directions?|visit|office|factory|workshop)\b/i.test(
+        cleanQuery
+      );
+    let cleanMsg = cleanAiPatterns(cached.message);
+    if (
+      cachedIsLocationAsk &&
+      !/maps\.google\.com|google\.com\/maps|maps\.app\.goo\.gl/i.test(cleanMsg)
+    ) {
+      cleanMsg = `${cleanMsg} Google Maps: ${snapshot.mapsUrl}`;
+    }
+    const cachedLinks = [...(cached.suggestedLinks || [{ label: "Browse Full Catalog", href: "/shop" }])];
+    if (
+      cachedIsLocationAsk &&
+      !cachedLinks.some((l) => isTrustedGoogleMapsUrl(l.href))
+    ) {
+      cachedLinks.unshift({ label: "Open in Google Maps", href: snapshot.mapsUrl });
+    }
     pushStep(
       "Served response from concierge:v4 persistent cache",
       `key="${normalizedKey}", intent=${cachedIntent}, matchedProducts=${hydrated.length}`
@@ -643,7 +662,7 @@ export async function runCustomerConcierge(
       message: cleanMsg,
       highlights: (cached.highlights || []).map((h) => cleanAiPatterns(h)),
       products: nonProductCached ? [] : hydrated,
-      suggestedLinks: cached.suggestedLinks || [{ label: "Browse Full Catalog", href: "/shop" }],
+      suggestedLinks: cachedLinks.slice(0, 3),
       followUpChips: (cached.followUpChips || []).map((c) => cleanAiPatterns(c)),
       whatsappNumber: snapshot.whatsappNumber,
       whatsappPrefill: cleanAiPatterns(
@@ -780,7 +799,7 @@ CONVERSATION CONTINUITY, GIST FORMATTING, TOTALLING & LEADERSHIP CONTACTS:
 - Podium Sub-Categories: 1. Essential Podiums (₹7,150 to ₹23,650), 2. Classic Signature Podiums (₹19,250 to ₹28,600), 3. Premium Podiums (₹28,600 to ₹55,000), 4. Custom-Built Podiums.
 - Furniture & Chairs: When asked about furniture, interiors, or chairs for sitting, recommend our Acrylic Chair (₹15,950), Acrylic Bar Stool (₹9,350), Acrylic Console Table (₹12,100), and Acrylic Nesting Tables (₹8,800) — never suggest podiums for furniture/seating!
 - Multi-Item Totalling & Budgets: When the visitor asks for multiple quantities or a project budget (e.g. "3 podiums, 10 signages, and 10 chairs within 1 lac rupees"), calculate unit price × quantity = line total for each item and suggest a within-budget combination!
-- Company Details, Leadership & Department Contacts: ONLY when the visitor explicitly asks about company leadership, directors, sales contacts, or factory address, share the verified names, roles, emails, and phone numbers from Section 3 (Directors: Yusuf Zakir - Director Production, Hussain Earanpurwala - Director Sales; Corporate & Sales Managers: Shiva Kumar Chernapally, Lalitha Barma, Susheela Kunchala, Shilpa Parikh, M Chandi Priyanka, Lakshmi Nossam, Syed Murtuza, B Suraj Goud, Harendar Kumar; Head Office: +91 79016 50662 / +91 79016 50663, Official WhatsApp: +91 73372 20568, sales@classicconcepts.in, 1-6-44/2 Muthyam Reddy Estate, Yadamma Nagar, Kanajiguda, Alwal, Secunderabad, Telangana 500015). Never include unrequested contact directories in normal product answers!
+- Company Details, Leadership & Department Contacts: ONLY when the visitor explicitly asks about company leadership, directors, sales contacts, or factory address, share the verified names, roles, emails, and phone numbers from Section 3 (Directors: Yusuf Zakir - Director Production, Hussain Earanpurwala - Director Sales; Corporate & Sales Managers: Shiva Kumar Chernapally, Lalitha Barma, Susheela Kunchala, Shilpa Parikh, M Chandi Priyanka, Lakshmi Nossam, Syed Murtuza, B Suraj Goud, Harendar Kumar; Head Office: +91 79016 50662 / +91 79016 50663, Official WhatsApp: +91 73372 20568, sales@classicconcepts.in, ${snapshot.address}, Google Maps: ${snapshot.mapsUrl}). When asked for factory location, address, or directions, always include the Google Maps link in your message and include { "label": "Open in Google Maps", "href": "${snapshot.mapsUrl}" } in "suggestedLinks". Never include unrequested contact directories in normal product answers!
 - When the visitor asks about a single product, give a concise 2 to 4 line gist instead of a wall of text.
 - Never push or market products on greetings, intros, company info, topic resets, or off-topic turns. Reply politely in 1 to 2 short, direct sentences and stop.
 - Never repeat "Hello" or "Welcome" on follow-up turns, and do not repeat the same closing question turn after turn.
@@ -803,7 +822,7 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
     { "slug": "exact-product-slug-from-section-4", "reason": "Short plain-English reason why this fits" }
   ],
   "suggestedLinks": [
-    { "label": "Simple link label", "href": "/podiums or /shop/c/<slug> or /shop or /contact" }
+    { "label": "Simple link label", "href": "/podiums or /shop/c/<slug> or /shop or /contact or ${snapshot.mapsUrl}" }
   ],
   "followUpChips": ["Specific clickable follow-up 1", "Specific follow-up 2", "Specific follow-up 3"],
   "whatsappPrefill": "Simple ready-to-send WhatsApp message matching their actual request"
@@ -845,20 +864,39 @@ Respond STRICTLY as a single valid JSON object (no markdown outside JSON) with t
                 }))
             : [];
 
+        const isLocationAsk =
+          intent === "company_info" &&
+          /\b(where|location|address|map|directions?|visit|office|factory|workshop)\b/i.test(cleanQuery);
+        let cleanedMessage = cleanAiPatterns(parsed.message);
+        if (isLocationAsk && !/maps\.google\.com|google\.com\/maps|maps\.app\.goo\.gl/i.test(cleanedMessage)) {
+          cleanedMessage = `${cleanedMessage} Google Maps: ${snapshot.mapsUrl}`;
+        }
+        const parsedLinks = Array.isArray(parsed.suggestedLinks)
+          ? parsed.suggestedLinks
+              .filter(
+                (l) =>
+                  Boolean(l?.label && l?.href) &&
+                  (l.href.startsWith("/") || isTrustedGoogleMapsUrl(l.href))
+              )
+              .slice(0, 3)
+              .map((l) => ({ label: cleanAiPatterns(l.label), href: l.href }))
+          : [{ label: "Browse All Products", href: "/shop" }];
+        if (
+          isLocationAsk &&
+          !parsedLinks.some((l) => isTrustedGoogleMapsUrl(l.href))
+        ) {
+          parsedLinks.unshift({ label: "Open in Google Maps", href: snapshot.mapsUrl });
+        }
+
         const safeToCache: CachedShape = {
           intent,
-          message: cleanAiPatterns(parsed.message),
+          message: cleanedMessage,
           highlights:
             intent === "product_match" && Array.isArray(parsed.highlights)
               ? parsed.highlights.slice(0, 2).map((h) => cleanAiPatterns(h))
               : [],
           recommendations: validRecs.slice(0, 4),
-          suggestedLinks: Array.isArray(parsed.suggestedLinks)
-            ? parsed.suggestedLinks
-                .filter((l) => l?.label && l?.href?.startsWith("/"))
-                .slice(0, 3)
-                .map((l) => ({ label: cleanAiPatterns(l.label), href: l.href }))
-            : [{ label: "Browse All Products", href: "/shop" }],
+          suggestedLinks: parsedLinks.slice(0, 3),
           followUpChips: Array.isArray(parsed.followUpChips)
             ? parsed.followUpChips.slice(0, 3).map((c) => cleanAiPatterns(c))
             : [],
