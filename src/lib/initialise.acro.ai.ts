@@ -188,8 +188,6 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
         teamMembersRaw,
         machineryRaw,
         resourcesRaw,
-        enquiriesCount,
-        ordersCount,
       ] = await Promise.all([
         prisma.siteSetting.findUnique({
           where: { id: "default" },
@@ -294,8 +292,6 @@ export async function getKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
             orderBy: { sortOrder: "asc" },
           })
           .catch(() => []),
-        prisma.enquiry.count().catch(() => 0),
-        prisma.cartOrder.count().catch(() => 0),
       ]);
 
       const products: CachedProductSummary[] = productsRaw
@@ -525,7 +521,6 @@ ${teamSummaryLines}
 ${machinerySummaryLines}
 - **Official Catalogues & Resources**:
 ${resourcesSummaryLines}
-- **Live Website Activity**: ${enquiriesCount} customer enquiries and ${ordersCount} cart orders recorded in database.
 
 ## 4. COMPLETE LIVE PRODUCT DATABASE (${products.length} ACTIVE PRODUCTS WITH DIMENSIONS, SPECS, VARIANTS & PRICES)
 Total Active Catalog Items: ${products.length} across ${categories.length} main categories and ${podiumSubCategories.length} podium styles.
@@ -1011,7 +1006,7 @@ export async function callClaudeHaiku(options: {
       : agent.coreSystemRules,
   });
 
-  const apiMessages: { role: "user" | "assistant"; content: string }[] =
+  const rawMessages: { role: "user" | "assistant"; content: string }[] =
     options.conversationMessages && options.conversationMessages.length > 0
       ? options.conversationMessages
       : [
@@ -1020,6 +1015,35 @@ export async function callClaudeHaiku(options: {
             content: options.userPrompt,
           },
         ];
+
+  const apiMessages: Array<{
+    role: "user" | "assistant";
+    content:
+      | string
+      | Array<{
+          type: "text";
+          text: string;
+          cache_control?: { type: "ephemeral" };
+        }>;
+  }> = rawMessages.map((m) => ({ role: m.role, content: m.content }));
+
+  // Cache multi-turn conversation history up to the last completed exchange before the current turn's ephemeral retrieval payload
+  if (apiMessages.length >= 3) {
+    const targetIdx = apiMessages.length - 2;
+    const prevTurn = apiMessages[targetIdx];
+    const historyChars = apiMessages
+      .slice(0, targetIdx + 1)
+      .reduce((acc, m) => acc + (typeof m.content === "string" ? m.content.length : 0), 0);
+    if (prevTurn && typeof prevTurn.content === "string" && historyChars >= 400) {
+      prevTurn.content = [
+        {
+          type: "text",
+          text: prevTurn.content,
+          cache_control: { type: "ephemeral" },
+        },
+      ];
+    }
+  }
 
   const wireCandidates = [model, "claude-haiku-4-5-20251001"];
 
@@ -1051,7 +1075,6 @@ export async function callClaudeHaiku(options: {
           "Content-Type": "application/json",
           "x-api-key": scopedKey,
           "anthropic-version": "2023-06-01",
-          "anthropic-beta": "prompt-caching-2024-07-31",
         },
         body: JSON.stringify(requestBody),
         signal: AbortSignal.timeout(26000),
@@ -1090,7 +1113,6 @@ export async function callClaudeHaiku(options: {
             "Content-Type": "application/json",
             "x-api-key": scopedKey,
             "anthropic-version": "2023-06-01",
-            "anthropic-beta": "prompt-caching-2024-07-31",
           },
           body: JSON.stringify(fastBody),
           signal: AbortSignal.timeout(22000),
